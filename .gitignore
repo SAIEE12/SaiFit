@@ -6,3 +6,5 @@ coverage/
 build/
 dist/
 .expo/
+*.db
+backend/saifit.db

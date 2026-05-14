@@ -6,7 +6,7 @@ SaiFit is a simple, clean, and beginner-friendly mobile fitness and nutrition tr
 
 - **Frontend:** React Native (Expo) - Chosen for simplicity, cross-platform support, and beginner-friendly ecosystem.
 - **Backend:** Node.js with Express.js - Lightweight, modular, and easy to scale.
-- **Database:** PostgreSQL - Robust relational database for structured health data.
+- **Database:** SQLite (Local Dev) / PostgreSQL (Production) - Currently configured to use SQLite locally for a plug-and-play development experience without requiring external services or Docker. Easily migrates to PostgreSQL later.
 - **AI Integration:** Google Gemini API - Used for analyzing food images to estimate macros and generating workout recommendations.
 - **Storage:** Cloudinary - Used for storing uploaded food and profile images securely.
 - **Notifications:** Firebase Cloud Messaging (FCM) - For mobile push notifications.
@@ -37,14 +37,14 @@ Fit_app_m/
 └── README.md
 ```
 
-## 🛠 Backend Setup
+## 🛠 Backend Setup (Local SQLite)
 
 1. Navigate to the backend directory: `cd backend`
 2. Install dependencies: `npm install`
 3. Create a `.env` file based on `.env.example`: `cp .env.example .env`
-4. Create a PostgreSQL database and update the `DATABASE_URL` in `.env`.
-5. Run the schema file to create tables: `psql -U your_user -d saifit -f src/models/schema.sql`
-6. Start the server: `npm run dev`
+4. Provide your API keys in the `.env` file (`GEMINI_API_KEY`, etc.).
+5. Start the server: `npm run dev`
+   * *Note: The local SQLite database (`saifit.db`) and its schema are automatically initialized when the server starts. You do not need to install or run PostgreSQL locally!*
 
 ## 📱 Frontend Setup (Expo)
 
@@ -54,36 +54,21 @@ Fit_app_m/
 4. Start the app: `npx expo start`
 5. Use the Expo Go app on your phone or an emulator to run the application.
 
-## 🚀 Deployment Guide
+## 🚀 Deployment Guide & Future PostgreSQL Migration
 
-### Render / Railway (Backend + DB)
+### Migrating back to PostgreSQL
+The current `db.js` wraps SQLite to have the exact same API surface as `pg`. 
+When you are ready for production, you simply:
+1. `npm install pg` and `npm uninstall better-sqlite3`.
+2. Swap the `db.js` contents back to using a generic PostgreSQL connection pool.
+3. Your controllers won't need to change, as they still use the PostgreSQL querying conventions (`await db.query(...)` and parameterized queries like `$1`).
 
+### Render / Railway (Production)
 1. **Database:** Create a PostgreSQL instance on Render/Railway.
-2. **Environment Variables:** Set all variables from `.env.example` in your Render/Railway project settings.
-3. **Build & Start Command:** 
-   - Build Command: `npm install`
-   - Start Command: `node src/server.js`
-4. **Deploy:** Connect your GitHub repository and let Render/Railway build and deploy the backend. Run the `schema.sql` on the provisioned database.
-
-### Frontend (Expo)
-
-- Since this is a personal/small-scale app, you can share it via **Expo Go** or build a standalone APK for Android using **EAS Build**:
-  ```bash
-  npm install -g eas-cli
-  eas login
-  eas build -p android --profile preview
-  ```
+2. **Environment Variables:** Set all variables from `.env.example`.
+3. **Deploy:** Connect your GitHub repository and let Render/Railway build and deploy the backend. Run `schema.sql` on the provisioned DB.
 
 ## 🤖 AI Features Implementation
 
 - **Food Scanner:** In `nutritionController.js`, we use Gemini API to accept an image (base64) and a prompt to return a JSON containing `calories`, `protein`, `carbs`, and `fats`.
 - **Recommendations:** In `recommendationController.js`, Gemini receives the user's goals and recent workouts to generate a structured workout plan.
-
-## 📅 API Endpoints Summary
-
-- `POST /api/auth/register` - Create user
-- `POST /api/auth/login` - Authenticate and get JWT
-- `POST /api/nutrition/analyze` - Send food image to Gemini
-- `POST /api/nutrition/log` - Save food item to DB
-- `POST /api/workouts/log` - Save a workout session
-- `GET /api/recommendations` - Get AI workout suggestions

@@ -1,11 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 
+const db = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const nutritionRoutes = require('./routes/nutritionRoutes');
 const workoutRoutes = require('./routes/workoutRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
+
+// Initialize SQLite database schema automatically for local dev
+const schema = fs.readFileSync(path.join(__dirname, 'models/schema.sql'), 'utf8');
+db.exec(schema);
 
 const app = express();
 

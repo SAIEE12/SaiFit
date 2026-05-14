@@ -1,98 +1,98 @@
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE user_goals (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS user_goals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    goal_type VARCHAR(50) NOT NULL, -- e.g., 'weight_loss', 'muscle_gain', 'maintenance', 'recomposition'
-    current_weight DECIMAL(5,2),
-    target_weight DECIMAL(5,2),
+    goal_type TEXT NOT NULL, 
+    current_weight REAL,
+    target_weight REAL,
     target_calories INTEGER,
     target_protein INTEGER,
     target_carbs INTEGER,
     target_fats INTEGER,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE meals (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS meals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
-    meal_type VARCHAR(50), -- 'breakfast', 'lunch', 'dinner', 'snack'
+    meal_type TEXT, 
     total_calories INTEGER DEFAULT 0,
     total_protein INTEGER DEFAULT 0,
     total_carbs INTEGER DEFAULT 0,
     total_fats INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE food_logs (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS food_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     meal_id INTEGER REFERENCES meals(id) ON DELETE CASCADE,
-    food_name VARCHAR(255) NOT NULL,
+    food_name TEXT NOT NULL,
     calories INTEGER NOT NULL,
     protein INTEGER NOT NULL,
     carbs INTEGER NOT NULL,
     fats INTEGER NOT NULL,
     image_url TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE exercises (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    category VARCHAR(100), -- 'chest', 'back', 'legs', 'cardio', etc.
+CREATE TABLE IF NOT EXISTS exercises (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT,
     description TEXT
 );
 
-CREATE TABLE workout_logs (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS workout_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
     notes TEXT,
     duration_minutes INTEGER,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE workout_sets (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS workout_sets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     workout_log_id INTEGER REFERENCES workout_logs(id) ON DELETE CASCADE,
     exercise_id INTEGER REFERENCES exercises(id) ON DELETE SET NULL,
     sets INTEGER NOT NULL,
     reps INTEGER NOT NULL,
-    weight DECIMAL(6,2),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    weight REAL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE body_metrics (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS body_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
-    weight DECIMAL(5,2),
-    body_fat_percentage DECIMAL(4,2),
+    weight REAL,
+    body_fat_percentage REAL,
     notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE recommendations (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS recommendations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    type VARCHAR(50), -- 'workout', 'nutrition'
+    type TEXT,
     content TEXT NOT NULL,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE notifications (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    type VARCHAR(50), -- 'reminder', 'achievement', 'system'
+    type TEXT,
     message TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    is_read INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

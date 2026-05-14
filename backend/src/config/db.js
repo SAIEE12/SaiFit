@@ -5,6 +5,8 @@ const path = require('path');
 const dbPath = path.resolve(__dirname, '../../saifit.db');
 const db = new Database(dbPath);
 
+// Enable WAL mode for better concurrency when multiple devices connect
+db.pragma('journal_mode = WAL');
 // Enable foreign keys for SQLite
 db.pragma('foreign_keys = ON');
 

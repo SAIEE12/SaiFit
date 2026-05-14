@@ -25,6 +25,20 @@ CREATE TABLE IF NOT EXISTS ai_usage_logs (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS user_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    full_name TEXT,
+    age INTEGER,
+    gender TEXT,
+    height REAL,
+    weight REAL,
+    target_weight REAL,
+    activity_level TEXT,
+    fitness_goal TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS user_goals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,

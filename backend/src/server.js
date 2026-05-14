@@ -10,6 +10,7 @@ const nutritionRoutes = require('./routes/nutritionRoutes');
 const workoutRoutes = require('./routes/workoutRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const profileRoutes = require('./routes/profileRoutes');
 
 // Initialize SQLite database schema automatically for local dev
 const schema = fs.readFileSync(path.join(__dirname, 'models/schema.sql'), 'utf8');
@@ -29,6 +30,7 @@ app.use('/api/nutrition', nutritionRoutes);
 app.use('/api/workouts', workoutRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/profile', profileRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'SaiFit API is running' });

@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const authenticateToken = require('../middlewares/authMiddleware');
 
-router.post('/register', authController.register);
 router.post('/login', authController.login);
-router.get('/me', authController.getMe); // Requires authentication, would add middleware in real implementation
+router.get('/me', authenticateToken, authController.me);
 
 module.exports = router;

@@ -1,8 +1,27 @@
+CREATE TABLE IF NOT EXISTS invite_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    assigned_username TEXT,
+    max_daily_requests INTEGER DEFAULT 10,
+    is_active INTEGER DEFAULT 1,
+    is_used INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    username TEXT UNIQUE NOT NULL,
+    role TEXT DEFAULT 'user',
+    invite_code_id INTEGER REFERENCES invite_codes(id),
+    daily_usage_count INTEGER DEFAULT 0,
+    last_usage_reset DATE DEFAULT CURRENT_DATE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ai_usage_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    request_type TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -40,6 +59,7 @@ CREATE TABLE IF NOT EXISTS food_logs (
     carbs INTEGER NOT NULL,
     fats INTEGER NOT NULL,
     image_url TEXT,
+    input_type TEXT DEFAULT 'scan',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -69,30 +89,11 @@ CREATE TABLE IF NOT EXISTS workout_sets (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS body_metrics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    date DATE NOT NULL DEFAULT CURRENT_DATE,
-    weight REAL,
-    body_fat_percentage REAL,
-    notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS recommendations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     type TEXT,
     content TEXT NOT NULL,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS notifications (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    type TEXT,
-    message TEXT NOT NULL,
-    is_read INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

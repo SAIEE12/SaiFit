@@ -4,15 +4,30 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
 import MySpaceScreen from './src/screens/MySpaceScreen';
 import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import MealsScreen from './src/screens/MealsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import AdminScreen from './src/screens/AdminScreen';
+import CalendarScreen from './src/screens/CalendarScreen';
 import apiClient, { loadAuthToken, setAuthToken } from './src/api/client';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+function ProfileStack({ onLogout }) {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProfileMain">
+        {(props) => <ProfileScreen {...props} onLogout={onLogout} />}
+      </Stack.Screen>
+      <Stack.Screen name="Admin" component={AdminScreen} />
+    </Stack.Navigator>
+  );
+}
 
 function MainTabs({ onLogout, userRole }) {
   return (
@@ -24,7 +39,7 @@ function MainTabs({ onLogout, userRole }) {
             if (route.name === 'My Space') iconName = 'home';
             else if (route.name === 'Workouts') iconName = 'activity';
             else if (route.name === 'Meals') iconName = 'coffee';
-            else if (route.name === 'Admin') iconName = 'shield';
+            else if (route.name === 'Calendar') iconName = 'calendar';
             else if (route.name === 'Profile') iconName = 'user';
             
             return <Feather name={iconName} size={22} color={color} />;
@@ -53,11 +68,9 @@ function MainTabs({ onLogout, userRole }) {
         <Tab.Screen name="My Space" component={MySpaceScreen} />
         <Tab.Screen name="Workouts" component={WorkoutsScreen} />
         <Tab.Screen name="Meals" component={MealsScreen} />
-        {userRole === 'admin' && (
-           <Tab.Screen name="Admin" component={AdminScreen} />
-        )}
+        <Tab.Screen name="Calendar" component={CalendarScreen} />
         <Tab.Screen name="Profile">
-           {() => <ProfileScreen onLogout={onLogout} />}
+           {() => <ProfileStack onLogout={onLogout} />}
         </Tab.Screen>
       </Tab.Navigator>
   );

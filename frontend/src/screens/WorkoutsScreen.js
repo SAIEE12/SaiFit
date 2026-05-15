@@ -1,9 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import CalendarStrip from '../components/CalendarStrip';
+import apiClient from '../api/client';
 
 export default function WorkoutsScreen() {
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [workouts, setWorkouts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchWorkouts();
+  }, [selectedDate]);
+
+  const fetchWorkouts = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.get(`/workouts?date=${selectedDate}`);
+      setWorkouts(res.data);
+    } catch (e) {
+      console.error("Failed to fetch workouts", e);
+    } finally {
+      setLoading(false);
+    }
+  };
   const categories = [
     { name: 'Chest', icon: 'stop-circle', color: '#F39C12' },
     { name: 'Back', icon: 'align-center', color: '#E74C3C' },
@@ -32,10 +53,10 @@ export default function WorkoutsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Workout Log</Text>
+        <Text style={styles.headerTitle}>Log Workout</Text>
         <TouchableOpacity style={styles.addBtn}>
           <Feather name="plus" size={20} color="#FFF" />
-          <Text style={styles.addBtnText}>Log Workout</Text>
+          <Text style={styles.addBtnText}>Log New</Text>
         </TouchableOpacity>
       </View>
 
@@ -70,30 +91,6 @@ export default function WorkoutsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Workouts</Text>
-        </View>
-
-        {recentWorkouts.map((workout, index) => (
-          <View key={index} style={styles.workoutRow}>
-            <View style={[styles.workoutImage, { backgroundColor: workout.color }]}>
-               <MaterialCommunityIcons name="weight-lifter" size={32} color="#FFF" />
-            </View>
-            
-            <View style={styles.workoutInfo}>
-              <View style={styles.workoutHeaderRow}>
-                <Text style={styles.workoutTitle}>{workout.title}</Text>
-              </View>
-              <Text style={styles.workoutDesc} numberOfLines={2}>{workout.desc}</Text>
-              
-              <View style={styles.tagsRow}>
-                <View style={styles.tag}><Text style={styles.tagText}>⏱ {workout.duration}</Text></View>
-                <View style={styles.tag}><Text style={styles.tagText}>📅 {workout.date}</Text></View>
-              </View>
-            </View>
-          </View>
-        ))}
-        
         <View style={{height: 30}} />
       </ScrollView>
     </SafeAreaView>
@@ -103,7 +100,7 @@ export default function WorkoutsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F8FAFD',
   },
   header: {
     flexDirection: 'row',
@@ -278,5 +275,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#1A1A1A',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#AAA',
+    fontWeight: '500',
   }
 });

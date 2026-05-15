@@ -6,7 +6,7 @@ import { Picker } from '@react-native-picker/picker';
 
 import apiClient, { setAuthToken } from '../api/client';
 
-export default function ProfileScreen({ onLogout }) {
+export default function ProfileScreen({ navigation, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
   const [userData, setUserData] = useState(null);
@@ -168,6 +168,18 @@ export default function ProfileScreen({ onLogout }) {
           </TouchableOpacity>
 
           <Text style={[styles.sectionTitle, {marginTop: 20}]}>Preferences</Text>
+          
+          {userData?.role === 'admin' && (
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Admin')}>
+                <View style={styles.menuItemLeft}>
+                    <View style={[styles.menuIconWrap, {backgroundColor: '#E91E63'}]}>
+                        <Feather name="shield" size={18} color="#FFF" />
+                    </View>
+                    <Text style={styles.menuItemText}>Admin Privileges</Text>
+                </View>
+                <Feather name="chevron-right" size={20} color="#8E8E93" />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
@@ -283,7 +295,7 @@ export default function ProfileScreen({ onLogout }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: '#F8FAFD' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

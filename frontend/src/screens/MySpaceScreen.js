@@ -1,9 +1,49 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import apiClient from '../api/client';
 
-export default function MySpaceScreen() {
+export default function MySpaceScreen({ navigation }) {
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [nutritionSummary, setNutritionSummary] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
+  const [hydration, setHydration] = useState(0);
+  const [dailyWorkouts, setDailyWorkouts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [recommendation, setRecommendation] = useState(null);
+
+  useEffect(() => {
+    fetchDailyData();
+  }, [selectedDate]);
+
+  const fetchDailyData = async () => {
+    try {
+      setLoading(true);
+      const [recRes, mealsRes, workoutsRes, hydrationRes] = await Promise.all([
+        apiClient.get('/recommendations'),
+        apiClient.get(`/nutrition/meals?date=${selectedDate}`),
+        apiClient.get(`/workouts?date=${selectedDate}`),
+        apiClient.get(`/hydration?date=${selectedDate}`)
+      ]);
+      
+      setRecommendation(recRes.data);
+      setDailyWorkouts(workoutsRes.data);
+      setHydration(hydrationRes.data.amount_ml || 0);
+      
+      let totals = { calories: 0, protein: 0, carbs: 0, fats: 0 };
+      mealsRes.data.forEach(meal => {
+        totals.calories += meal.total_calories;
+        totals.protein += meal.total_protein;
+        totals.carbs += meal.total_carbs;
+        totals.fats += meal.total_fats;
+      });
+      setNutritionSummary(totals);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -11,72 +51,74 @@ export default function MySpaceScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.date}>FRIDAY, 06 MAY</Text>
-            <Text style={styles.greeting}>Hi, Manish 👋</Text>
+            <Text style={styles.date}>{selectedDate === new Date().toISOString().split('T')[0] ? 'TODAY' : selectedDate.toUpperCase()}</Text>
+            <Text style={styles.greeting}>Hi, Fitness Fan! 👋</Text>
           </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.iconBtn}>
               <Feather name="bell" size={22} color="#1A1A1A" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Feather name="settings" size={22} color="#1A1A1A" />
+          </View>
+        </View>
+
+        {loading ? (
+            <ActivityIndicator size="large" color="#E91E63" style={{marginTop: 50}} />
+        ) : (
+          <>
+            {/* Daily Calorie Banner */}
+            <TouchableOpacity style={styles.banner}>
+              <View>
+                <Text style={styles.bannerTitle}>DAILY CALORIE TARGET</Text>
+                <Text style={styles.bannerSubtitle}>{nutritionSummary.calories} / 2,200 kcal consumed</Text>
+              </View>
+              <View style={styles.bannerAction}>
+                <Text style={styles.bannerActionText}>{Math.max(0, 2200 - nutritionSummary.calories)} left</Text>
+              </View>
             </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Daily Calorie Banner */}
-        <TouchableOpacity style={styles.banner}>
-          <View>
-            <Text style={styles.bannerTitle}>DAILY CALORIE TARGET</Text>
-            <Text style={styles.bannerSubtitle}>1,450 / 2,200 kcal consumed</Text>
-          </View>
-          <View style={styles.bannerAction}>
-            <Text style={styles.bannerActionText}>750 left</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Macro Balance */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Macro Balance</Text>
-          <TouchableOpacity><Text style={styles.seeAll}>DETAILS</Text></TouchableOpacity>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-          <View style={[styles.macroCard, {borderColor: '#E91E63'}]}>
-            <Text style={styles.macroTitle}>Protein</Text>
-            <Text style={styles.macroValue}>85g <Text style={styles.macroTarget}>/ 140g</Text></Text>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, {width: '60%', backgroundColor: '#E91E63'}]} />
+            {/* Macro Balance */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Macro Balance</Text>
             </View>
-          </View>
-          
-          <View style={[styles.macroCard, {borderColor: '#4CAF50'}]}>
-            <Text style={styles.macroTitle}>Carbs</Text>
-            <Text style={styles.macroValue}>120g <Text style={styles.macroTarget}>/ 200g</Text></Text>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, {width: '60%', backgroundColor: '#4CAF50'}]} />
-            </View>
-          </View>
 
-          <View style={[styles.macroCard, {borderColor: '#FFC107'}]}>
-            <Text style={styles.macroTitle}>Fats</Text>
-            <Text style={styles.macroValue}>45g <Text style={styles.macroTarget}>/ 65g</Text></Text>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, {width: '70%', backgroundColor: '#FFC107'}]} />
-            </View>
-          </View>
-        </ScrollView>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+              <View style={[styles.macroCard, {borderColor: '#E91E63'}]}>
+                <Text style={styles.macroTitle}>Protein</Text>
+                <Text style={styles.macroValue}>{nutritionSummary.protein}g <Text style={styles.macroTarget}>/ 140g</Text></Text>
+                <View style={styles.progressBarBg}>
+                  <View style={[styles.progressBarFill, {width: `${Math.min(100, (nutritionSummary.protein/140)*100)}%`, backgroundColor: '#E91E63'}]} />
+                </View>
+              </View>
+              
+              <View style={[styles.macroCard, {borderColor: '#4CAF50'}]}>
+                <Text style={styles.macroTitle}>Carbs</Text>
+                <Text style={styles.macroValue}>{nutritionSummary.carbs}g <Text style={styles.macroTarget}>/ 200g</Text></Text>
+                <View style={styles.progressBarBg}>
+                  <View style={[styles.progressBarFill, {width: `${Math.min(100, (nutritionSummary.carbs/200)*100)}%`, backgroundColor: '#4CAF50'}]} />
+                </View>
+              </View>
+
+              <View style={[styles.macroCard, {borderColor: '#FFC107'}]}>
+                <Text style={styles.macroTitle}>Fats</Text>
+                <Text style={styles.macroValue}>{nutritionSummary.fats}g <Text style={styles.macroTarget}>/ 65g</Text></Text>
+                <View style={styles.progressBarBg}>
+                  <View style={[styles.progressBarFill, {width: `${Math.min(100, (nutritionSummary.fats/65)*100)}%`, backgroundColor: '#FFC107'}]} />
+                </View>
+              </View>
+            </ScrollView>
 
         {/* AI Insight / Recommendation */}
-        <View style={styles.insightCard}>
-          <View style={styles.insightIconWrap}>
-            <FontAwesome5 name="magic" size={16} color="#FFF" />
-          </View>
-          <View style={{flex: 1}}>
-            <Text style={styles.insightTitle}>AI Health Insight</Text>
-            <Text style={styles.insightText}>Increase protein intake by 20g today to meet your muscle gain goal. Try adding a protein shake or chicken breast to your dinner.</Text>
-          </View>
-        </View>
+        {recommendation && (
+            <View style={styles.insightCard}>
+              <View style={styles.insightIconWrap}>
+                <FontAwesome5 name="magic" size={16} color="#FFF" />
+              </View>
+              <View style={{flex: 1}}>
+                <Text style={styles.insightTitle}>AI Health Insight</Text>
+                <Text style={styles.insightText}>{recommendation.recovery_advice}</Text>
+              </View>
+            </View>
+        )}
 
         {/* Health Tracking */}
         <View style={styles.sectionHeader}>
@@ -91,8 +133,18 @@ export default function MySpaceScreen() {
             <Text style={styles.goalText}>Hydration</Text>
           </View>
           <View style={styles.trackAction}>
-            <Text style={styles.goalValue}>4 / 8 gl</Text>
-            <TouchableOpacity style={styles.addBtn}><Feather name="plus" size={16} color="#FFF"/></TouchableOpacity>
+            <Text style={styles.goalValue}>{hydration} / 3000 ml</Text>
+            <TouchableOpacity 
+                style={styles.addBtn}
+                onPress={async () => {
+                    try {
+                        await apiClient.post('/hydration/log', { amount_ml: 250, date: selectedDate });
+                        setHydration(prev => prev + 250);
+                    } catch(e) { console.error(e); }
+                }}
+            >
+                <Feather name="plus" size={16} color="#FFF"/>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -101,13 +153,20 @@ export default function MySpaceScreen() {
             <View style={[styles.goalIconWrap, {backgroundColor: '#EDE7F6'}]}>
               <MaterialCommunityIcons name="bed-empty" size={20} color="#673AB7" />
             </View>
-            <Text style={styles.goalText}>Sleep</Text>
+            <Text style={styles.goalText}>Workouts</Text>
           </View>
           <View style={styles.trackAction}>
-            <Text style={styles.goalValue}>6h 30m</Text>
-            <TouchableOpacity style={styles.addBtn}><Feather name="plus" size={16} color="#FFF"/></TouchableOpacity>
+            <Text style={styles.goalValue}>{dailyWorkouts.length} logged</Text>
+            <TouchableOpacity 
+                style={styles.addBtn}
+                onPress={() => navigation.navigate('Workouts')}
+            >
+                <Feather name="arrow-right" size={16} color="#FFF"/>
+            </TouchableOpacity>
           </View>
         </View>
+        </>
+        )}
 
         <View style={{height: 40}} />
       </ScrollView>
@@ -118,7 +177,7 @@ export default function MySpaceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F8FAFD',
   },
   header: {
     flexDirection: 'row',

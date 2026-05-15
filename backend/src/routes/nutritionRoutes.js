@@ -10,5 +10,6 @@ router.use(authenticateToken);
 router.post('/analyze/image', upload.single('image'), nutritionController.analyzeFoodImage);
 router.post('/analyze/text', nutritionController.analyzeFoodText);
 router.post('/log', nutritionController.logFood);
+router.get('/meals', nutritionController.getMeals);
 
 module.exports = router;

@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import apiClient from '../api/client';
@@ -11,11 +11,38 @@ export default function MealsScreen() {
   const [scannedResult, setScannedResult] = useState(null);
   const [textInput, setTextInput] = useState('');
   const [showTextUI, setShowTextUI] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [mealLogs, setMealLogs] = useState([]);
+  const [macros, setMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   
-  // Camera state
   const [permission, requestPermission] = useCameraPermissions();
   const [showCamera, setShowCamera] = useState(false);
   const cameraRef = useRef(null);
+
+  useEffect(() => {
+    fetchMealLogs();
+  }, [selectedDate]);
+
+  const fetchMealLogs = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.get(`/nutrition/meals?date=${selectedDate}`);
+      setMealLogs(res.data);
+      
+      // Calculate totals
+      const totals = res.data.reduce((acc, m) => ({
+        calories: acc.calories + (m.total_calories || 0),
+        protein: acc.protein + (m.total_protein || 0),
+        carbs: acc.carbs + (m.total_carbs || 0),
+        fats: acc.fats + (m.total_fats || 0)
+      }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
+      setMacros(totals);
+    } catch (e) {
+      console.error("Failed to fetch logs", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUploadImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -24,10 +51,7 @@ export default function MealsScreen() {
       aspect: [4, 3],
       quality: 0.8,
     });
-
-    if (!result.canceled) {
-      analyzeImage(result.assets[0].uri, 'upload');
-    }
+    if (!result.canceled) analyzeImage(result.assets[0].uri, 'upload');
   };
 
   const handleTakePicture = async () => {
@@ -38,30 +62,16 @@ export default function MealsScreen() {
     }
   };
 
-  const openCamera = async () => {
-    if (!permission?.granted) {
-      const { status } = await requestPermission();
-      if (status !== 'granted') return alert('Camera permission needed');
-    }
-    setShowCamera(true);
-  };
-
   const analyzeImage = async (uri, type) => {
     setLoading(true);
     setScannedResult(null);
     setShowTextUI(false);
     try {
       const formData = new FormData();
-      formData.append('image', {
-        uri,
-        name: 'food.jpg',
-        type: 'image/jpeg',
-      });
-
+      formData.append('image', { uri, name: 'food.jpg', type: 'image/jpeg' });
       const res = await apiClient.post('/nutrition/analyze/image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      
       setScannedResult({ ...res.data, input_type: type, localUri: uri });
     } catch (error) {
       alert('Analysis failed: ' + error.message);
@@ -99,8 +109,8 @@ export default function MealsScreen() {
         image_url: scannedResult.image_url,
         input_type: scannedResult.input_type
       });
-      alert('Food logged successfully! ✅');
       setScannedResult(null);
+      fetchMealLogs();
     } catch (error) {
       alert('Failed to save log');
     } finally {
@@ -113,12 +123,8 @@ export default function MealsScreen() {
       <View style={styles.cameraContainer}>
         <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} facing="back" />
         <View style={[styles.cameraOverlay, StyleSheet.absoluteFill]}>
-            <TouchableOpacity onPress={() => setShowCamera(false)} style={styles.closeCameraBtn}>
-                <Feather name="x" size={28} color="#FFF"/>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleTakePicture} style={styles.captureBtn}>
-                <View style={styles.captureBtnInner} />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowCamera(false)} style={styles.closeCameraBtn}><Feather name="x" size={28} color="#FFF"/></TouchableOpacity>
+            <TouchableOpacity onPress={handleTakePicture} style={styles.captureBtn}><View style={styles.captureBtnInner} /></TouchableOpacity>
         </View>
       </View>
     );
@@ -128,279 +134,171 @@ export default function MealsScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>Nutrition Diary</Text>
+          <Text style={styles.headerTitle}>Nutrition</Text>
         </View>
 
-        {/* Input Methods Row */}
-        <View style={styles.inputMethodsRow}>
-          <TouchableOpacity style={styles.inputBtn} onPress={openCamera}>
-            <View style={styles.inputIconWrap}><Feather name="camera" size={24} color="#E91E63" /></View>
-            <Text style={styles.inputBtnText}>Scan</Text>
+        {/* Macros Dashboard */}
+        <View style={styles.dashboard}>
+          <View style={styles.mainCals}>
+            <Text style={styles.dashboardVal}>{macros.calories}</Text>
+            <Text style={styles.dashboardLab}>kcal today</Text>
+          </View>
+          <View style={styles.dashboardDivider} />
+          <View style={styles.macroGrid}>
+            <View style={styles.macroItem}>
+              <Text style={styles.macroVal}>{macros.protein}g</Text>
+              <Text style={styles.macroLab}>Protein</Text>
+            </View>
+            <View style={styles.macroItem}>
+              <Text style={styles.macroVal}>{macros.carbs}g</Text>
+              <Text style={styles.macroLab}>Carbs</Text>
+            </View>
+            <View style={styles.macroItem}>
+              <Text style={styles.macroVal}>{macros.fats}g</Text>
+              <Text style={styles.macroLab}>Fats</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#E91E63'}]} onPress={() => setShowCamera(true)}>
+            <Feather name="camera" size={20} color="#FFF" />
+            <Text style={styles.actionBtnText}>Scan</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.inputBtn} onPress={handleUploadImage}>
-            <View style={styles.inputIconWrap}><Feather name="image" size={24} color="#4CAF50" /></View>
-            <Text style={styles.inputBtnText}>Upload</Text>
+          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#4CAF50'}]} onPress={handleUploadImage}>
+            <Feather name="image" size={20} color="#FFF" />
+            <Text style={styles.actionBtnText}>Upload</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.inputBtn} onPress={() => setShowTextUI(!showTextUI)}>
-            <View style={styles.inputIconWrap}><Feather name="type" size={24} color="#2196F3" /></View>
-            <Text style={styles.inputBtnText}>Text</Text>
+          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#1A1A1A'}]} onPress={() => setShowTextUI(!showTextUI)}>
+            <Feather name="edit-3" size={20} color="#FFF" />
+            <Text style={styles.actionBtnText}>Type</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Text Input UI */}
         {showTextUI && (
           <View style={styles.textInputCard}>
             <TextInput 
               style={styles.textInput} 
-              placeholder='e.g., "2 eggs and a bowl of oats"' 
+              placeholder='e.g., "Chicken salad with olive oil"' 
               placeholderTextColor="#8E8E93"
               value={textInput}
               onChangeText={setTextInput}
               multiline
             />
             <TouchableOpacity style={styles.analyzeBtn} onPress={analyzeText}>
-              <Text style={styles.analyzeBtnText}>Analyze</Text>
+              <Text style={styles.analyzeBtnText}>Analyze with AI</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Loading State */}
         {loading && (
-          <View style={styles.loadingContainer}>
+          <View style={styles.loadingWrap}>
             <ActivityIndicator size="large" color="#E91E63" />
-            <Text style={styles.loadingText}>Gemini AI is analyzing...</Text>
+            <Text style={styles.loadingText}>AI is calculating nutrients...</Text>
           </View>
         )}
 
-        {/* Scanned Result Card */}
         {scannedResult && !loading && (
-          <View style={styles.mealCard}>
-            {scannedResult.localUri ? (
-              <Image source={{uri: scannedResult.localUri}} style={styles.mealImagePlaceholder} />
-            ) : (
-              <View style={[styles.mealImagePlaceholder, {backgroundColor: '#E91E63', justifyContent:'center', alignItems:'center'}]}>
-                 <FontAwesome5 name="utensils" size={40} color="#FFF" />
-              </View>
-            )}
-            
-            <View style={styles.mealInfo}>
-              <View style={styles.mealRow}>
-                <Text style={styles.mealName}>{scannedResult.food_name}</Text>
-                <View style={styles.aiTag}>
-                  <FontAwesome5 name="magic" size={10} color="#E91E63" style={{marginRight: 4}} />
-                  <Text style={styles.aiTagText}>AI Estimated</Text>
-                </View>
-              </View>
-              
-              <View style={styles.macroChips}>
-                 <View style={[styles.chip, {backgroundColor: '#FFF0F5'}]}><Text style={styles.chipText}>🔥 {scannedResult.calories} kcal</Text></View>
-                 <View style={[styles.chip, {backgroundColor: '#E3F2FD'}]}><Text style={styles.chipText}>🥩 {scannedResult.protein}g P</Text></View>
-                 <View style={[styles.chip, {backgroundColor: '#E8F5E9'}]}><Text style={styles.chipText}>🍚 {scannedResult.carbs}g C</Text></View>
-                 <View style={[styles.chip, {backgroundColor: '#FFF8E1'}]}><Text style={styles.chipText}>🥑 {scannedResult.fats}g F</Text></View>
-              </View>
-              
-              <TouchableOpacity style={styles.saveBtn} onPress={saveLog}>
-                <Feather name="check" size={18} color="#FFF" style={{marginRight: 8}}/>
-                <Text style={styles.saveBtnText}>Save Log</Text>
-              </TouchableOpacity>
+          <View style={styles.resultCard}>
+            <View style={styles.resultHeader}>
+                <Text style={styles.resultName}>{scannedResult.food_name}</Text>
+                <View style={styles.aiBadge}><Feather name="zap" size={12} color="#E91E63" /><Text style={styles.aiBadgeText}>AI</Text></View>
             </View>
+            <View style={styles.resultMacros}>
+                <View style={styles.resMacro}><Text style={styles.resMacroVal}>{scannedResult.calories}</Text><Text style={styles.resMacroLab}>kcal</Text></View>
+                <View style={styles.resMacro}><Text style={styles.resMacroVal}>{scannedResult.protein}g</Text><Text style={styles.resMacroLab}>Prot</Text></View>
+                <View style={styles.resMacro}><Text style={styles.resMacroVal}>{scannedResult.carbs}g</Text><Text style={styles.resMacroLab}>Carb</Text></View>
+                <View style={styles.resMacro}><Text style={styles.resMacroVal}>{scannedResult.fats}g</Text><Text style={styles.resMacroLab}>Fat</Text></View>
+            </View>
+            <TouchableOpacity style={styles.saveBtn} onPress={saveLog}>
+              <Text style={styles.saveBtnText}>Log this Meal</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        <View style={{height: 30}} />
+        <View style={styles.historySection}>
+          <Text style={styles.sectionTitle}>Today's History</Text>
+          {mealLogs.length > 0 ? mealLogs.map((log, i) => (
+            <View key={i} style={styles.historyCard}>
+              <View style={styles.historyIcon}><MaterialCommunityIcons name="food" size={22} color="#E91E63" /></View>
+              <View style={styles.historyInfo}>
+                <Text style={styles.historyName}>{log.food_name || log.meal_type}</Text>
+                <Text style={styles.historyMeta}>{log.total_calories} kcal • {log.total_protein}g Protein</Text>
+              </View>
+              <Text style={styles.historyTime}>{new Date(log.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
+            </View>
+          )) : (
+            <View style={styles.emptyHistory}>
+              <Feather name="coffee" size={40} color="#E0E0E0" />
+              <Text style={styles.emptyText}>No meals logged today</Text>
+            </View>
+          )}
+        </View>
+        
+        <View style={{height: 100}} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
+  container: { flex: 1, backgroundColor: '#F8FAFD' },
+  header: { padding: 20, paddingTop: 10 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#1A1A1A' },
+  dashboard: {
+    backgroundColor: '#FFF', marginHorizontal: 20, padding: 20, borderRadius: 24,
+    flexDirection: 'row', alignItems: 'center', marginBottom: 25,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#F5F5F5'
   },
-  cameraContainer: {
-    flex: 1,
-    backgroundColor: '#000',
+  mainCals: { alignItems: 'center', flex: 1 },
+  dashboardVal: { fontSize: 32, fontWeight: '800', color: '#E91E63' },
+  dashboardLab: { fontSize: 12, fontWeight: '600', color: '#8E8E93' },
+  dashboardDivider: { width: 1, height: 50, backgroundColor: '#EEE', marginHorizontal: 20 },
+  macroGrid: { flex: 2, flexDirection: 'row', justifyContent: 'space-between' },
+  macroItem: { alignItems: 'center' },
+  macroVal: { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
+  macroLab: { fontSize: 11, fontWeight: '600', color: '#8E8E93' },
+  actionRow: { flexDirection: 'row', gap: 15, paddingHorizontal: 20, marginBottom: 25 },
+  actionBtn: { 
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', 
+    paddingVertical: 16, borderRadius: 16, gap: 10,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 4
   },
-  cameraOverlay: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    padding: 30,
+  actionBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
+  textInputCard: { marginHorizontal: 20, backgroundColor: '#FFF', padding: 15, borderRadius: 20, marginBottom: 25, borderWidth: 1, borderColor: '#EEE' },
+  textInput: { backgroundColor: '#F9F9F9', borderRadius: 12, padding: 15, minHeight: 80, textAlignVertical: 'top', fontSize: 15, marginBottom: 15 },
+  analyzeBtn: { backgroundColor: '#1A1A1A', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
+  analyzeBtnText: { color: '#FFF', fontWeight: '800' },
+  loadingWrap: { marginVertical: 30, alignItems: 'center' },
+  loadingText: { marginTop: 10, color: '#8E8E93', fontWeight: '600' },
+  resultCard: { backgroundColor: '#FFF', marginHorizontal: 20, padding: 20, borderRadius: 24, marginBottom: 25, borderWidth: 1, borderColor: '#E91E63' },
+  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  resultName: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', flex: 1 },
+  aiBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF0F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  aiBadgeText: { fontSize: 10, fontWeight: '800', color: '#E91E63', marginLeft: 4 },
+  resultMacros: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  resMacro: { alignItems: 'center' },
+  resMacroVal: { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
+  resMacroLab: { fontSize: 11, color: '#8E8E93' },
+  saveBtn: { backgroundColor: '#E91E63', paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
+  saveBtnText: { color: '#FFF', fontWeight: '800', fontSize: 16 },
+  historySection: { paddingHorizontal: 20 },
+  sectionTitle: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', marginBottom: 15 },
+  historyCard: { 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 15, borderRadius: 20, 
+    marginBottom: 12, borderWidth: 1, borderColor: '#F5F5F5' 
   },
-  closeCameraBtn: {
-    alignSelf: 'flex-start',
-    marginTop: 40,
-  },
-  captureBtn: {
-    alignSelf: 'center',
-    marginBottom: 40,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  captureBtnInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FFF',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-  greeting: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#1A1A1A',
-  },
-  inputMethodsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  inputBtn: {
-    alignItems: 'center',
-  },
-  inputIconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  inputBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  textInputCard: {
-    marginHorizontal: 20,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  textInput: {
-    backgroundColor: '#F9F9F9',
-    borderRadius: 12,
-    padding: 15,
-    fontSize: 15,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    marginBottom: 15,
-  },
-  analyzeBtn: {
-    backgroundColor: '#1A1A1A',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  analyzeBtnText: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  loadingContainer: {
-    marginVertical: 40,
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 15,
-    fontSize: 14,
-    color: '#8E8E93',
-    fontWeight: '600',
-  },
-  mealCard: {
-    backgroundColor: '#FFF',
-    marginHorizontal: 20,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
-    marginBottom: 25,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  mealImagePlaceholder: {
-    height: 200,
-    width: '100%',
-  },
-  mealInfo: {
-    padding: 20,
-  },
-  mealRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  mealName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    flex: 1,
-  },
-  aiTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF0F5',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    marginLeft: 10,
-  },
-  aiTagText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#E91E63',
-  },
-  macroChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 20,
-  },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  chipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  saveBtn: {
-    backgroundColor: '#E91E63',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
-  },
-  saveBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
-  }
+  historyIcon: { width: 45, height: 45, borderRadius: 14, backgroundColor: '#FFF0F5', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  historyInfo: { flex: 1 },
+  historyName: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
+  historyMeta: { fontSize: 12, color: '#8E8E93', marginTop: 2 },
+  historyTime: { fontSize: 12, fontWeight: '700', color: '#BBB' },
+  emptyHistory: { alignItems: 'center', paddingVertical: 40 },
+  emptyText: { marginTop: 10, color: '#CCC', fontWeight: '600' },
+  cameraContainer: { flex: 1, backgroundColor: '#000' },
+  cameraOverlay: { flex: 1, justifyContent: 'space-between', padding: 30 },
+  closeCameraBtn: { marginTop: 40 },
+  captureBtn: { alignSelf: 'center', marginBottom: 40, width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center' },
+  captureBtnInner: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF' }
 });

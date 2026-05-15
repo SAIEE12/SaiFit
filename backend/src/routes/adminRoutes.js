@@ -72,4 +72,32 @@ router.delete('/invites/:id', async (req, res) => {
     }
 });
 
+// AI & System Settings
+router.get('/settings', async (req, res) => {
+    try {
+        const settings = await db.query('SELECT * FROM system_settings');
+        // Convert array to object for easier consumption on frontend
+        const settingsObj = {};
+        settings.rows.forEach(s => settingsObj[s.key] = s.value);
+        res.json(settingsObj);
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/settings', async (req, res) => {
+    try {
+        const { key, value } = req.body;
+        if (!key) return res.status(400).json({ error: 'Key is required' });
+
+        await db.query(
+            'INSERT INTO system_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP',
+            [key, value]
+        );
+        res.json({ message: `Setting ${key} updated successfully` });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;

@@ -34,7 +34,19 @@ exports.logWorkout = async (req, res) => {
 exports.getWorkouts = async (req, res) => {
   try {
     const user_id = req.user.id;
-    const workouts = await db.query('SELECT * FROM workout_logs WHERE user_id = $1 ORDER BY date DESC', [user_id]);
+    const { date } = req.query;
+    
+    let query = 'SELECT * FROM workout_logs WHERE user_id = $1';
+    let params = [user_id];
+
+    if (date) {
+        query += ' AND date = $2';
+        params.push(date);
+    } else {
+        query += ' ORDER BY date DESC';
+    }
+
+    const workouts = await db.query(query, params);
     res.json(workouts.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });

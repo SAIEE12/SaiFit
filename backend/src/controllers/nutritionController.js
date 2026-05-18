@@ -148,17 +148,18 @@ exports.analyzeFoodText = async (req, res) => {
 
 exports.logFood = async (req, res) => {
   try {
-    const { meal_id, food_name, calories, protein, carbs, fats, image_url, input_type } = req.body;
+    const { meal_id, food_name, calories, protein, carbs, fats, image_url, input_type, date } = req.body;
     const userId = req.user ? req.user.id : 1; 
+    const targetDate = date || new Date().toISOString().split('T')[0];
 
-    let mealRes = await db.query('SELECT * FROM meals WHERE user_id = ? AND date = CURRENT_DATE', [userId]);
+    let mealRes = await db.query('SELECT * FROM meals WHERE user_id = ? AND date = ?', [userId, targetDate]);
     let actualMealId = meal_id;
     
     if (!actualMealId) {
         if (mealRes.rows.length === 0) {
             const newMeal = await db.query(
-                'INSERT INTO meals (user_id, date, meal_type) VALUES (?, CURRENT_DATE, ?) RETURNING id',
-                [userId, 'lunch']
+                'INSERT INTO meals (user_id, date, meal_type) VALUES (?, ?, ?) RETURNING id',
+                [userId, targetDate, 'lunch']
             );
             actualMealId = newMeal.rows[0].id;
         } else {
@@ -178,6 +179,7 @@ exports.logFood = async (req, res) => {
 
     res.status(201).json(newLog.rows[0]);
   } catch (error) {
+
     console.error('Log Food Error:', error);
     res.status(500).json({ error: error.message });
   }
@@ -202,3 +204,113 @@ exports.getMeals = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.smartSearch = async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ error: 'Search query is required' });
+
+    // Verify if Smart Search setting is enabled
+    const isEnabled = await getSystemSetting('ENABLE_SMART_SEARCH', 'false');
+    if (isEnabled !== 'true') {
+        return res.status(403).json({ error: 'Smart search is currently disabled in system settings.' });
+    }
+
+    const ai = await getAIInstance();
+    const modelName = await getModelName();
+    const model = ai.getGenerativeModel({ model: modelName });
+
+    const finalPrompt = `Act as an expert AI nutrition coach. The user is asking a conceptual query: "${query}".
+    Please recommend a precise food, meal, or recipe that perfectly matches their query and intent.
+    Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
+    {
+      "food_name": "Name of recommended food/meal",
+      "calories": 0,
+      "protein": 0,
+      "carbs": 0,
+      "fats": 0,
+      "advice": "A brief explanation of why this matches their query (under 15 words)"
+    }`;
+
+    let result;
+    try {
+        result = await model.generateContent(finalPrompt);
+    } catch (aiError) {
+        console.error('Gemini Smart Search Error:', aiError.message);
+        return res.status(503).json({ error: 'AI search service is temporarily unavailable.' });
+    }
+
+    const response = await result.response;
+    const responseText = response.text();
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+        throw new Error('AI response did not contain valid JSON: ' + responseText);
+    }
+    const searchResult = JSON.parse(jsonMatch[0]);
+
+    res.json(searchResult);
+  } catch (error) {
+    console.error('Smart search error:', error);
+    res.status(500).json({ error: 'Failed to perform smart search: ' + error.message });
+  }
+};
+
+exports.getSmartSearchStatus = async (req, res) => {
+  try {
+    const isEnabled = await getSystemSetting('ENABLE_SMART_SEARCH', 'false');
+    res.json({ enabled: isEnabled === 'true' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+exports.deleteMealLog = async (req, res) => {
+  try {
+    const logId = req.params.id;
+    const userId = req.user.id;
+
+    // Fetch the log first to know what values to subtract and ensure ownership
+    const logRes = await db.query(
+      `SELECT fl.*, m.user_id 
+       FROM food_logs fl
+       JOIN meals m ON fl.meal_id = m.id
+       WHERE fl.id = ? AND m.user_id = ?`,
+      [logId, userId]
+    );
+
+    if (logRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Food log not found or unauthorized' });
+    }
+
+    const log = logRes.rows[0];
+
+    // Subtract macros from the parent meal
+    await db.query(
+      `UPDATE meals 
+       SET total_calories = total_calories - ?, 
+           total_protein = total_protein - ?, 
+           total_carbs = total_carbs - ?, 
+           total_fats = total_fats - ? 
+       WHERE id = ?`,
+      [log.calories, log.protein, log.carbs, log.fats, log.meal_id]
+    );
+
+    // Delete the food log row
+    await db.query('DELETE FROM food_logs WHERE id = ?', [logId]);
+
+    // Check if there are any food logs remaining for this meal
+    const remainingLogs = await db.query('SELECT COUNT(*) as count FROM food_logs WHERE meal_id = ?', [log.meal_id]);
+    if (parseInt(remainingLogs.rows[0].count) === 0) {
+        // Clean up empty meal container
+        await db.query('DELETE FROM meals WHERE id = ?', [log.meal_id]);
+    }
+
+    res.json({ message: 'Meal log removed successfully' });
+  } catch (error) {
+    console.error('Delete Meal Log Error:', error);
+    res.status(500).json({ error: 'Failed to delete meal log: ' + error.message });
+  }
+};
+
+
+

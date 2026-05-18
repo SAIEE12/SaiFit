@@ -4,7 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import CustomDialog from '../components/CustomDialog';
 import apiClient from '../api/client';
+
 
 export default function MealsScreen() {
   const [loading, setLoading] = useState(false);
@@ -15,13 +17,62 @@ export default function MealsScreen() {
   const [mealLogs, setMealLogs] = useState([]);
   const [macros, setMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   
+  // Smart Search States
+  const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
+  const [isSmartSearchCollapsed, setIsSmartSearchCollapsed] = useState(false);
+  const [smartSearchQuery, setSmartSearchQuery] = useState('');
+  const [smartSearchResult, setSmartSearchResult] = useState(null);
+  const [lastLoggedSmartSearchId, setLastLoggedSmartSearchId] = useState(null);
+  const [searchingAI, setSearchingAI] = useState(false);
+
   const [permission, requestPermission] = useCameraPermissions();
   const [showCamera, setShowCamera] = useState(false);
   const cameraRef = useRef(null);
 
+  // Reusable Dialog State
+  const [dialog, setDialog] = useState({
+      visible: false,
+      title: '',
+      description: '',
+      type: 'info',
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      onConfirm: () => {},
+      onCancel: null
+  });
+
+  const showDialog = (title, description, type = 'info', onConfirm = null, onCancel = null, confirmText = 'OK') => {
+      setDialog({
+          visible: true,
+          title,
+          description,
+          type,
+          confirmText,
+          cancelText: 'Cancel',
+          onConfirm: () => {
+              setDialog(prev => ({ ...prev, visible: false }));
+              if (onConfirm) onConfirm();
+          },
+          onCancel: onCancel ? () => {
+              setDialog(prev => ({ ...prev, visible: false }));
+              onCancel();
+          } : null
+      });
+  };
+
   useEffect(() => {
     fetchMealLogs();
+    checkSmartSearchStatus();
   }, [selectedDate]);
+
+  const checkSmartSearchStatus = async () => {
+    try {
+      const res = await apiClient.get('/nutrition/smart-search/status');
+      setIsSmartSearchEnabled(res.data.enabled);
+    } catch (e) {
+      console.error("Failed to check smart search status", e);
+    }
+  };
 
   const fetchMealLogs = async () => {
     try {
@@ -74,7 +125,7 @@ export default function MealsScreen() {
       });
       setScannedResult({ ...res.data, input_type: type, localUri: uri });
     } catch (error) {
-      alert('Analysis failed: ' + error.message);
+      showDialog("Analysis Failed", error.message, "error");
     } finally {
       setLoading(false);
     }
@@ -90,10 +141,77 @@ export default function MealsScreen() {
       setShowTextUI(false);
       setTextInput('');
     } catch (error) {
-      alert('Analysis failed: ' + error.message);
+      showDialog("Analysis Failed", error.message, "error");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSmartSearch = async () => {
+    if (!smartSearchQuery.trim()) return;
+    setSearchingAI(true);
+    setSmartSearchResult(null);
+    setLastLoggedSmartSearchId(null); // Reset for new search
+    try {
+      const res = await apiClient.post('/nutrition/smart-search', { query: smartSearchQuery });
+      setSmartSearchResult(res.data);
+    } catch (e) {
+      showDialog("AI Search Error", e.response?.data?.error || e.message, "error");
+    } finally {
+      setSearchingAI(false);
+    }
+  };
+
+  const logSmartSearchResult = async () => {
+    if (!smartSearchResult) return;
+    setLoading(true);
+    try {
+      const res = await apiClient.post('/nutrition/log', {
+        food_name: smartSearchResult.food_name,
+        calories: smartSearchResult.calories,
+        protein: smartSearchResult.protein,
+        carbs: smartSearchResult.carbs,
+        fats: smartSearchResult.fats,
+        input_type: 'smart_search',
+        date: selectedDate
+      });
+      // Track logged log ID
+      if (res.data && res.data.id) {
+          setLastLoggedSmartSearchId(res.data.id);
+      }
+      showDialog("Logged! 🎉", "AI suggested meal nutrition logged successfully.", "success", () => {
+          fetchMealLogs();
+      });
+    } catch (error) {
+      showDialog("Error", "Failed to save smart search nutrition log.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const unlogSmartSearchResult = async () => {
+    if (!lastLoggedSmartSearchId) return;
+    showDialog(
+        "Unlog Food Recommendation",
+        "Are you sure you want to remove this recommended item from your logs?",
+        "confirm",
+        async () => {
+            try {
+                setLoading(true);
+                await apiClient.delete(`/nutrition/log/${lastLoggedSmartSearchId}`);
+                setLastLoggedSmartSearchId(null); // Revert to default
+                showDialog("Removed", "Recommended meal successfully removed.", "success", () => {
+                    fetchMealLogs();
+                });
+            } catch(e) {
+                showDialog("Error", "Could not unlog recommended meal.", "error");
+            } finally {
+                setLoading(false);
+            }
+        },
+        () => {},
+        "Unlog"
+    );
   };
 
   const saveLog = async () => {
@@ -107,15 +225,45 @@ export default function MealsScreen() {
         carbs: scannedResult.carbs,
         fats: scannedResult.fats,
         image_url: scannedResult.image_url,
-        input_type: scannedResult.input_type
+        input_type: scannedResult.input_type,
+        date: selectedDate
       });
       setScannedResult(null);
-      fetchMealLogs();
+      showDialog("Logged! 🎉", "Meal nutrition logged successfully.", "success", () => {
+          fetchMealLogs();
+      });
     } catch (error) {
-      alert('Failed to save log');
+      showDialog("Error", "Failed to save nutrition log to database.", "error");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteMealLog = async (logId) => {
+    showDialog(
+        "Remove Food Log",
+        "Are you sure you want to remove this food item from your daily logs?",
+        "confirm",
+        async () => {
+            try {
+                setLoading(true);
+                await apiClient.delete(`/nutrition/log/${logId}`);
+                // If the user deletes the log from history that matches the last logged smart search, reset toggle button state
+                if (logId === lastLoggedSmartSearchId) {
+                    setLastLoggedSmartSearchId(null);
+                }
+                showDialog("Removed", "Food item has been deleted successfully.", "success", () => {
+                    fetchMealLogs();
+                });
+            } catch(e) {
+                showDialog("Error", e.response?.data?.error || "Could not delete food log.", "error");
+            } finally {
+                setLoading(false);
+            }
+        },
+        () => {},
+        "Delete"
+    );
   };
 
   if (showCamera) {
@@ -130,6 +278,9 @@ export default function MealsScreen() {
     );
   }
 
+  // Extract individual logs self-healingly
+  const foodLogsList = mealLogs.flatMap(meal => (meal.logs || []).map(log => ({ ...log, mealId: meal.id })));
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -141,7 +292,7 @@ export default function MealsScreen() {
         <View style={styles.dashboard}>
           <View style={styles.mainCals}>
             <Text style={styles.dashboardVal}>{macros.calories}</Text>
-            <Text style={styles.dashboardLab}>kcal today</Text>
+            <Text style={styles.dashboardLab}>kcal targeted</Text>
           </View>
           <View style={styles.dashboardDivider} />
           <View style={styles.macroGrid}>
@@ -162,7 +313,15 @@ export default function MealsScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#E91E63'}]} onPress={() => setShowCamera(true)}>
+          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#E91E63'}]} onPress={() => {
+            if (!permission || !permission.granted) {
+              requestPermission().then(res => {
+                if (res.granted) setShowCamera(true);
+              });
+            } else {
+              setShowCamera(true);
+            }
+          }}>
             <Feather name="camera" size={20} color="#FFF" />
             <Text style={styles.actionBtnText}>Scan</Text>
           </TouchableOpacity>
@@ -175,6 +334,83 @@ export default function MealsScreen() {
             <Text style={styles.actionBtnText}>Type</Text>
           </TouchableOpacity>
         </View>
+
+        {/* AI Smart Search Card - Dynamically loaded when enabled in System Governance */}
+        {isSmartSearchEnabled && (
+          <View style={styles.smartSearchCard}>
+            <View style={styles.smartSearchHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <MaterialCommunityIcons name="sparkles" size={18} color="#E91E63" />
+                <Text style={styles.smartSearchTitle}>AI Smart Search</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={styles.smartSearchLiveTag}>LIVE</Text>
+                <TouchableOpacity onPress={() => setIsSmartSearchCollapsed(!isSmartSearchCollapsed)} style={styles.minimizeBtn}>
+                  <Feather name={isSmartSearchCollapsed ? "chevron-down" : "chevron-up"} size={18} color="#1A1A1A" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            {!isSmartSearchCollapsed && (
+              <>
+                <Text style={styles.smartSearchDesc}>Search conceptually for recipes, meals, or ingredients (e.g. "Suggest a recovery meal post long run").</Text>
+                
+                <View style={styles.smartSearchRow}>
+                  <TextInput 
+                    style={styles.smartSearchInput}
+                    placeholder="What conceptual meal are you seeking?"
+                    placeholderTextColor="#A0A0A0"
+                    value={smartSearchQuery}
+                    onChangeText={setSmartSearchQuery}
+                  />
+                  <TouchableOpacity style={styles.smartSearchBtn} onPress={handleSmartSearch} disabled={searchingAI}>
+                    {searchingAI ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <Feather name="search" size={20} color="#FFF" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {/* Smart Search Result Panel */}
+                {smartSearchResult && (
+                  <View style={styles.smartResultContainer}>
+                    <View style={styles.smartResultHeader}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Text style={[styles.smartResultName, { flex: 1, paddingRight: 10 }]}>{smartSearchResult.food_name}</Text>
+                        <TouchableOpacity onPress={() => {
+                          setSmartSearchResult(null);
+                          setSmartSearchQuery('');
+                          setLastLoggedSmartSearchId(null);
+                        }} style={styles.clearResultBtn}>
+                          <Feather name="trash-2" size={15} color="#FF5252" />
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.smartResultAdvice}>💡 {smartSearchResult.advice}</Text>
+                    </View>
+                    
+                    <View style={styles.smartResultMacros}>
+                      <View style={styles.smartMacro}><Text style={styles.smartMacroVal}>{smartSearchResult.calories}</Text><Text style={styles.smartMacroLab}>kcal</Text></View>
+                      <View style={styles.smartMacro}><Text style={styles.smartMacroVal}>{smartSearchResult.protein}g</Text><Text style={styles.smartMacroLab}>Prot</Text></View>
+                      <View style={styles.smartMacro}><Text style={styles.smartMacroVal}>{smartSearchResult.carbs}g</Text><Text style={styles.smartMacroLab}>Carb</Text></View>
+                      <View style={styles.smartMacro}><Text style={styles.smartMacroVal}>{smartSearchResult.fats}g</Text><Text style={styles.smartMacroLab}>Fat</Text></View>
+                    </View>
+
+                    {lastLoggedSmartSearchId ? (
+                      <TouchableOpacity style={styles.smartUnlogBtn} onPress={unlogSmartSearchResult}>
+                        <Text style={styles.smartUnlogBtnText}>Unlog this Recommended Meal</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity style={styles.smartLogBtn} onPress={logSmartSearchResult}>
+                        <Text style={styles.smartLogBtnText}>Log this Recommended Meal</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+              </>
+            )}
+          </View>
+        )}
 
         {showTextUI && (
           <View style={styles.textInputCard}>
@@ -218,33 +454,52 @@ export default function MealsScreen() {
         )}
 
         <View style={styles.historySection}>
-          <Text style={styles.sectionTitle}>Today's History</Text>
-          {mealLogs.length > 0 ? mealLogs.map((log, i) => (
+          <Text style={styles.sectionTitle}>
+            {selectedDate === new Date().toISOString().split('T')[0] ? "Today's History" : `${selectedDate}'s History`}
+          </Text>
+          {foodLogsList.length > 0 ? foodLogsList.map((log, i) => (
             <View key={i} style={styles.historyCard}>
               <View style={styles.historyIcon}><MaterialCommunityIcons name="food" size={22} color="#E91E63" /></View>
               <View style={styles.historyInfo}>
-                <Text style={styles.historyName}>{log.food_name || log.meal_type}</Text>
-                <Text style={styles.historyMeta}>{log.total_calories} kcal • {log.total_protein}g Protein</Text>
+                <Text style={styles.historyName}>{log.food_name}</Text>
+                <Text style={styles.historyMeta}>{log.calories} kcal • {log.protein}g Protein</Text>
               </View>
-              <Text style={styles.historyTime}>{new Date(log.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={styles.historyTime}>{new Date(log.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
+                <TouchableOpacity onPress={() => handleDeleteMealLog(log.id)} style={styles.deleteAction}>
+                  <Feather name="x-circle" size={18} color="#FF5252" />
+                </TouchableOpacity>
+              </View>
             </View>
           )) : (
             <View style={styles.emptyHistory}>
               <Feather name="coffee" size={40} color="#E0E0E0" />
-              <Text style={styles.emptyText}>No meals logged today</Text>
+              <Text style={styles.emptyText}>No meals logged for this day</Text>
             </View>
           )}
         </View>
         
         <View style={{height: 100}} />
       </ScrollView>
+
+      {/* Custom Reusable Dialog Alert */}
+      <CustomDialog 
+          visible={dialog.visible}
+          title={dialog.title}
+          description={dialog.description}
+          type={dialog.type}
+          confirmText={dialog.confirmText}
+          cancelText={dialog.cancelText}
+          onConfirm={dialog.onConfirm}
+          onCancel={dialog.onCancel}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFD' },
-  header: { padding: 20, paddingTop: 10 },
+  header: { padding: 20, paddingTop: 10, marginBottom: -10 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#1A1A1A' },
   dashboard: {
     backgroundColor: '#FFF', marginHorizontal: 20, padding: 20, borderRadius: 24,
@@ -300,5 +555,155 @@ const styles = StyleSheet.create({
   cameraOverlay: { flex: 1, justifyContent: 'space-between', padding: 30 },
   closeCameraBtn: { marginTop: 40 },
   captureBtn: { alignSelf: 'center', marginBottom: 40, width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center' },
-  captureBtnInner: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF' }
+  captureBtnInner: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF' },
+  deleteAction: { padding: 4 },
+
+  // AI Smart Search Styling (Light Mode Premium Sync)
+  smartSearchCard: {
+    backgroundColor: '#FFF',
+    marginHorizontal: 20,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 25,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    shadowColor: '#E91E63',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  smartSearchHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  smartSearchTitle: {
+    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '800',
+    marginLeft: 6,
+  },
+  smartSearchLiveTag: {
+    color: '#E91E63',
+    fontSize: 10,
+    fontWeight: '900',
+    backgroundColor: '#FFF0F5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    letterSpacing: 1,
+  },
+  minimizeBtn: {
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  smartSearchDesc: {
+    color: '#666',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 16,
+    fontWeight: '500',
+  },
+  smartSearchRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  smartSearchInput: {
+    flex: 1,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    height: 50,
+    fontSize: 14,
+    color: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  smartSearchBtn: {
+    backgroundColor: '#E91E63',
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  smartResultContainer: {
+    marginTop: 20,
+    backgroundColor: '#FFF9FB',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FFECF2',
+  },
+  smartResultHeader: {
+    marginBottom: 12,
+  },
+  smartResultName: {
+    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  smartResultAdvice: {
+    color: '#E91E63',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  smartResultMacros: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    backgroundColor: '#FFF',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFECF2',
+  },
+  smartMacro: {
+    alignItems: 'center',
+  },
+  smartMacroVal: {
+    color: '#1A1A1A',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  smartMacroLab: {
+    color: '#8E8E93',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  smartLogBtn: {
+    backgroundColor: '#E91E63',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  smartLogBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  smartUnlogBtn: {
+    backgroundColor: '#F2F2F7',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  smartUnlogBtnText: {
+    color: '#FF5252',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  clearResultBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

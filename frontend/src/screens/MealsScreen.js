@@ -343,7 +343,7 @@ export default function MealsScreen() {
           <View style={styles.smartSearchCard}>
             <View style={styles.smartSearchHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialCommunityIcons name="sparkles" size={18} color="#E91E63" />
+                <FontAwesome5 name="robot" size={16} color="#E91E63" />
                 <Text style={styles.smartSearchTitle}>AI Smart Search</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>

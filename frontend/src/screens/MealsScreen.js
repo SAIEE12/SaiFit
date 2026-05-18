@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useFocusEffect } from '@react-navigation/native';
 import CustomDialog from '../components/CustomDialog';
 import apiClient from '../api/client';
 
@@ -60,10 +61,12 @@ export default function MealsScreen() {
       });
   };
 
-  useEffect(() => {
-    fetchMealLogs();
-    checkSmartSearchStatus();
-  }, [selectedDate]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchMealLogs();
+      checkSmartSearchStatus();
+    }, [selectedDate])
+  );
 
   const checkSmartSearchStatus = async () => {
     try {

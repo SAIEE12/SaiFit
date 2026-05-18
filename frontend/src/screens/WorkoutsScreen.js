@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import CustomDialog from '../components/CustomDialog';
 import apiClient from '../api/client';
 
@@ -51,9 +52,11 @@ export default function WorkoutsScreen() {
       });
   };
 
-  useEffect(() => {
-    fetchWorkouts();
-  }, [selectedDate]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchWorkouts();
+    }, [selectedDate])
+  );
 
   useEffect(() => {
     fetchExercisesList();

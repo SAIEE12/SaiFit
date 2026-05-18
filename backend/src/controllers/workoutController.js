@@ -52,3 +52,13 @@ exports.getWorkouts = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getExercises = async (req, res) => {
+  try {
+    const resData = await db.query('SELECT * FROM exercises ORDER BY category, name');
+    res.json(resData.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+

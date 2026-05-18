@@ -7,5 +7,7 @@ router.use(authenticateToken);
 
 router.post('/log', workoutController.logWorkout);
 router.get('/', workoutController.getWorkouts);
+router.get('/exercises', workoutController.getExercises);
 
 module.exports = router;
+

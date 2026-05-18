@@ -166,7 +166,7 @@ export default function DashboardScreen({ navigation }) {
 
             {/* AI Recommendation */}
             {recommendation && (
-              <View style={[styles.card, {backgroundColor: '#1A1A1A', borderContent: '#E91E63'}]}>
+              <View style={[styles.card, {backgroundColor: '#1A1A1A', borderColor: '#E91E63'}]}>
                 <View style={styles.cardHeader}>
                   <Text style={[styles.cardTitle, {color: '#FFF'}]}>AI Coach Insights</Text>
                   <FontAwesome5 name="magic" size={16} color="#E91E63" />
@@ -177,6 +177,7 @@ export default function DashboardScreen({ navigation }) {
                 </View>
               </View>
             )}
+
           </>
         )}
         

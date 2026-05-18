@@ -131,3 +131,47 @@ CREATE TABLE IF NOT EXISTS ai_cache (
     result TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Seed default system settings
+INSERT OR IGNORE INTO system_settings (key, value) VALUES 
+('GEMINI_MODEL_NAME', 'gemini-3-pro'),
+('ENABLE_AI_FEATURES', 'true'),
+('ENABLE_SMART_SEARCH', 'false'),
+('AI_PROVIDER', 'Google Gemini'),
+('PROMPT_MEAL_ANALYSIS', 'Analyze the food. Estimate its nutritional value. Return a JSON object exactly like this (no markdown block, pure JSON):
+{
+  "food_name": "Name of food",
+  "calories": 0,
+  "protein": 0,
+  "carbs": 0,
+  "fats": 0
+}
+Description / context: {{TEXT}}'),
+('PROMPT_WORKOUT_SUGGESTION', 'Act as an expert AI personal trainer.
+User Goal: {{GOAL}}
+Recent Workouts Count: {{COUNT}}
+
+Please provide a highly personalized, beginner-friendly workout recommendation and some recovery advice for tomorrow.
+Format the response as a valid JSON object with the following structure (no markdown, pure JSON):
+{
+  "workout_plan": "String describing the workout plan",
+  "exercises": ["Exercise 1", "Exercise 2"],
+  "recovery_advice": "String with recovery advice"
+}');
+
+-- Seed default exercises
+INSERT OR IGNORE INTO exercises (id, name, category, description) VALUES 
+(1, 'Bench Press', 'Chest', 'Barbell bench press for chest hypertrophy and power.'),
+(2, 'Incline Dumbbell Press', 'Chest', 'Incline press for upper chest development.'),
+(3, 'Pull-ups', 'Back', 'Bodyweight pull-ups for lat and upper back width.'),
+(4, 'Barbell Row', 'Back', 'Bent over rows for mid-back thickness.'),
+(5, 'Barbell Squat', 'Legs', 'Back squats for quad, glute, and hamstring strength.'),
+(6, 'Romanian Deadlift', 'Legs', 'Hip-hinge movement targeting hamstrings and glutes.'),
+(7, 'Dumbbell Shoulder Press', 'Shoulders', 'Seated dumbbell press for front and lateral deltoids.'),
+(8, 'Lateral Raise', 'Shoulders', 'Dumbbell side raises for shoulders width.'),
+(9, 'Bicep Curl', 'Arms', 'Dumbbell alternating bicep curls.'),
+(10, 'Tricep Pushdown', 'Arms', 'Cable pushdowns for tricep lateral and medial heads.'),
+(11, 'Running', 'Cardio', 'Treadmill or outdoor distance running.'),
+(12, 'Cycling', 'Cardio', 'Stationary or outdoor cycling.');
+
+

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Platform, Switch } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 import CustomDialog from '../components/CustomDialog';
 
@@ -218,7 +218,7 @@ export default function AdminScreen({ navigation }) {
                 {/* AI Configuration Section */}
                 <View style={styles.configSection}>
                     <View style={styles.sectionTitleRow}>
-                        <Feather name="zap" size={20} color="#E91E63" />
+                        <FontAwesome5 name="robot" size={20} color="#E91E63" />
                         <View style={{marginLeft: 10}}>
                             <Text style={styles.sectionMainTitle}>AI Configuration</Text>
                             <Text style={styles.sectionSubTitle}>Configure system providers, model naming, and secure tokens.</Text>

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../api/client';
 
 const getLocalDateString = (date = new Date()) => {
@@ -18,24 +19,34 @@ export default function MySpaceScreen({ navigation }) {
   const [dailyWorkouts, setDailyWorkouts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState(null);
+  const [username, setUsername] = useState('Fitness Fan');
 
-  useEffect(() => {
-    fetchDailyData();
-  }, [selectedDate]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchDailyData();
+    }, [selectedDate])
+  );
 
   const fetchDailyData = async () => {
     try {
       setLoading(true);
-      const [recRes, mealsRes, workoutsRes, hydrationRes] = await Promise.all([
+      const [recRes, mealsRes, workoutsRes, hydrationRes, profileRes] = await Promise.all([
         apiClient.get('/recommendations'),
         apiClient.get(`/nutrition/meals?date=${selectedDate}`),
         apiClient.get(`/workouts?date=${selectedDate}`),
-        apiClient.get(`/hydration?date=${selectedDate}`)
+        apiClient.get(`/hydration?date=${selectedDate}`),
+        apiClient.get('/profile')
       ]);
       
       setRecommendation(recRes.data);
       setDailyWorkouts(workoutsRes.data);
       setHydration(hydrationRes.data.amount_ml || 0);
+      
+      if (profileRes.data && profileRes.data.user && profileRes.data.user.username) {
+        setUsername(profileRes.data.user.username);
+      } else if (profileRes.data && profileRes.data.profile && profileRes.data.profile.full_name) {
+        setUsername(profileRes.data.profile.full_name);
+      }
       
       let totals = { calories: 0, protein: 0, carbs: 0, fats: 0 };
       mealsRes.data.forEach(meal => {
@@ -59,7 +70,7 @@ export default function MySpaceScreen({ navigation }) {
         <View style={styles.header}>
           <View>
             <Text style={styles.date}>{selectedDate === getLocalDateString() ? 'TODAY' : selectedDate.toUpperCase()}</Text>
-            <Text style={styles.greeting}>Hi, Fitness Fan! 👋</Text>
+            <Text style={styles.greeting}>Hi, {username}! 👋</Text>
           </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.iconBtn}>

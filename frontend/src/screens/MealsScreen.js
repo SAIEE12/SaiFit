@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
@@ -343,7 +343,7 @@ export default function MealsScreen() {
           <View style={styles.smartSearchCard}>
             <View style={styles.smartSearchHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <FontAwesome5 name="robot" size={16} color="#E91E63" />
+                <Ionicons name="sparkles" size={18} color="#E91E63" />
                 <Text style={styles.smartSearchTitle}>AI Smart Search</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 import CalendarStrip from '../components/CalendarStrip';
 
@@ -169,7 +169,7 @@ export default function DashboardScreen({ navigation }) {
               <View style={[styles.card, {backgroundColor: '#1A1A1A', borderColor: '#E91E63'}]}>
                 <View style={styles.cardHeader}>
                   <Text style={[styles.cardTitle, {color: '#FFF'}]}>AI Coach Insights</Text>
-                  <FontAwesome5 name="robot" size={16} color="#E91E63" />
+                  <Ionicons name="sparkles" size={16} color="#E91E63" />
                 </View>
                 <Text style={[styles.recTitle, {color: '#FFF'}]}>{recommendation.workout_plan}</Text>
                 <View style={styles.tipBox}>

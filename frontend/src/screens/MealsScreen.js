@@ -9,12 +9,19 @@ import CustomDialog from '../components/CustomDialog';
 import apiClient from '../api/client';
 
 
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function MealsScreen() {
   const [loading, setLoading] = useState(false);
   const [scannedResult, setScannedResult] = useState(null);
   const [textInput, setTextInput] = useState('');
   const [showTextUI, setShowTextUI] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   const [mealLogs, setMealLogs] = useState([]);
   const [macros, setMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   
@@ -458,7 +465,7 @@ export default function MealsScreen() {
 
         <View style={styles.historySection}>
           <Text style={styles.sectionTitle}>
-            {selectedDate === new Date().toISOString().split('T')[0] ? "Today's History" : `${selectedDate}'s History`}
+            {selectedDate === getLocalDateString() ? "Today's History" : `${selectedDate}'s History`}
           </Text>
           {foodLogsList.length > 0 ? foodLogsList.map((log, i) => (
             <View key={i} style={styles.historyCard}>

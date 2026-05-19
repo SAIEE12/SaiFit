@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
-import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import CustomDialog from '../components/CustomDialog';
 import apiClient from '../api/client';
@@ -233,7 +233,7 @@ export default function WorkoutsScreen() {
         <View style={[styles.aiCard, { marginTop: 25 }]}>
           <View style={styles.aiHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <FontAwesome5 name="robot" size={16} color="#E91E63" />
+              <Ionicons name="sparkles" size={16} color="#E91E63" />
               <Text style={styles.aiTitle}>AI Suggested Tomorrow</Text>
             </View>
           </View>

@@ -4,8 +4,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function MySpaceScreen({ navigation }) {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   const [nutritionSummary, setNutritionSummary] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [hydration, setHydration] = useState(0);
   const [dailyWorkouts, setDailyWorkouts] = useState([]);
@@ -51,7 +58,7 @@ export default function MySpaceScreen({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.date}>{selectedDate === new Date().toISOString().split('T')[0] ? 'TODAY' : selectedDate.toUpperCase()}</Text>
+            <Text style={styles.date}>{selectedDate === getLocalDateString() ? 'TODAY' : selectedDate.toUpperCase()}</Text>
             <Text style={styles.greeting}>Hi, Fitness Fan! 👋</Text>
           </View>
           <View style={styles.headerIcons}>

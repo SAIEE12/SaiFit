@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 import CalendarStrip from '../components/CalendarStrip';
+import { theme } from '../theme';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -78,7 +79,7 @@ export default function DashboardScreen({ navigation }) {
         <CalendarStrip selectedDate={selectedDate} onDateSelected={setSelectedDate} />
 
         {loading ? (
-          <ActivityIndicator size="large" color="#E91E63" style={{marginTop: 50}} />
+          <ActivityIndicator size="large" color={theme.colors.primary} style={{marginTop: 50}} />
         ) : (
           <>
             {/* Unified Stats Card */}
@@ -94,11 +95,11 @@ export default function DashboardScreen({ navigation }) {
                     <Text style={styles.statLabel}>kcal</Text>
                 </View>
                 <View style={styles.statBox}>
-                    <Text style={[styles.statValue, {color: '#2196F3'}]}>{hydration}ml</Text>
+                    <Text style={[styles.statValue, {color: theme.colors.secondary}]}>{hydration}ml</Text>
                     <Text style={styles.statLabel}>Water</Text>
                 </View>
                 <View style={styles.statBox}>
-                    <Text style={[styles.statValue, {color: '#4CAF50'}]}>{dailyWorkouts.length}</Text>
+                    <Text style={[styles.statValue, {color: theme.colors.green}]}>{dailyWorkouts.length}</Text>
                     <Text style={styles.statLabel}>Workouts</Text>
                 </View>
               </View>
@@ -113,7 +114,7 @@ export default function DashboardScreen({ navigation }) {
             {/* Hydration Quick Log */}
             <View style={styles.hydrationCard}>
                <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
-                  <FontAwesome5 name="tint" size={20} color="#2196F3" />
+                  <FontAwesome5 name="tint" size={20} color={theme.colors.secondary} />
                   <View style={{marginLeft: 15}}>
                      <Text style={styles.hydrationTitle}>Hydration</Text>
                      <Text style={styles.hydrationSub}>{hydration} / 3000ml goal</Text>
@@ -133,7 +134,7 @@ export default function DashboardScreen({ navigation }) {
 
             {dailyMeals.length === 0 && dailyWorkouts.length === 0 ? (
                 <View style={styles.emptyFeed}>
-                    <Feather name="activity" size={40} color="#DDD" />
+                    <Feather name="activity" size={40} color={theme.colors.textTertiary} />
                     <Text style={styles.emptyFeedText}>No activity tracked for this day.</Text>
                 </View>
             ) : (
@@ -141,7 +142,7 @@ export default function DashboardScreen({ navigation }) {
                     {/* Render Workouts */}
                     {dailyWorkouts.map((workout, idx) => (
                         <View key={`w-${idx}`} style={styles.timelineItem}>
-                            <View style={[styles.timelineIcon, {backgroundColor: '#E91E63'}]}>
+                            <View style={[styles.timelineIcon, {backgroundColor: theme.colors.primary}]}>
                                 <FontAwesome5 name="dumbbell" size={14} color="#FFF" />
                             </View>
                             <View style={styles.timelineContent}>
@@ -154,7 +155,7 @@ export default function DashboardScreen({ navigation }) {
                     {/* Render Meals */}
                     {dailyMeals.map((meal, idx) => (
                         <View key={`m-${idx}`} style={styles.timelineItem}>
-                            <View style={[styles.timelineIcon, {backgroundColor: '#4CAF50'}]}>
+                            <View style={[styles.timelineIcon, {backgroundColor: theme.colors.green}]}>
                                 <FontAwesome5 name="utensils" size={14} color="#FFF" />
                             </View>
                             <View style={styles.timelineContent}>
@@ -173,10 +174,10 @@ export default function DashboardScreen({ navigation }) {
 
             {/* AI Recommendation */}
             {recommendation && (
-              <View style={[styles.card, {backgroundColor: '#1A1A1A', borderColor: '#E91E63'}]}>
+              <View style={[styles.card, {backgroundColor: theme.colors.darkBase, borderColor: theme.colors.primary}]}>
                 <View style={styles.cardHeader}>
                   <Text style={[styles.cardTitle, {color: '#FFF'}]}>AI Coach Insights</Text>
-                  <Ionicons name="sparkles" size={16} color="#E91E63" />
+                  <Ionicons name="sparkles" size={16} color={theme.colors.primary} />
                 </View>
                 <Text style={[styles.recTitle, {color: '#FFF'}]}>{recommendation.workout_plan}</Text>
                 <View style={styles.tipBox}>
@@ -197,37 +198,33 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: theme.colors.background,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingHorizontal: theme.spacing.xxl,
+    paddingTop: theme.spacing.lg,
     marginBottom: 10,
   },
   greeting: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
   },
   subtitle: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: theme.colors.textSecondary,
     marginTop: 4,
     fontWeight: '500',
   },
   card: {
-    backgroundColor: '#FFF',
-    marginHorizontal: 20,
+    backgroundColor: theme.colors.card,
+    marginHorizontal: theme.spacing.xxl,
     marginVertical: 10,
     padding: 20,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 15,
-    elevation: 3,
+    borderRadius: theme.borderRadius.xxl,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: theme.colors.border,
+    ...theme.shadows.soft,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -238,7 +235,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -251,11 +248,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#E91E63',
+    color: theme.colors.primary,
   },
   statLabel: {
     fontSize: 11,
-    color: '#8E8E93',
+    color: theme.colors.textSecondary,
     fontWeight: '600',
     marginTop: 4,
     textTransform: 'uppercase',
@@ -263,14 +260,14 @@ const styles = StyleSheet.create({
   dateLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#8E8E93',
+    color: theme.colors.textSecondary,
   },
   macrosRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
+    borderTopColor: theme.colors.border,
   },
   macroItem: {
     marginHorizontal: 15,
@@ -278,38 +275,39 @@ const styles = StyleSheet.create({
   macroLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#666',
+    color: theme.colors.textSecondary,
   },
   hydrationCard: {
-    backgroundColor: '#FFF',
-    marginHorizontal: 20,
+    backgroundColor: theme.colors.card,
+    marginHorizontal: theme.spacing.xxl,
     padding: 16,
-    borderRadius: 20,
+    borderRadius: theme.borderRadius.xxl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: theme.colors.border,
+    ...theme.shadows.soft,
   },
   hydrationTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
   },
   hydrationSub: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: theme.colors.textSecondary,
     fontWeight: '600',
   },
   waterBtn: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.accentBlueLight,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
   },
   waterBtnText: {
-    color: '#2196F3',
+    color: theme.colors.secondary,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -320,11 +318,11 @@ const styles = StyleSheet.create({
   emptyFeedText: {
     marginTop: 10,
     fontSize: 14,
-    color: '#AAA',
+    color: theme.colors.textTertiary,
     fontWeight: '500',
   },
   timeline: {
-    marginHorizontal: 20,
+    marginHorizontal: theme.spacing.xxl,
     marginBottom: 20,
   },
   timelineItem: {
@@ -342,20 +340,21 @@ const styles = StyleSheet.create({
   },
   timelineContent: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.card,
     padding: 15,
-    borderRadius: 16,
+    borderRadius: theme.borderRadius.xl,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: theme.colors.border,
+    ...theme.shadows.soft,
   },
   timelineTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
   },
   timelineDesc: {
     fontSize: 12,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   timelineMacros: {
@@ -363,23 +362,23 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
+    borderTopColor: theme.colors.border,
   },
   miniMacro: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#8E8E93',
+    color: theme.colors.textSecondary,
     marginRight: 10,
   },
   sectionHeader: {
-    paddingHorizontal: 20,
+    paddingHorizontal: theme.spacing.xxl,
     marginBottom: 15,
     marginTop: 10,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
   },
   recTitle: {
     fontSize: 18,

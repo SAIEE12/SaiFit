@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { theme } from '../theme';
 
 const CalendarStrip = ({ selectedDate, onDateSelected }) => {
   const dates = [];
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: 10,
-    color: '#8E8E93',
+    color: theme.colors.textSecondary,
     fontWeight: '800',
     marginBottom: 8,
     letterSpacing: 1,
@@ -80,27 +81,27 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.card,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: theme.colors.border,
   },
   selectedCircle: {
-    backgroundColor: '#E91E63',
-    borderColor: '#E91E63',
-    shadowColor: '#E91E63',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+    shadowColor: theme.colors.primary,
     shadowOpacity: 0.3,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
   todayCircle: {
-    borderColor: '#E91E63',
+    borderColor: theme.colors.primary,
     borderWidth: 1.5,
   },
   dateText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
   },
   selectedText: {
     color: '#FFF',
@@ -109,7 +110,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E91E63',
+    backgroundColor: theme.colors.primary,
     marginTop: 6,
   }
 });

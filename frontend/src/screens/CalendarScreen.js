@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
+import { theme } from '../theme';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -93,32 +94,34 @@ export default function CalendarScreen({ navigation }) {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Feather name="chevron-left" size={28} color="#1A1A1A" />
+                    <Feather name="chevron-left" size={24} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Daily Logs</Text>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{backgroundColor: '#F8FAFD'}} contentContainerStyle={{backgroundColor: '#F8FAFD'}}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Calendar Card */}
                 <View style={styles.calendarContainer}>
                     <View style={styles.monthHeader}>
                         <Text style={styles.monthTitle}>{MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}</Text>
                         <View style={styles.navBtns}>
-                            <TouchableOpacity onPress={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} style={styles.navBtn}><Feather name="chevron-left" size={20} color="#1A1A1A" /></TouchableOpacity>
-                            <TouchableOpacity onPress={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} style={styles.navBtn}><Feather name="chevron-right" size={20} color="#1A1A1A" /></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} style={styles.navBtn}><Feather name="chevron-left" size={20} color={theme.colors.textPrimary} /></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} style={styles.navBtn}><Feather name="chevron-right" size={20} color={theme.colors.textPrimary} /></TouchableOpacity>
                         </View>
                     </View>
-                    <View style={styles.weekDays}>{DAYS.map(day => <Text key={day} style={styles.weekDayText}>{day}</Text>)}</View>
+                    <View style={styles.weekDays}>{DAYS.map(day => <Text key={day} style={styles.weekDayText}>{day.toUpperCase()}</Text>)}</View>
                     <View style={styles.daysGrid}>{renderCalendar()}</View>
                 </View>
 
+                {/* Day Details */}
                 <View style={styles.detailsContainer}>
                     <Text style={styles.dateDisplay}>{selectedDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
                     
                     {loading ? (
-                        <ActivityIndicator color="#E91E63" size="large" style={{marginTop: 30}} />
+                        <ActivityIndicator color={theme.colors.primary} size="large" style={{marginTop: 30}} />
                     ) : (
                         <View style={styles.content}>
-                            {/* Summary Progress */}
+                            {/* Summary Snapshot Card */}
                             <View style={styles.summaryCard}>
                                 <View style={styles.summaryRow}>
                                     <View style={styles.summaryItem}>
@@ -138,37 +141,34 @@ export default function CalendarScreen({ navigation }) {
                                 </View>
                             </View>
 
-                            <Text style={styles.sectionTitle}>Activities</Text>
+                            <Text style={styles.sectionTitle}>ACTIVITIES</Text>
                             
                             {/* Workout Logs */}
                             {dayData.workouts.length > 0 ? dayData.workouts.map((w, i) => (
-                                <TouchableOpacity key={i} style={styles.logCard}>
-                                    <View style={[styles.logIcon, {backgroundColor: '#E8F5E9'}]}><FontAwesome5 name="running" size={18} color="#4CAF50" /></View>
+                                <View key={i} style={styles.logCard}>
+                                    <View style={[styles.logIcon, {backgroundColor: theme.colors.accentPinkLight}]}><FontAwesome5 name="running" size={16} color={theme.colors.primary} /></View>
                                     <View style={styles.logInfo}>
                                         <Text style={styles.logTitle}>{w.notes || 'Workout Session'}</Text>
                                         <Text style={styles.logSubtitle}>{w.duration_minutes} mins • {new Date(w.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
                                     </View>
-                                    <Feather name="chevron-right" size={18} color="#CCC" />
-                                </TouchableOpacity>
-                            )) : (
-                                <View style={styles.emptyActivity}>
-                                    <Text style={styles.emptyText}>No workouts logged</Text>
                                 </View>
-                            )}
+                            )) : null}
 
                             {/* Meal Logs */}
                             {dayData.meals.length > 0 ? dayData.meals.map((m, i) => (
-                                <TouchableOpacity key={i} style={styles.logCard}>
-                                    <View style={[styles.logIcon, {backgroundColor: '#FFF3E0'}]}><MaterialCommunityIcons name="food" size={20} color="#FF9800" /></View>
+                                <View key={i} style={styles.logCard}>
+                                    <View style={[styles.logIcon, {backgroundColor: theme.colors.accentGreenLight}]}><MaterialCommunityIcons name="food" size={18} color={theme.colors.green} /></View>
                                     <View style={styles.logInfo}>
                                         <Text style={styles.logTitle}>{m.meal_type.toUpperCase()}</Text>
                                         <Text style={styles.logSubtitle}>{m.total_calories} kcal • {m.total_protein}g Protein</Text>
                                     </View>
-                                    <Feather name="chevron-right" size={18} color="#CCC" />
-                                </TouchableOpacity>
-                            )) : (
+                                </View>
+                            )) : null}
+
+                            {dayData.workouts.length === 0 && dayData.meals.length === 0 && (
                                 <View style={styles.emptyActivity}>
-                                    <Text style={styles.emptyText}>No meals logged</Text>
+                                    <Feather name="activity" size={32} color={theme.colors.textTertiary} />
+                                    <Text style={styles.emptyText}>No activities logged on this date.</Text>
                                 </View>
                             )}
                         </View>
@@ -181,41 +181,46 @@ export default function CalendarScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFD' },
-    header: { flexDirection: 'row', alignItems: 'center', padding: 20 },
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.xxl, paddingTop: theme.spacing.lg, marginBottom: 10 },
     backBtn: { marginRight: 15 },
-    headerTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A1A' },
+    headerTitle: { fontSize: 28, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: -0.5 },
     calendarContainer: {
-        backgroundColor: '#FFF', marginHorizontal: 20, padding: 15, borderRadius: 24,
-        shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#F5F5F5'
+        backgroundColor: theme.colors.card, 
+        marginHorizontal: theme.spacing.xxl, 
+        padding: 20, 
+        borderRadius: theme.borderRadius.xxl,
+        borderWidth: 1, 
+        borderColor: theme.colors.border,
+        ...theme.shadows.soft,
     },
     monthHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-    monthTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A' },
+    monthTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary },
     navBtns: { flexDirection: 'row' },
     navBtn: { padding: 5, marginLeft: 10 },
     weekDays: { flexDirection: 'row', marginBottom: 10 },
-    weekDayText: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#8E8E93' },
+    weekDayText: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 0.5 },
     daysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
     dayCell: { width: '14.28%', height: 40, justifyContent: 'center', alignItems: 'center' },
-    dayText: { fontSize: 14, fontWeight: '600', color: '#1A1A1A' },
-    selectedDayCell: { backgroundColor: '#E91E63', borderRadius: 10 },
+    dayText: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
+    selectedDayCell: { backgroundColor: theme.colors.primary, borderRadius: theme.borderRadius.md, shadowColor: theme.colors.primary, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 },
     selectedDayText: { color: '#FFF', fontWeight: '800' },
-    todayText: { color: '#E91E63', fontWeight: '800' },
-    todayDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#E91E63', marginTop: 2 },
-    detailsContainer: { padding: 20 },
-    dateDisplay: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', marginBottom: 20 },
-    summaryCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginBottom: 25, borderWidth: 1, borderColor: '#F5F5F5' },
+    todayText: { color: theme.colors.primary, fontWeight: '800' },
+    todayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: theme.colors.primary, marginTop: 2 },
+    detailsContainer: { paddingHorizontal: theme.spacing.xxl, paddingTop: 20 },
+    dateDisplay: { fontSize: 20, fontWeight: '800', color: theme.colors.textPrimary, marginBottom: 20 },
+    summaryCard: { backgroundColor: theme.colors.card, padding: 20, borderRadius: theme.borderRadius.xxl, marginBottom: 25, borderWidth: 1, borderColor: theme.colors.border, ...theme.shadows.soft },
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     summaryItem: { flex: 1, alignItems: 'center' },
-    summaryVal: { fontSize: 18, fontWeight: '800', color: '#1A1A1A' },
-    summaryLab: { fontSize: 11, fontWeight: '600', color: '#8E8E93', marginTop: 2 },
-    divider: { width: 1, height: 30, backgroundColor: '#EEE' },
-    sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', marginBottom: 15 },
-    logCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 15, borderRadius: 18, marginBottom: 12, borderWidth: 1, borderColor: '#F5F5F5' },
-    logIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+    summaryVal: { fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary },
+    summaryLab: { fontSize: 11, fontWeight: '600', color: theme.colors.textSecondary, marginTop: 2 },
+    divider: { width: 1, height: 30, backgroundColor: theme.colors.border },
+    sectionTitle: { fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 1.5, marginBottom: 14 },
+    logCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.card, padding: 16, borderRadius: theme.borderRadius.xxl, marginBottom: 12, borderWidth: 1, borderColor: theme.colors.border, ...theme.shadows.soft },
+    logIcon: { width: 44, height: 44, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
     logInfo: { flex: 1 },
-    logTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
-    logSubtitle: { fontSize: 12, color: '#8E8E93', marginTop: 2 },
-    emptyActivity: { padding: 15, backgroundColor: '#F9F9F9', borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: '#EEE', marginBottom: 15, alignItems: 'center' },
-    emptyText: { fontSize: 13, color: '#AAA', fontWeight: '500' }
+    logTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.textPrimary },
+    logSubtitle: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 },
+    emptyActivity: { padding: 24, backgroundColor: theme.colors.card, borderRadius: theme.borderRadius.xxl, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', gap: 10 },
+    emptyText: { fontSize: 13, color: theme.colors.textSecondary, fontWeight: '600' }
 });

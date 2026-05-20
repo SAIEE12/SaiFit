@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, Dimensions } from 'react-native';
-import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Dimensions } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { theme } from '../theme';
 
 const { width } = Dimensions.get('window');
 
@@ -19,27 +20,27 @@ export default function CustomDialog({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <Feather name="check-circle" size={32} color="#4CAF50" />;
+        return <Feather name="check-circle" size={32} color={theme.colors.green} />;
       case 'error':
-        return <Feather name="x-circle" size={32} color="#FF5252" />;
+        return <Feather name="x-circle" size={32} color="#FF3B30" />;
       case 'warning':
-        return <Feather name="alert-triangle" size={32} color="#FFB300" />;
+        return <Feather name="alert-triangle" size={32} color={theme.colors.orange} />;
       case 'confirm':
-        return <Feather name="help-circle" size={32} color="#2196F3" />;
+        return <Feather name="help-circle" size={32} color={theme.colors.secondary} />;
       case 'info':
       default:
-        return <Feather name="info" size={32} color="#E91E63" />;
+        return <Feather name="info" size={32} color={theme.colors.primary} />;
     }
   };
 
   const getHeaderBg = () => {
     switch (type) {
-      case 'success': return '#E8F5E9';
+      case 'success': return theme.colors.accentGreenLight;
       case 'error': return '#FFEBEE';
       case 'warning': return '#FFF8E1';
-      case 'confirm': return '#E3F2FD';
+      case 'confirm': return theme.colors.accentBlueLight;
       case 'info':
-      default: return '#FFF0F5';
+      default: return theme.colors.accentPinkLight;
     }
   };
 
@@ -76,8 +77,8 @@ export default function CustomDialog({
               style={[
                 styles.btn, 
                 onCancel ? styles.confirmHalfBtn : styles.confirmFullBtn,
-                type === 'error' && { backgroundColor: '#FF5252' },
-                type === 'warning' && { backgroundColor: '#FFB300' }
+                type === 'error' && { backgroundColor: '#FF3B30' },
+                type === 'warning' && { backgroundColor: theme.colors.orange }
               ]} 
               onPress={onConfirm}
             >
@@ -93,20 +94,22 @@ export default function CustomDialog({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: theme.colors.darkSheetOverlay,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 25,
   },
   dialogCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.card,
     width: '100%',
     maxWidth: 320,
-    borderRadius: 24,
+    borderRadius: theme.borderRadius.xxl,
     padding: 24,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.08,
     shadowRadius: 15,
     shadowOffset: { width: 0, height: 10 },
     elevation: 10,
@@ -122,14 +125,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
     textAlign: 'center',
     marginBottom: 10,
   },
   description: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#8E8E93',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24,
@@ -141,26 +144,26 @@ const styles = StyleSheet.create({
   },
   btn: {
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: theme.borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     flex: 1,
   },
   cancelBtn: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.border,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: theme.colors.border,
   },
   cancelBtnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#8E8E93',
+    color: theme.colors.textSecondary,
   },
   confirmHalfBtn: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: theme.colors.darkBase,
   },
   confirmFullBtn: {
-    backgroundColor: '#E91E63',
+    backgroundColor: theme.colors.primary,
   },
   confirmBtnText: {
     fontSize: 14,

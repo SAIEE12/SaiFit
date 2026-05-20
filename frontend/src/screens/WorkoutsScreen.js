@@ -6,7 +6,7 @@ import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/v
 import { useFocusEffect } from '@react-navigation/native';
 import CustomDialog from '../components/CustomDialog';
 import apiClient from '../api/client';
-
+import { theme } from '../theme';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -21,6 +21,11 @@ export default function WorkoutsScreen() {
   const [exercisesList, setExercisesList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // Recommendation State
+  const [recommendation, setRecommendation] = useState(null);
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
+  const [showAiPlanModal, setShowAiPlanModal] = useState(false);
   
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -59,9 +64,22 @@ export default function WorkoutsScreen() {
       });
   };
 
+  const fetchRecommendation = async () => {
+    try {
+      setLoadingRecommendation(true);
+      const res = await apiClient.get('/recommendations');
+      setRecommendation(res.data);
+    } catch (e) {
+      console.error("Failed to fetch recommendation", e);
+    } finally {
+      setLoadingRecommendation(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchWorkouts();
+      fetchRecommendation();
     }, [selectedDate])
   );
 
@@ -173,57 +191,60 @@ export default function WorkoutsScreen() {
   };
 
   const categories = [
-    { name: 'Chest', icon: 'stop-circle', color: '#F39C12' },
-    { name: 'Back', icon: 'align-center', color: '#E74C3C' },
-    { name: 'Legs', icon: 'child', color: '#F1C40F' },
-    { name: 'Cardio', icon: 'running', color: '#3498DB' },
-    { name: 'Full Body', icon: 'dumbbell', color: '#2ECC71' }
+    { name: 'Chest', icon: 'stop-circle', color: theme.colors.orange },
+    { name: 'Back', icon: 'align-center', color: theme.colors.primary },
+    { name: 'Legs', icon: 'child', color: theme.colors.yellow },
+    { name: 'Cardio', icon: 'running', color: theme.colors.secondary },
+    { name: 'Full Body', icon: 'dumbbell', color: theme.colors.green }
   ];
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Log Workout</Text>
+        <Text style={styles.headerTitle}>Workouts</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
-          <Feather name="plus" size={20} color="#FFF" />
-          <Text style={styles.addBtnText}>Log New</Text>
+          <Feather name="plus" size={16} color="#FFF" />
+          <Text style={styles.addBtnText}>Log Session</Text>
         </TouchableOpacity>
-      </View>
-
-      {/* Categories ribbon */}
-      <View style={styles.categoriesWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-          {categories.map((cat, index) => (
-            <TouchableOpacity key={index} style={styles.categoryItem}>
-              <View style={styles.categoryIconWrap}>
-                <FontAwesome5 name={cat.icon} size={20} color={cat.color} />
-              </View>
-              <Text style={styles.categoryName}>{cat.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
       </View>
 
       {/* Main workouts history stream */}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContainer}>
+        
+        {/* Categories ribbon */}
+        <View style={styles.categoriesWrapper}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+            {categories.map((cat, index) => (
+              <TouchableOpacity key={index} style={styles.categoryItem}>
+                <View style={styles.categoryIconWrap}>
+                  <FontAwesome5 name={cat.icon} size={18} color={cat.color} />
+                </View>
+                <Text style={styles.categoryName}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <Text style={styles.sectionTitle}>ACTIVITY LOGS</Text>
+
         {loading ? (
-          <ActivityIndicator size="large" color="#E91E63" style={{ marginTop: 30 }} />
+          <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 30 }} />
         ) : workouts.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="dumbbell" size={50} color="#DDD" />
-            <Text style={styles.emptyText}>No workouts logged for this day.</Text>
+            <MaterialCommunityIcons name="dumbbell" size={44} color={theme.colors.textTertiary} />
+            <Text style={styles.emptyText}>No workout logs for today.</Text>
           </View>
         ) : (
           workouts.map((workout, index) => (
             <View key={index} style={styles.workoutRow}>
-              <View style={[styles.workoutImage, { backgroundColor: '#E91E63' }]}>
-                <FontAwesome5 name="dumbbell" size={22} color="#FFF" />
+              <View style={[styles.workoutImage, { backgroundColor: theme.colors.primary }]}>
+                <FontAwesome5 name="dumbbell" size={18} color="#FFF" />
               </View>
               <View style={styles.workoutInfo}>
                 <View style={styles.workoutHeaderRow}>
                   <Text style={styles.workoutTitle} numberOfLines={1}>{workout.notes || 'Workout Session'}</Text>
-                  <Text style={styles.tagText}>{workout.duration_minutes}m</Text>
+                  <Text style={styles.durationTag}>{workout.duration_minutes} mins</Text>
                 </View>
                 <Text style={styles.workoutDesc}>Completed successfully today</Text>
                 <View style={styles.tagsRow}>
@@ -236,23 +257,32 @@ export default function WorkoutsScreen() {
           ))
         )}
 
-        {/* Static AI Recommendation Suggestion */}
-        <View style={[styles.aiCard, { marginTop: 25 }]}>
-          <View style={styles.aiHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="sparkles" size={16} color="#E91E63" />
-              <Text style={styles.aiTitle}>AI Suggested Tomorrow</Text>
+        {/* AI Recommendation Suggestion */}
+        {recommendation ? (
+          <View style={[styles.aiCard, { marginTop: 25 }]}>
+            <View style={styles.aiHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="sparkles" size={16} color={theme.colors.primary} />
+                <Text style={styles.aiTitle}>AI SUGGESTED TOMORROW</Text>
+              </View>
             </View>
+            <Text style={styles.aiWorkoutTitle}>{recommendation.workout_plan || 'Active Recovery'}</Text>
+            <Text style={styles.aiDesc} numberOfLines={3}>
+              {recommendation.recovery_advice || 'Based on your recent activities, follow this personalized recommendation.'}
+            </Text>
+            <TouchableOpacity style={styles.aiBtn} onPress={() => setShowAiPlanModal(true)}>
+              <Text style={styles.aiBtnText}>View Plan</Text>
+              <Feather name="arrow-right" size={16} color="#FFF" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.aiWorkoutTitle}>Legs & Core Recovery</Text>
-          <Text style={styles.aiDesc}>Based on your recent Upper Body session and frequency, your legs are fully recovered. Let's hit Squats and Lunges.</Text>
-          <TouchableOpacity style={styles.aiBtn}>
-            <Text style={styles.aiBtnText}>View Plan</Text>
-            <Feather name="arrow-right" size={16} color="#FFF" />
-          </TouchableOpacity>
-        </View>
+        ) : loadingRecommendation ? (
+          <View style={[styles.aiCard, { marginTop: 25, alignItems: 'center', justifyContent: 'center', paddingVertical: 20 }]}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text style={{ marginTop: 8, color: theme.colors.textSecondary, fontSize: 12 }}>Loading dynamic AI plan...</Text>
+          </View>
+        ) : null}
 
-        <View style={{ height: 50 }} />
+        <View style={{ height: 60 }} />
       </ScrollView>
 
       {/* Log Workout Modal */}
@@ -262,7 +292,7 @@ export default function WorkoutsScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Log Workout</Text>
             <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Feather name="x" size={28} color="#1A1A1A" />
+              <Feather name="x" size={24} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -272,6 +302,7 @@ export default function WorkoutsScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g. Upper Body Strength"
+              placeholderTextColor={theme.colors.textTertiary}
               value={notes}
               onChangeText={setNotes}
             />
@@ -282,6 +313,7 @@ export default function WorkoutsScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. 45"
+                  placeholderTextColor={theme.colors.textTertiary}
                   value={duration}
                   onChangeText={setDuration}
                   keyboardType="numeric"
@@ -290,7 +322,7 @@ export default function WorkoutsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.inputLabel}>Selected Date</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: '#F0F0F0', color: '#666' }]}
+                  style={[styles.input, { backgroundColor: theme.colors.border, color: theme.colors.textSecondary }]}
                   value={selectedDate}
                   editable={false}
                 />
@@ -311,7 +343,7 @@ export default function WorkoutsScreen() {
                 <View style={styles.exerciseRowHeader}>
                   <Text style={styles.exerciseRowTitle}>Exercise #{idx + 1}</Text>
                   <TouchableOpacity onPress={() => handleRemoveExerciseRow(idx)}>
-                    <Feather name="trash-2" size={16} color="#FF5252" />
+                    <Feather name="trash-2" size={16} color="#FF3B30" />
                   </TouchableOpacity>
                 </View>
 
@@ -367,7 +399,7 @@ export default function WorkoutsScreen() {
 
             {addedExercises.length === 0 && (
               <View style={styles.emptyExerciseBox}>
-                <Text style={styles.emptyExerciseText}>No exercises added. Click "+ Add Row" to begin builder.</Text>
+                <Text style={styles.emptyExerciseText}>No exercises added. Tap "+ Add Row" to customize.</Text>
               </View>
             )}
 
@@ -376,11 +408,67 @@ export default function WorkoutsScreen() {
               {saving ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.saveBtnText}>Save Workout session</Text>
+                <Text style={styles.saveBtnText}>Save Session</Text>
               )}
             </TouchableOpacity>
             
             <View style={{ height: 60 }} />
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* AI Plan Modal */}
+      <Modal visible={showAiPlanModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAiPlanModal(false)}>
+        <View style={styles.modalContainer}>
+          {/* Modal Header */}
+          <View style={[styles.modalHeader, { borderBottomWidth: 0 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="sparkles" size={22} color={theme.colors.primary} style={{ marginRight: 8 }} />
+              <Text style={styles.modalTitle}>AI Workout Plan</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowAiPlanModal(false)}>
+              <Feather name="x" size={24} color={theme.colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            {recommendation && (
+              <>
+                <View style={styles.aiPlanHeroCard}>
+                  <Text style={styles.aiPlanHeroLabel}>TOMORROW'S FOCUS</Text>
+                  <Text style={styles.aiPlanHeroTitle}>{recommendation.workout_plan}</Text>
+                </View>
+
+                <Text style={styles.sectionHeading}>Exercises & Activities</Text>
+                {recommendation.exercises && recommendation.exercises.length > 0 ? (
+                  recommendation.exercises.map((exercise, idx) => (
+                    <View key={idx} style={styles.aiExerciseCard}>
+                      <View style={styles.aiExerciseNumberWrap}>
+                        <Text style={styles.aiExerciseNumber}>{idx + 1}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.aiExerciseName}>{exercise}</Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.noExercisesText}>No specific exercises listed. Focus on active mobility!</Text>
+                )}
+
+                <Text style={styles.sectionHeading}>Recovery Guidance</Text>
+                <View style={styles.aiRecoveryCard}>
+                  <View style={styles.aiRecoveryHeader}>
+                    <FontAwesome5 name="heartbeat" size={16} color={theme.colors.primary} style={{ marginRight: 8 }} />
+                    <Text style={styles.aiRecoveryTitle}>Coach's Guidance</Text>
+                  </View>
+                  <Text style={styles.aiRecoveryText}>{recommendation.recovery_advice}</Text>
+                </View>
+
+                <TouchableOpacity style={styles.aiPlanGotItBtn} onPress={() => setShowAiPlanModal(false)}>
+                  <Text style={styles.aiPlanGotItBtnText}>Got it, Let's do it! 💪</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </ScrollView>
         </View>
       </Modal>
@@ -403,28 +491,34 @@ export default function WorkoutsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFD',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingHorizontal: theme.spacing.xxl,
+    paddingTop: theme.spacing.lg,
     marginBottom: 10,
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.5,
   },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E91E63',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: theme.borderRadius.xxl,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   addBtnText: {
     color: '#FFF',
@@ -434,108 +528,82 @@ const styles = StyleSheet.create({
   },
   categoriesWrapper: {
     marginBottom: 20,
+    marginTop: 10,
   },
   categoriesScroll: {
-    paddingLeft: 20,
+    paddingLeft: theme.spacing.xxl,
   },
   categoryItem: {
     alignItems: 'center',
-    marginRight: 25,
+    marginRight: 20,
   },
   categoryIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FFF',
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: theme.colors.card,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderColor: theme.colors.border,
+    ...theme.shadows.soft,
   },
   categoryName: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: theme.colors.textSecondary,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: theme.colors.textSecondary,
+    letterSpacing: 1.5,
+    marginHorizontal: theme.spacing.xxl,
+    marginBottom: 14,
+    marginTop: 10,
   },
   listContainer: {
-    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  aiCard: {
-    backgroundColor: '#FFF',
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
-  },
-  aiHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  aiTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#E91E63',
-    marginLeft: 8,
-  },
-  aiWorkoutTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    marginBottom: 8,
-  },
-  aiDesc: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 20,
-    marginBottom: 15,
-  },
-  aiBtn: {
-    backgroundColor: '#1A1A1A',
-    paddingVertical: 12,
-    borderRadius: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
+  emptyContainer: {
     alignItems: 'center',
+    paddingVertical: 40,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.xxl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginHorizontal: theme.spacing.xxl,
+    marginBottom: 20,
   },
-  aiBtnText: {
-    color: '#FFF',
+  emptyText: {
+    marginTop: 10,
     fontSize: 14,
-    fontWeight: '700',
-    marginRight: 8,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
   },
   workoutRow: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 15,
+    backgroundColor: theme.colors.card,
+    padding: 16,
+    borderRadius: theme.borderRadius.xxl,
+    marginHorizontal: theme.spacing.xxl,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: theme.colors.border,
+    ...theme.shadows.soft,
   },
   workoutImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    marginRight: 15,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    marginRight: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   workoutInfo: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingVertical: 2,
   },
   workoutHeaderRow: {
     flexDirection: 'row',
@@ -546,102 +614,138 @@ const styles = StyleSheet.create({
   workoutTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
     flex: 1,
+  },
+  durationTag: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.primary,
   },
   workoutDesc: {
     fontSize: 12,
-    color: '#8E8E93',
-    lineHeight: 16,
+    color: theme.colors.textSecondary,
     marginBottom: 6,
   },
   tagsRow: {
     flexDirection: 'row',
   },
   tag: {
-    backgroundColor: '#FFF0F5',
+    backgroundColor: theme.colors.accentPinkLight,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-    marginRight: 8,
   },
   tagText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#E91E63',
+    color: theme.colors.primary,
   },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    backgroundColor: '#FFF',
-    borderRadius: 20,
+  aiCard: {
+    backgroundColor: theme.colors.card,
+    padding: 24,
+    borderRadius: theme.borderRadius.xxl,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
-    marginBottom: 20,
+    borderColor: theme.colors.border,
+    marginHorizontal: theme.spacing.xxl,
+    ...theme.shadows.premium,
   },
-  emptyText: {
-    marginTop: 10,
+  aiHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  aiTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: theme.colors.primary,
+    marginLeft: 8,
+    letterSpacing: 1.5,
+  },
+  aiWorkoutTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.colors.textPrimary,
+    marginBottom: 8,
+  },
+  aiDesc: {
     fontSize: 14,
-    color: '#AAA',
-    fontWeight: '600',
+    color: '#48484A',
+    lineHeight: 20,
+    marginBottom: 16,
+    fontWeight: '500',
+  },
+  aiBtn: {
+    backgroundColor: theme.colors.darkBase,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.lg,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginRight: 8,
   },
 
   // Modal styling
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.card,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: theme.colors.border,
   },
   modalTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
   },
   modalBody: {
-    padding: 20,
+    padding: 24,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#8E8E93',
+    fontSize: 13,
+    fontWeight: '800',
+    color: theme.colors.textSecondary,
+    letterSpacing: 1,
     marginBottom: 8,
-    marginTop: 15,
+    marginTop: 16,
   },
   input: {
-    backgroundColor: '#F9F9F9',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    padding: 15,
+    backgroundColor: theme.colors.border,
+    borderRadius: theme.borderRadius.lg,
+    padding: 16,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
+    fontWeight: '500',
   },
   exerciseSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 25,
-    marginBottom: 15,
+    marginTop: 28,
+    marginBottom: 16,
   },
   exerciseSectionTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
   },
   addExerciseBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: theme.colors.darkBase,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   addExerciseBtnText: {
     color: '#FFF',
@@ -650,29 +754,29 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   exerciseRowCard: {
-    backgroundColor: '#FCFCFD',
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
-    borderColor: '#ECEEF2',
-    borderRadius: 16,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.xxl,
     padding: 16,
-    marginBottom: 15,
+    marginBottom: 16,
   },
   exerciseRowHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   exerciseRowTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
   },
   pickerWrap: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: theme.colors.card,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.lg,
     overflow: 'hidden',
     marginBottom: 12,
   },
@@ -690,46 +794,157 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#8E8E93',
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
+    textAlign: 'center',
   },
   metricInput: {
-    backgroundColor: '#FFF',
+    backgroundColor: theme.colors.card,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 10,
     fontSize: 14,
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
     textAlign: 'center',
+    fontWeight: '600',
   },
   emptyExerciseBox: {
-    padding: 20,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 12,
+    padding: 24,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#EEE',
+    borderColor: theme.colors.border,
     borderStyle: 'dashed',
     alignItems: 'center',
     marginTop: 10,
     marginBottom: 20,
   },
   emptyExerciseText: {
-    fontSize: 12,
-    color: '#AAA',
+    fontSize: 13,
+    color: theme.colors.textSecondary,
     fontWeight: '600',
     textAlign: 'center',
   },
   saveBtn: {
-    backgroundColor: '#E91E63',
+    backgroundColor: theme.colors.primary,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
-    marginTop: 25,
+    marginTop: 20,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   saveBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  
+  // AI Plan Modal styles
+  aiPlanHeroCard: {
+    backgroundColor: theme.colors.darkBase,
+    padding: 24,
+    borderRadius: theme.borderRadius.xxl,
+    marginBottom: 28,
+  },
+  aiPlanHeroLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: theme.colors.primary,
+    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  aiPlanHeroTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFF',
+    lineHeight: 32,
+    letterSpacing: -0.5,
+  },
+  sectionHeading: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.colors.textPrimary,
+    marginTop: 10,
+    marginBottom: 16,
+  },
+  aiExerciseCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    padding: 16,
+    borderRadius: theme.borderRadius.xxl,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  aiExerciseNumberWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  aiExerciseNumber: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  aiExerciseName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  noExercisesText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
+    marginBottom: 20,
+  },
+  aiRecoveryCard: {
+    backgroundColor: theme.colors.accentPinkLight,
+    padding: 20,
+    borderRadius: theme.borderRadius.xxl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.15)',
+    marginBottom: 32,
+  },
+  aiRecoveryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  aiRecoveryTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: theme.colors.primary,
+    letterSpacing: 1,
+  },
+  aiRecoveryText: {
+    fontSize: 14,
+    color: '#48484A',
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  aiPlanGotItBtn: {
+    backgroundColor: theme.colors.primary,
+    padding: 16,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: 'center',
+    marginBottom: 40,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  aiPlanGotItBtnText: {
     color: '#FFF',
     fontSize: 16,
     fontWeight: '800',

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,7 +7,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
 import CustomDialog from '../components/CustomDialog';
 import apiClient from '../api/client';
-
+import { theme } from '../theme';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -298,11 +298,11 @@ export default function MealsScreen() {
           <Text style={styles.headerTitle}>Nutrition</Text>
         </View>
 
-        {/* Macros Dashboard */}
+        {/* Macros Dashboard Card */}
         <View style={styles.dashboard}>
           <View style={styles.mainCals}>
             <Text style={styles.dashboardVal}>{macros.calories}</Text>
-            <Text style={styles.dashboardLab}>kcal targeted</Text>
+            <Text style={styles.dashboardLab}>kcal consumed</Text>
           </View>
           <View style={styles.dashboardDivider} />
           <View style={styles.macroGrid}>
@@ -323,7 +323,7 @@ export default function MealsScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#E91E63'}]} onPress={() => {
+          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: theme.colors.primary}]} onPress={() => {
             if (!permission || !permission.granted) {
               requestPermission().then(res => {
                 if (res.granted) setShowCamera(true);
@@ -332,44 +332,44 @@ export default function MealsScreen() {
               setShowCamera(true);
             }
           }}>
-            <Feather name="camera" size={20} color="#FFF" />
+            <Feather name="camera" size={18} color="#FFF" />
             <Text style={styles.actionBtnText}>Scan</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#4CAF50'}]} onPress={handleUploadImage}>
-            <Feather name="image" size={20} color="#FFF" />
+          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: theme.colors.green}]} onPress={handleUploadImage}>
+            <Feather name="image" size={18} color="#FFF" />
             <Text style={styles.actionBtnText}>Upload</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#1A1A1A'}]} onPress={() => setShowTextUI(!showTextUI)}>
-            <Feather name="edit-3" size={20} color="#FFF" />
+          <TouchableOpacity style={[styles.actionBtn, {backgroundColor: theme.colors.darkBase}]} onPress={() => setShowTextUI(!showTextUI)}>
+            <Feather name="edit-3" size={18} color="#FFF" />
             <Text style={styles.actionBtnText}>Type</Text>
           </TouchableOpacity>
         </View>
 
-        {/* AI Smart Search Card - Dynamically loaded when enabled in System Governance */}
+        {/* AI Smart Search Card */}
         {isSmartSearchEnabled && (
           <View style={styles.smartSearchCard}>
             <View style={styles.smartSearchHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="sparkles" size={18} color="#E91E63" />
-                <Text style={styles.smartSearchTitle}>AI Smart Search</Text>
+                <Ionicons name="sparkles" size={16} color={theme.colors.primary} />
+                <Text style={styles.smartSearchTitle}>AI SMART SEARCH</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Text style={styles.smartSearchLiveTag}>LIVE</Text>
                 <TouchableOpacity onPress={() => setIsSmartSearchCollapsed(!isSmartSearchCollapsed)} style={styles.minimizeBtn}>
-                  <Feather name={isSmartSearchCollapsed ? "chevron-down" : "chevron-up"} size={18} color="#1A1A1A" />
+                  <Feather name={isSmartSearchCollapsed ? "chevron-down" : "chevron-up"} size={18} color={theme.colors.textPrimary} />
                 </TouchableOpacity>
               </View>
             </View>
             
             {!isSmartSearchCollapsed && (
               <>
-                <Text style={styles.smartSearchDesc}>Search conceptually for recipes, meals, or ingredients (e.g. "Suggest a recovery meal post long run").</Text>
+                <Text style={styles.smartSearchDesc}>Search conceptually for recipes, meals, or nutrients (e.g. "Suggest a recovery meal post long run").</Text>
                 
                 <View style={styles.smartSearchRow}>
                   <TextInput 
                     style={styles.smartSearchInput}
-                    placeholder="What conceptual meal are you seeking?"
-                    placeholderTextColor="#A0A0A0"
+                    placeholder="Search recovery recipes or conceptual meals..."
+                    placeholderTextColor={theme.colors.textTertiary}
                     value={smartSearchQuery}
                     onChangeText={setSmartSearchQuery}
                   />
@@ -377,7 +377,7 @@ export default function MealsScreen() {
                     {searchingAI ? (
                       <ActivityIndicator color="#FFF" size="small" />
                     ) : (
-                      <Feather name="search" size={20} color="#FFF" />
+                      <Feather name="search" size={18} color="#FFF" />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -393,7 +393,7 @@ export default function MealsScreen() {
                           setSmartSearchQuery('');
                           setLastLoggedSmartSearchId(null);
                         }} style={styles.clearResultBtn}>
-                          <Feather name="trash-2" size={15} color="#FF5252" />
+                          <Feather name="trash-2" size={15} color="#FF3B30" />
                         </TouchableOpacity>
                       </View>
                       <Text style={styles.smartResultAdvice}>💡 {smartSearchResult.advice}</Text>
@@ -408,11 +408,11 @@ export default function MealsScreen() {
 
                     {lastLoggedSmartSearchId ? (
                       <TouchableOpacity style={styles.smartUnlogBtn} onPress={unlogSmartSearchResult}>
-                        <Text style={styles.smartUnlogBtnText}>Unlog this Recommended Meal</Text>
+                        <Text style={styles.smartUnlogBtnText}>Unlog Recommended Meal</Text>
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity style={styles.smartLogBtn} onPress={logSmartSearchResult}>
-                        <Text style={styles.smartLogBtnText}>Log this Recommended Meal</Text>
+                        <Text style={styles.smartLogBtnText}>Log Recommended Meal</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -427,7 +427,7 @@ export default function MealsScreen() {
             <TextInput 
               style={styles.textInput} 
               placeholder='e.g., "Chicken salad with olive oil"' 
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={theme.colors.textTertiary}
               value={textInput}
               onChangeText={setTextInput}
               multiline
@@ -440,7 +440,7 @@ export default function MealsScreen() {
 
         {loading && (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color="#E91E63" />
+            <ActivityIndicator size="large" color={theme.colors.primary} />
             <Text style={styles.loadingText}>AI is calculating nutrients...</Text>
           </View>
         )}
@@ -449,7 +449,7 @@ export default function MealsScreen() {
           <View style={styles.resultCard}>
             <View style={styles.resultHeader}>
                 <Text style={styles.resultName}>{scannedResult.food_name}</Text>
-                <View style={styles.aiBadge}><Feather name="zap" size={12} color="#E91E63" /><Text style={styles.aiBadgeText}>AI</Text></View>
+                <View style={styles.aiBadge}><Feather name="zap" size={12} color={theme.colors.primary} /><Text style={styles.aiBadgeText}>AI ANALYZED</Text></View>
             </View>
             <View style={styles.resultMacros}>
                 <View style={styles.resMacro}><Text style={styles.resMacroVal}>{scannedResult.calories}</Text><Text style={styles.resMacroLab}>kcal</Text></View>
@@ -465,11 +465,11 @@ export default function MealsScreen() {
 
         <View style={styles.historySection}>
           <Text style={styles.sectionTitle}>
-            {selectedDate === getLocalDateString() ? "Today's History" : `${selectedDate}'s History`}
+            {selectedDate === getLocalDateString() ? "TODAY'S HISTORY" : `${selectedDate}'S HISTORY`}
           </Text>
           {foodLogsList.length > 0 ? foodLogsList.map((log, i) => (
             <View key={i} style={styles.historyCard}>
-              <View style={styles.historyIcon}><MaterialCommunityIcons name="food" size={22} color="#E91E63" /></View>
+              <View style={styles.historyIcon}><MaterialCommunityIcons name="food" size={20} color={theme.colors.primary} /></View>
               <View style={styles.historyInfo}>
                 <Text style={styles.historyName}>{log.food_name}</Text>
                 <Text style={styles.historyMeta}>{log.calories} kcal • {log.protein}g Protein</Text>
@@ -477,14 +477,14 @@ export default function MealsScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <Text style={styles.historyTime}>{new Date(log.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
                 <TouchableOpacity onPress={() => handleDeleteMealLog(log.id)} style={styles.deleteAction}>
-                  <Feather name="x-circle" size={18} color="#FF5252" />
+                  <Feather name="x-circle" size={18} color="#FF3B30" />
                 </TouchableOpacity>
               </View>
             </View>
           )) : (
             <View style={styles.emptyHistory}>
-              <Feather name="coffee" size={40} color="#E0E0E0" />
-              <Text style={styles.emptyText}>No meals logged for this day</Text>
+              <Feather name="coffee" size={36} color={theme.colors.textTertiary} />
+              <Text style={styles.emptyText}>No food logs recorded today.</Text>
             </View>
           )}
         </View>
@@ -508,59 +508,66 @@ export default function MealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFD' },
-  header: { padding: 20, paddingTop: 10, marginBottom: -10 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#1A1A1A' },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  header: { paddingHorizontal: theme.spacing.xxl, paddingTop: theme.spacing.lg, marginBottom: 10 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: -0.5 },
   dashboard: {
-    backgroundColor: '#FFF', marginHorizontal: 20, padding: 20, borderRadius: 24,
-    flexDirection: 'row', alignItems: 'center', marginBottom: 25,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#F5F5F5'
+    backgroundColor: theme.colors.card, 
+    marginHorizontal: theme.spacing.xxl, 
+    padding: 20, 
+    borderRadius: theme.borderRadius.xxl,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 25,
+    borderWidth: 1, 
+    borderColor: theme.colors.border,
+    ...theme.shadows.soft,
   },
   mainCals: { alignItems: 'center', flex: 1 },
-  dashboardVal: { fontSize: 32, fontWeight: '800', color: '#E91E63' },
-  dashboardLab: { fontSize: 12, fontWeight: '600', color: '#8E8E93' },
-  dashboardDivider: { width: 1, height: 50, backgroundColor: '#EEE', marginHorizontal: 20 },
+  dashboardVal: { fontSize: 30, fontWeight: '800', color: theme.colors.primary, letterSpacing: -0.5 },
+  dashboardLab: { fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 0.5 },
+  dashboardDivider: { width: 1, height: 44, backgroundColor: theme.colors.border, marginHorizontal: 16 },
   macroGrid: { flex: 2, flexDirection: 'row', justifyContent: 'space-between' },
   macroItem: { alignItems: 'center' },
-  macroVal: { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
-  macroLab: { fontSize: 11, fontWeight: '600', color: '#8E8E93' },
-  actionRow: { flexDirection: 'row', gap: 15, paddingHorizontal: 20, marginBottom: 25 },
+  macroVal: { fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary },
+  macroLab: { fontSize: 11, fontWeight: '600', color: theme.colors.textSecondary },
+  actionRow: { flexDirection: 'row', gap: 12, paddingHorizontal: theme.spacing.xxl, marginBottom: 25 },
   actionBtn: { 
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', 
-    paddingVertical: 16, borderRadius: 16, gap: 10,
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 4
+    paddingVertical: 14, borderRadius: theme.borderRadius.xxl, gap: 8,
+    ...theme.shadows.soft
   },
-  actionBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
-  textInputCard: { marginHorizontal: 20, backgroundColor: '#FFF', padding: 15, borderRadius: 20, marginBottom: 25, borderWidth: 1, borderColor: '#EEE' },
-  textInput: { backgroundColor: '#F9F9F9', borderRadius: 12, padding: 15, minHeight: 80, textAlignVertical: 'top', fontSize: 15, marginBottom: 15 },
-  analyzeBtn: { backgroundColor: '#1A1A1A', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  analyzeBtnText: { color: '#FFF', fontWeight: '800' },
+  actionBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  textInputCard: { marginHorizontal: theme.spacing.xxl, backgroundColor: theme.colors.card, padding: 16, borderRadius: theme.borderRadius.xxl, marginBottom: 25, borderWidth: 1, borderColor: theme.colors.border },
+  textInput: { backgroundColor: theme.colors.border, borderRadius: theme.borderRadius.lg, padding: 16, minHeight: 80, textAlignVertical: 'top', fontSize: 15, color: theme.colors.textPrimary, marginBottom: 15, fontWeight: '500' },
+  analyzeBtn: { backgroundColor: theme.colors.darkBase, paddingVertical: 14, borderRadius: theme.borderRadius.lg, alignItems: 'center' },
+  analyzeBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
   loadingWrap: { marginVertical: 30, alignItems: 'center' },
-  loadingText: { marginTop: 10, color: '#8E8E93', fontWeight: '600' },
-  resultCard: { backgroundColor: '#FFF', marginHorizontal: 20, padding: 20, borderRadius: 24, marginBottom: 25, borderWidth: 1, borderColor: '#E91E63' },
+  loadingText: { marginTop: 10, color: theme.colors.textSecondary, fontWeight: '600', fontSize: 13 },
+  resultCard: { backgroundColor: theme.colors.card, marginHorizontal: theme.spacing.xxl, padding: 20, borderRadius: theme.borderRadius.xxl, marginBottom: 25, borderWidth: 1, borderColor: theme.colors.primary },
   resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  resultName: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', flex: 1 },
-  aiBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF0F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  aiBadgeText: { fontSize: 10, fontWeight: '800', color: '#E91E63', marginLeft: 4 },
+  resultName: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary, flex: 1 },
+  aiBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.accentPinkLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  aiBadgeText: { fontSize: 9, fontWeight: '900', color: theme.colors.primary, marginLeft: 4 },
   resultMacros: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   resMacro: { alignItems: 'center' },
-  resMacroVal: { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
-  resMacroLab: { fontSize: 11, color: '#8E8E93' },
-  saveBtn: { backgroundColor: '#E91E63', paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
+  resMacroVal: { fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary },
+  resMacroLab: { fontSize: 11, color: theme.colors.textSecondary },
+  saveBtn: { backgroundColor: theme.colors.primary, paddingVertical: 14, borderRadius: theme.borderRadius.lg, alignItems: 'center' },
   saveBtnText: { color: '#FFF', fontWeight: '800', fontSize: 16 },
-  historySection: { paddingHorizontal: 20 },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: '#1A1A1A', marginBottom: 15 },
+  historySection: { paddingHorizontal: theme.spacing.xxl },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 1.5, marginBottom: 14 },
   historyCard: { 
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 15, borderRadius: 20, 
-    marginBottom: 12, borderWidth: 1, borderColor: '#F5F5F5' 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.card, padding: 16, borderRadius: theme.borderRadius.xxl, 
+    marginBottom: 12, borderWidth: 1, borderColor: theme.colors.border, ...theme.shadows.soft
   },
-  historyIcon: { width: 45, height: 45, borderRadius: 14, backgroundColor: '#FFF0F5', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  historyIcon: { width: 44, height: 44, borderRadius: 16, backgroundColor: theme.colors.accentPinkLight, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   historyInfo: { flex: 1 },
-  historyName: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
-  historyMeta: { fontSize: 12, color: '#8E8E93', marginTop: 2 },
-  historyTime: { fontSize: 12, fontWeight: '700', color: '#BBB' },
+  historyName: { fontSize: 15, fontWeight: '700', color: theme.colors.textPrimary },
+  historyMeta: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 },
+  historyTime: { fontSize: 12, fontWeight: '700', color: theme.colors.textTertiary },
   emptyHistory: { alignItems: 'center', paddingVertical: 40 },
-  emptyText: { marginTop: 10, color: '#CCC', fontWeight: '600' },
+  emptyText: { marginTop: 10, color: theme.colors.textSecondary, fontWeight: '600', fontSize: 14 },
   cameraContainer: { flex: 1, backgroundColor: '#000' },
   cameraOverlay: { flex: 1, justifyContent: 'space-between', padding: 30 },
   closeCameraBtn: { marginTop: 40 },
@@ -568,38 +575,34 @@ const styles = StyleSheet.create({
   captureBtnInner: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF' },
   deleteAction: { padding: 4 },
 
-  // AI Smart Search Styling (Light Mode Premium Sync)
   smartSearchCard: {
-    backgroundColor: '#FFF',
-    marginHorizontal: 20,
-    borderRadius: 24,
+    backgroundColor: theme.colors.card,
+    marginHorizontal: theme.spacing.xxl,
+    borderRadius: theme.borderRadius.xxl,
     padding: 20,
     marginBottom: 25,
     borderWidth: 1,
-    borderColor: '#F0F0F0',
-    shadowColor: '#E91E63',
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
+    borderColor: theme.colors.border,
+    ...theme.shadows.soft,
   },
   smartSearchHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   smartSearchTitle: {
-    color: '#1A1A1A',
-    fontSize: 16,
+    color: theme.colors.textPrimary,
+    fontSize: 11,
     fontWeight: '800',
     marginLeft: 6,
+    letterSpacing: 1.5,
   },
   smartSearchLiveTag: {
-    color: '#E91E63',
-    fontSize: 10,
+    color: theme.colors.primary,
+    fontSize: 9,
     fontWeight: '900',
-    backgroundColor: '#FFF0F5',
+    backgroundColor: theme.colors.accentPinkLight,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -607,12 +610,10 @@ const styles = StyleSheet.create({
   },
   minimizeBtn: {
     padding: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   smartSearchDesc: {
     color: '#666',
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 18,
     marginBottom: 16,
     fontWeight: '500',
@@ -623,97 +624,94 @@ const styles = StyleSheet.create({
   },
   smartSearchInput: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 14,
+    backgroundColor: theme.colors.border,
+    borderRadius: theme.borderRadius.lg,
     paddingHorizontal: 16,
-    height: 50,
+    height: 48,
     fontSize: 14,
-    color: '#1A1A1A',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    color: theme.colors.textPrimary,
+    fontWeight: '500',
   },
   smartSearchBtn: {
-    backgroundColor: '#E91E63',
-    width: 50,
-    height: 50,
-    borderRadius: 14,
+    backgroundColor: theme.colors.primary,
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   smartResultContainer: {
     marginTop: 20,
-    backgroundColor: '#FFF9FB',
-    borderRadius: 18,
+    backgroundColor: theme.colors.accentPinkLight,
+    borderRadius: theme.borderRadius.xxl,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FFECF2',
+    borderColor: 'rgba(255, 45, 85, 0.15)',
   },
   smartResultHeader: {
     marginBottom: 12,
   },
   smartResultName: {
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '800',
     marginBottom: 4,
   },
   smartResultAdvice: {
-    color: '#E91E63',
-    fontSize: 12,
+    color: theme.colors.primary,
+    fontSize: 13,
     fontWeight: '600',
-    lineHeight: 16,
+    lineHeight: 18,
   },
   smartResultMacros: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 16,
-    backgroundColor: '#FFF',
-    padding: 10,
-    borderRadius: 12,
+    backgroundColor: theme.colors.card,
+    padding: 12,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#FFECF2',
+    borderColor: theme.colors.border,
   },
   smartMacro: {
     alignItems: 'center',
   },
   smartMacroVal: {
-    color: '#1A1A1A',
+    color: theme.colors.textPrimary,
     fontSize: 14,
     fontWeight: '800',
   },
   smartMacroLab: {
-    color: '#8E8E93',
-    fontSize: 10,
+    color: theme.colors.textSecondary,
+    fontSize: 11,
     fontWeight: '600',
     marginTop: 2,
   },
   smartLogBtn: {
-    backgroundColor: '#E91E63',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
   },
   smartLogBtnText: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
   smartUnlogBtn: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: theme.colors.border,
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: theme.colors.border,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
   },
   smartUnlogBtnText: {
-    color: '#FF5252',
-    fontSize: 13,
+    color: '#FF3B30',
+    fontSize: 14,
     fontWeight: '800',
   },
   clearResultBtn: {
     padding: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

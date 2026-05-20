@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../api/client';
+import { theme } from '../theme';
 
 export default function FoodScannerScreen() {
   const [image, setImage] = useState(null);
@@ -26,8 +27,6 @@ export default function FoodScannerScreen() {
   const analyzeFood = async (base64) => {
     setLoading(true);
     try {
-      // In a real app, ensure backend accepts this large payload
-      // or upload to Cloudinary first, then send URL to backend
       const response = await apiClient.post('/nutrition/analyze', {
         imageBase64: base64,
       });
@@ -52,7 +51,7 @@ export default function FoodScannerScreen() {
 
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4CAF50" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>Analyzing with Gemini AI...</Text>
         </View>
       )}
@@ -77,53 +76,64 @@ export default function FoodScannerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
-    padding: 20,
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.xxl,
     alignItems: 'center',
   },
   button: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: theme.colors.primary,
     padding: 15,
-    borderRadius: 10,
+    borderRadius: theme.borderRadius.lg,
     width: '100%',
     alignItems: 'center',
     marginBottom: 20,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#FFF',
+    fontWeight: '800',
     fontSize: 16,
   },
   image: {
     width: 300,
     height: 300,
-    borderRadius: 15,
+    borderRadius: theme.borderRadius.xxl,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   loadingContainer: {
     alignItems: 'center',
     marginTop: 20,
   },
   loadingText: {
-    color: '#fff',
+    color: theme.colors.textSecondary,
     marginTop: 10,
+    fontWeight: '600',
   },
   resultContainer: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: theme.colors.card,
     padding: 20,
-    borderRadius: 15,
+    borderRadius: theme.borderRadius.xxl,
     width: '100%',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.shadows.soft,
   },
   resultTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#4CAF50',
+    fontWeight: '800',
+    color: theme.colors.textPrimary,
     marginBottom: 15,
     textTransform: 'capitalize',
   },
   resultText: {
-    color: '#ddd',
+    color: theme.colors.textSecondary,
     fontSize: 16,
     marginBottom: 8,
+    fontWeight: '500',
   }
 });

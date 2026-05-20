@@ -44,7 +44,7 @@ function MainTabs({ onLogout, userRole }) {
             
             return <Feather name={iconName} size={22} color={color} />;
           },
-          tabBarActiveTintColor: '#E91E63',
+          tabBarActiveTintColor: '#FF2D55',
           tabBarInactiveTintColor: '#8E8E93',
           tabBarStyle: {
             borderTopWidth: 0,
@@ -111,8 +111,8 @@ export default function App() {
 
   if (loading) {
       return (
-          <View style={{flex:1, justifyContent:'center', alignItems:'center', backgroundColor:'#121212'}}>
-              <ActivityIndicator size="large" color="#E91E63" />
+          <View style={{flex:1, justifyContent:'center', alignItems:'center', backgroundColor:'#FAFBFC'}}>
+              <ActivityIndicator size="large" color="#FF2D55" />
           </View>
       );
   }

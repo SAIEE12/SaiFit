@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../api/client';
+import { theme } from '../theme';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();

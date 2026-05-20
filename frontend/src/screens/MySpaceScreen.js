@@ -470,17 +470,37 @@ export default function MySpaceScreen({ navigation }) {
                   <Text style={styles.metricValue}>{hydration} / 3000 ml</Text>
                 </View>
               </View>
-              <TouchableOpacity 
-                style={styles.addBtn}
-                onPress={async () => {
-                  try {
-                    await apiClient.post('/hydration/log', { amount_ml: 250, date: selectedDate });
-                    setHydration(prev => prev + 250);
-                  } catch(e) { console.error(e); }
-                }}
-              >
-                <Feather name="plus" size={18} color="#FFF" />
-              </TouchableOpacity>
+              <View style={styles.hydrationActionRow}>
+                {/* Decrement (-) Button */}
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.minusBtn]}
+                  onPress={async () => {
+                    const dec = Math.min(250, hydration);
+                    if (dec <= 0) return;
+                    try {
+                      await apiClient.post('/hydration/log', { amount_ml: -dec, date: selectedDate });
+                      setHydration(prev => Math.max(0, prev - dec));
+                    } catch(e) { console.error(e); }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="minus" size={16} color="#2196F3" />
+                </TouchableOpacity>
+
+                {/* Increment (+) Button */}
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.plusBtn]}
+                  onPress={async () => {
+                    try {
+                      await apiClient.post('/hydration/log', { amount_ml: 250, date: selectedDate });
+                      setHydration(prev => prev + 250);
+                    } catch(e) { console.error(e); }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="plus" size={16} color="#FFF" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Workouts Target Card */}
@@ -1411,5 +1431,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#FF2D55',
+  },
+  hydrationActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  minusBtn: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 1,
+    borderColor: 'rgba(33, 150, 243, 0.15)',
+    shadowColor: '#2196F3',
+  },
+  plusBtn: {
+    backgroundColor: '#2196F3',
+    shadowColor: '#2196F3',
   },
 });

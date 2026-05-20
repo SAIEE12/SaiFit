@@ -22,18 +22,7 @@ export default function MySpaceScreen({ navigation }) {
   const [username, setUsername] = useState('Fitness Fan');
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // Active Streak Tracker States
-  const [streakCount, setStreakCount] = useState(5);
-  const [completedDays, setCompletedDays] = useState(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
-  const weekDays = [
-    { label: 'M', name: 'Mon' },
-    { label: 'T', name: 'Tue' },
-    { label: 'W', name: 'Wed' },
-    { label: 'T', name: 'Thu' },
-    { label: 'F', name: 'Fri' },
-    { label: 'S', name: 'Sat' },
-    { label: 'S', name: 'Sun' }
-  ];
+
 
   // AI Tone System State
   const [coachTone, setCoachTone] = useState('Supportive'); // Supportive | Direct | Challenger
@@ -194,16 +183,7 @@ export default function MySpaceScreen({ navigation }) {
     }
   };
 
-  // Streak Week Day Toggle Logic
-  const handleToggleDay = (dayName) => {
-    if (completedDays.includes(dayName)) {
-      setCompletedDays(prev => prev.filter(d => d !== dayName));
-      setStreakCount(prev => Math.max(0, prev - 1));
-    } else {
-      setCompletedDays(prev => [...prev, dayName]);
-      setStreakCount(prev => prev + 1);
-    }
-  };
+
 
   // Context Menu Actions
   const openContextMenu = (notif) => {
@@ -334,48 +314,7 @@ export default function MySpaceScreen({ navigation }) {
           <ActivityIndicator size="large" color="#FF2D55" style={{ marginTop: 50 }} />
         ) : (
           <>
-            {/* Elite Streak Banner Widget */}
-            <View style={styles.streakCard}>
-              <View style={styles.streakInfoRow}>
-                <View style={styles.streakFlameWrap}>
-                  <MaterialCommunityIcons name="fire" size={26} color="#FFF" />
-                </View>
-                <View style={styles.streakTitleWrap}>
-                  <Text style={styles.streakCountText}>{streakCount} Day Streak!</Text>
-                  <Text style={styles.streakDescText}>You are in the top 5% of active users today! 🔥</Text>
-                </View>
-              </View>
-              
-              {/* Daily Tracker Rings */}
-              <View style={styles.weekCalendarRow}>
-                {weekDays.map((day) => {
-                  const isCompleted = completedDays.includes(day.name);
-                  return (
-                    <TouchableOpacity 
-                      key={day.name} 
-                      activeOpacity={0.8}
-                      onPress={() => handleToggleDay(day.name)}
-                      style={[
-                        styles.calendarDayRing,
-                        isCompleted && styles.calendarDayRingCompleted
-                      ]}
-                    >
-                      <Text style={[
-                        styles.calendarDayText,
-                        isCompleted && styles.calendarDayTextCompleted
-                      ]}>
-                        {day.label}
-                      </Text>
-                      {isCompleted && (
-                        <View style={styles.calendarDayFlameDot}>
-                          <MaterialCommunityIcons name="fire" size={8} color="#FF9500" />
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+
 
             {/* Daily Calorie Target Card */}
             <View style={styles.calorieCard}>
@@ -764,85 +703,7 @@ const styles = StyleSheet.create({
     borderColor: '#F2F3F5',
   },
   
-  // Advanced Pinned Streak Widget styles
-  streakCard: {
-    backgroundColor: '#1C1C1E',
-    marginHorizontal: 24,
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#FF9500',
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  streakInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  streakFlameWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#FF9500',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#FF9500',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  streakTitleWrap: {
-    marginLeft: 14,
-    flex: 1,
-  },
-  streakCountText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFF',
-    marginBottom: 2,
-  },
-  streakDescText: {
-    fontSize: 11,
-    color: '#AEAEB2',
-    fontWeight: '500',
-  },
-  weekCalendarRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-  },
-  calendarDayRing: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#3A3A3C',
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  calendarDayRingCompleted: {
-    borderColor: '#FF9500',
-    backgroundColor: '#FF9500',
-  },
-  calendarDayText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8E8E93',
-  },
-  calendarDayTextCompleted: {
-    color: '#FFF',
-  },
-  calendarDayFlameDot: {
-    position: 'absolute',
-    bottom: -6,
-    backgroundColor: '#1C1C1E',
-    borderRadius: 6,
-    padding: 1,
-  },
+
 
   calorieCard: {
     backgroundColor: '#FFF',

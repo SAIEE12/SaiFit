@@ -297,87 +297,159 @@ export default function ProfileScreen({ navigation, onLogout }) {
       </ScrollView>
 
       {/* Edit Profile Modal */}
+      {/* Edit Profile Modal */}
       <Modal visible={isEditing} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setIsEditing(false)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
               <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>Edit Profile</Text>
-                  <TouchableOpacity onPress={() => setIsEditing(false)}>
-                      <Feather name="x" size={24} color={theme.colors.textPrimary} />
+                  <TouchableOpacity onPress={() => setIsEditing(false)} style={styles.closeModalBtn}>
+                      <Feather name="x" size={20} color={theme.colors.textPrimary} />
                   </TouchableOpacity>
               </View>
               <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
                   
-                  <Text style={styles.inputLabel}>Full Name</Text>
-                  <TextInput style={styles.input} value={formData.full_name} onChangeText={t => setFormData({...formData, full_name: t})} placeholder="John Doe" placeholderTextColor={theme.colors.textTertiary} />
-                  
-                  <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                      <View style={{flex: 1, marginRight: 10}}>
-                          <Text style={styles.inputLabel}>Age</Text>
-                          <TextInput style={styles.input} value={formData.age} onChangeText={t => setFormData({...formData, age: t})} keyboardType="numeric" placeholder="25" placeholderTextColor={theme.colors.textTertiary} />
+                  {/* Full Name input block */}
+                  <View style={styles.premiumInputBlock}>
+                    <View style={styles.inputIconContainer}>
+                      <Feather name="user" size={16} color="#FF2D55" />
+                    </View>
+                    <View style={{flex: 1}}>
+                      <Text style={styles.premiumInputLabel}>FULL NAME</Text>
+                      <TextInput 
+                        style={styles.premiumTextInput} 
+                        value={formData.full_name} 
+                        onChangeText={t => setFormData({...formData, full_name: t})} 
+                        placeholder="John Doe" 
+                        placeholderTextColor="#8E8E93" 
+                      />
+                    </View>
+                  </View>
+
+                  <View style={{flexDirection: 'row', gap: 12, marginTop: 12}}>
+                    {/* Age Input */}
+                    <View style={[styles.premiumInputBlock, {flex: 1}]}>
+                      <View style={styles.inputIconContainer}>
+                        <Feather name="hash" size={16} color="#FF2D55" />
                       </View>
                       <View style={{flex: 1}}>
-                          <Text style={styles.inputLabel}>Gender</Text>
-                          <View style={styles.pickerWrap}>
-                              <Picker
-                                  selectedValue={formData.gender}
-                                  onValueChange={(itemValue) => setFormData({...formData, gender: itemValue})}
-                                  style={styles.picker}
-                                  itemStyle={styles.pickerItem}
-                              >
-                                  <Picker.Item label="Select" value="" color={theme.colors.textSecondary} />
-                                  <Picker.Item label="Male" value="Male" />
-                                  <Picker.Item label="Female" value="Female" />
-                                  <Picker.Item label="Other" value="Other" />
-                              </Picker>
-                          </View>
+                        <Text style={styles.premiumInputLabel}>AGE</Text>
+                        <TextInput 
+                          style={styles.premiumTextInput} 
+                          value={formData.age} 
+                          onChangeText={t => setFormData({...formData, age: t})} 
+                          keyboardType="numeric" 
+                          placeholder="25" 
+                          placeholderTextColor="#8E8E93" 
+                        />
                       </View>
-                  </View>
+                    </View>
 
-                  <Text style={styles.inputLabel}>Height (cm)</Text>
-                  <TextInput style={styles.input} value={formData.height} onChangeText={t => setFormData({...formData, height: t})} keyboardType="numeric" placeholder="175" placeholderTextColor={theme.colors.textTertiary} />
-
-                  <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                      <View style={{flex: 1, marginRight: 10}}>
-                          <Text style={styles.inputLabel}>Current Weight (kg)</Text>
-                          <TextInput style={styles.input} value={formData.weight} onChangeText={t => setFormData({...formData, weight: t})} keyboardType="numeric" placeholder="70" placeholderTextColor={theme.colors.textTertiary} />
+                    {/* Height */}
+                    <View style={[styles.premiumInputBlock, {flex: 1}]}>
+                      <View style={styles.inputIconContainer}>
+                        <Feather name="maximize-2" size={16} color="#FF2D55" />
                       </View>
                       <View style={{flex: 1}}>
-                          <Text style={styles.inputLabel}>Target Weight (kg)</Text>
-                          <TextInput style={styles.input} value={formData.target_weight} onChangeText={t => setFormData({...formData, target_weight: t})} keyboardType="numeric" placeholder="65" placeholderTextColor={theme.colors.textTertiary} />
+                        <Text style={styles.premiumInputLabel}>HEIGHT (CM)</Text>
+                        <TextInput 
+                          style={styles.premiumTextInput} 
+                          value={formData.height} 
+                          onChangeText={t => setFormData({...formData, height: t})} 
+                          keyboardType="numeric" 
+                          placeholder="175" 
+                          placeholderTextColor="#8E8E93" 
+                        />
                       </View>
+                    </View>
                   </View>
 
-                  <Text style={styles.inputLabel}>Activity Level</Text>
-                  <View style={styles.pickerWrap}>
-                      <Picker
-                          selectedValue={formData.activity_level}
-                          onValueChange={(itemValue) => setFormData({...formData, activity_level: itemValue})}
-                          style={styles.picker}
-                          itemStyle={styles.pickerItem}
-                      >
-                          <Picker.Item label="Select Activity Level" value="" color={theme.colors.textSecondary} />
-                          <Picker.Item label="Beginner" value="Beginner" />
-                          <Picker.Item label="Intermediate" value="Intermediate" />
-                          <Picker.Item label="Advanced" value="Advanced" />
-                      </Picker>
+                  <View style={{flexDirection: 'row', gap: 12, marginTop: 12}}>
+                    {/* Weight */}
+                    <View style={[styles.premiumInputBlock, {flex: 1}]}>
+                      <View style={styles.inputIconContainer}>
+                        <MaterialCommunityIcons name="weight-kilogram" size={16} color="#FF2D55" />
+                      </View>
+                      <View style={{flex: 1}}>
+                        <Text style={styles.premiumInputLabel}>WEIGHT (KG)</Text>
+                        <TextInput 
+                          style={styles.premiumTextInput} 
+                          value={formData.weight} 
+                          onChangeText={t => setFormData({...formData, weight: t})} 
+                          keyboardType="numeric" 
+                          placeholder="70" 
+                          placeholderTextColor="#8E8E93" 
+                        />
+                      </View>
+                    </View>
+
+                    {/* Target Weight */}
+                    <View style={[styles.premiumInputBlock, {flex: 1}]}>
+                      <View style={styles.inputIconContainer}>
+                        <Feather name="target" size={16} color="#FF2D55" />
+                      </View>
+                      <View style={{flex: 1}}>
+                        <Text style={styles.premiumInputLabel}>TARGET (KG)</Text>
+                        <TextInput 
+                          style={styles.premiumTextInput} 
+                          value={formData.target_weight} 
+                          onChangeText={t => setFormData({...formData, target_weight: t})} 
+                          keyboardType="numeric" 
+                          placeholder="65" 
+                          placeholderTextColor="#8E8E93" 
+                        />
+                      </View>
+                    </View>
                   </View>
 
-                  <Text style={styles.inputLabel}>Fitness Goal</Text>
-                  <View style={styles.pickerWrap}>
-                      <Picker
-                          selectedValue={formData.fitness_goal}
-                          onValueChange={(itemValue) => setFormData({...formData, fitness_goal: itemValue})}
-                          style={styles.picker}
-                          itemStyle={styles.pickerItem}
-                      >
-                          <Picker.Item label="Select Fitness Goal" value="" color={theme.colors.textSecondary} />
-                          <Picker.Item label="Home Workout" value="Home Workout" />
-                          <Picker.Item label="Gym Workout" value="Gym Workout" />
-                          <Picker.Item label="Yoga" value="Yoga" />
-                          <Picker.Item label="Dance" value="Dance" />
-                          <Picker.Item label="Muscle Gain" value="Muscle Gain" />
-                          <Picker.Item label="Fat Loss" value="Fat Loss" />
-                      </Picker>
+                  {/* Gender Selection */}
+                  <View style={{marginTop: 16}}>
+                    <Text style={styles.segmentedLabel}>GENDER</Text>
+                    <View style={styles.genderPillsContainer}>
+                      {['Male', 'Female', 'Other'].map(g => (
+                        <TouchableOpacity 
+                          key={g} 
+                          style={[styles.genderPill, formData.gender === g && styles.genderPillActive]} 
+                          onPress={() => setFormData({...formData, gender: g})}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[styles.genderPillText, formData.gender === g && styles.genderPillTextActive]}>{g}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Activity Level */}
+                  <View style={{marginTop: 16}}>
+                    <Text style={styles.segmentedLabel}>ACTIVITY LEVEL</Text>
+                    <View style={styles.activityPillsContainer}>
+                      {['Beginner', 'Intermediate', 'Advanced'].map(act => (
+                        <TouchableOpacity 
+                          key={act} 
+                          style={[styles.activityPill, formData.activity_level === act && styles.activityPillActive]} 
+                          onPress={() => setFormData({...formData, activity_level: act})}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[styles.activityPillText, formData.activity_level === act && styles.activityPillTextActive]}>{act}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Fitness Goal */}
+                  <View style={{marginTop: 16}}>
+                    <Text style={styles.segmentedLabel}>FITNESS GOAL</Text>
+                    <View style={styles.goalPillsGrid}>
+                      {['Home Workout', 'Gym Workout', 'Yoga', 'Muscle Gain', 'Fat Loss'].map(g => (
+                        <TouchableOpacity 
+                          key={g} 
+                          style={[styles.goalPillItem, formData.fitness_goal === g && styles.goalPillActive]} 
+                          onPress={() => setFormData({...formData, fitness_goal: g})}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[styles.goalPillText, formData.fitness_goal === g && styles.goalPillTextActive]}>{g}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   </View>
 
                   <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
@@ -661,5 +733,130 @@ const styles = StyleSheet.create({
       fontSize: 11,
       fontWeight: '900',
       color: '#FFFFFF',
+  },
+  closeModalBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  premiumInputBlock: {
+    backgroundColor: '#FAFBFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inputIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  premiumInputLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8E8E93',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  premiumTextInput: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    padding: 0,
+  },
+  segmentedLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8E8E93',
+    letterSpacing: 1,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  genderPillsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  genderPill: {
+    flex: 1,
+    backgroundColor: '#FAFBFC',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    alignItems: 'center',
+  },
+  genderPillActive: {
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+    borderColor: 'rgba(255, 45, 85, 0.3)',
+  },
+  genderPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  genderPillTextActive: {
+    color: '#FF2D55',
+    fontWeight: '800',
+  },
+  activityPillsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  activityPill: {
+    flex: 1,
+    backgroundColor: '#FAFBFC',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    alignItems: 'center',
+  },
+  activityPillActive: {
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+    borderColor: 'rgba(255, 45, 85, 0.3)',
+  },
+  activityPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  activityPillTextActive: {
+    color: '#FF2D55',
+    fontWeight: '800',
+  },
+  goalPillsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  goalPillItem: {
+    backgroundColor: '#FAFBFC',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+  },
+  goalPillActive: {
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+    borderColor: 'rgba(255, 45, 85, 0.3)',
+  },
+  goalPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8E8E93',
+  },
+  goalPillTextActive: {
+    color: '#FF2D55',
+    fontWeight: '800',
   },
 });

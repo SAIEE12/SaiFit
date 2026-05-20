@@ -533,28 +533,37 @@ export default function MySpaceScreen({ navigation }) {
           {/* Minimalist Apple-like Modal Header */}
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Notifications</Text>
-            <View style={styles.modalActionsRow}>
-              {hasUnread && (
-                <TouchableOpacity onPress={markAllAsRead}>
-                  <Text style={styles.headerActionLink}>Mark Read</Text>
-                </TouchableOpacity>
-              )}
-              {notifications.length > 0 && (
-                <>
-                  {hasUnread && <View style={styles.actionSeparator} />}
-                  <TouchableOpacity onPress={clearAllNotifications}>
-                    <Text style={[styles.headerActionLink, { color: '#8E8E93' }]}>Clear All</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-              <TouchableOpacity onPress={() => setShowNotifications(false)} style={styles.closeHeaderBtn}>
-                <Feather name="chevron-down" size={20} color="#1C1C1E" />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={() => setShowNotifications(false)} style={styles.closeHeaderBtn}>
+              <Feather name="chevron-down" size={20} color="#1C1C1E" />
+            </TouchableOpacity>
           </View>
 
           {/* Modal Body Scroll Container */}
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            {/* Premium Notification Tools Bar */}
+            <View style={styles.notificationToolsBar}>
+              <Text style={styles.notificationCountText}>
+                {notifications.filter(n => !n.isRead).length} unread
+              </Text>
+              <View style={styles.toolsActions}>
+                {hasUnread && (
+                  <TouchableOpacity onPress={markAllAsRead} style={styles.toolActionBtn}>
+                    <Feather name="check-square" size={13} color="#FF2D55" style={{ marginRight: 4 }} />
+                    <Text style={styles.toolActionText}>Mark Read</Text>
+                  </TouchableOpacity>
+                )}
+                {notifications.length > 0 && (
+                  <>
+                    {hasUnread && <View style={styles.toolSeparator} />}
+                    <TouchableOpacity onPress={clearAllNotifications} style={styles.toolActionBtn}>
+                      <Feather name="trash-2" size={13} color="#8E8E93" style={{ marginRight: 4 }} />
+                      <Text style={[styles.toolActionText, { color: '#8E8E93' }]}>Clear All</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </View>
+
             {/* Tone Selector Settings (Premium Soft Translucent Pill Bar) */}
             <View style={styles.toneSelectorContainer}>
               <TouchableOpacity onPress={() => setCoachTone('Supportive')} style={[styles.toneBtn, coachTone === 'Supportive' && styles.toneBtnActive]}>
@@ -1457,5 +1466,43 @@ const styles = StyleSheet.create({
   plusBtn: {
     backgroundColor: '#2196F3',
     shadowColor: '#2196F3',
+  },
+  notificationToolsBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F2F3F5',
+    marginBottom: 16,
+  },
+  notificationCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8E8E93',
+  },
+  toolsActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toolActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  toolActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF2D55',
+  },
+  toolSeparator: {
+    width: 1,
+    height: 10,
+    backgroundColor: '#E5E5EA',
+    marginHorizontal: 8,
   },
 });

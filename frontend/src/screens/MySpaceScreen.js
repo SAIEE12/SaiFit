@@ -19,6 +19,7 @@ export default function MySpaceScreen({ navigation }) {
   const [dailyWorkouts, setDailyWorkouts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState(null);
+  const [insightExpanded, setInsightExpanded] = useState(false);
   const [username, setUsername] = useState('Fitness Fan');
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -382,16 +383,33 @@ export default function MySpaceScreen({ navigation }) {
             </ScrollView>
 
             {/* AI Insight */}
-            {recommendation && (
-              <View style={styles.insightCard}>
-                <View style={styles.insightHeader}>
-                  <View style={styles.insightIconWrap}>
-                    <Ionicons name="sparkles" size={16} color="#FFF" />
+            {recommendation && !recommendation.disabled && (
+              insightExpanded ? (
+                <TouchableOpacity 
+                  activeOpacity={0.9} 
+                  style={styles.insightCard} 
+                  onPress={() => setInsightExpanded(false)}
+                >
+                  <View style={styles.insightHeader}>
+                    <View style={styles.insightIconWrap}>
+                      <Ionicons name="sparkles" size={16} color="#FFF" />
+                    </View>
+                    <Text style={styles.insightTitle}>COACH'S DAILY INSIGHT</Text>
+                    <Feather name="chevron-up" size={16} color="#FFF" style={{ marginLeft: 'auto' }} />
                   </View>
-                  <Text style={styles.insightTitle}>COACH'S DAILY INSIGHT</Text>
-                </View>
-                <Text style={styles.insightText}>{recommendation.recovery_advice}</Text>
-              </View>
+                  <Text style={styles.insightText}>{recommendation.recovery_advice}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  activeOpacity={0.8} 
+                  style={styles.minimalCoachTrigger} 
+                  onPress={() => setInsightExpanded(true)}
+                >
+                  <Ionicons name="sparkles" size={14} color="#FFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.minimalCoachTriggerText}>✨ Coach Insights</Text>
+                  <Feather name="chevron-down" size={14} color="#FFF" style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
+              )
             )}
 
             {/* Health Tracking Section */}
@@ -1225,5 +1243,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1C1C1E',
+  },
+  minimalCoachTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1C1C1E',
+    borderRadius: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 45, 85, 0.3)',
+    shadowColor: '#FF2D55',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  minimalCoachTriggerText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFF',
+    letterSpacing: 0.5,
   },
 });

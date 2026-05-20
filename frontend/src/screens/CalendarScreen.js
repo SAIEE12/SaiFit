@@ -200,26 +200,22 @@ export default function CalendarScreen({ navigation }) {
                 </View>
 
                 {/* AI Calendar Journey Intelligence */}
-                {isSmartSearchEnabled && calendarCoach && (
-                    <TouchableOpacity activeOpacity={0.9} style={styles.aiCoachCard} onPress={toggleCoach}>
-                        <View style={styles.aiCoachHeader}>
-                            <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                                <View style={styles.sparkleBg}>
-                                    <Ionicons name="sparkles" size={14} color="#FFF" />
+                {isSmartSearchEnabled && calendarCoach && !calendarCoach.disabled && (
+                    coachExpanded ? (
+                        <TouchableOpacity activeOpacity={0.9} style={styles.aiCoachCard} onPress={toggleCoach}>
+                            <View style={styles.aiCoachHeader}>
+                                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                    <View style={styles.sparkleBg}>
+                                        <Ionicons name="sparkles" size={14} color="#FFF" />
+                                    </View>
+                                    <Text style={styles.aiCoachTitle}>AI JOURNEY INTELLIGENCE</Text>
                                 </View>
-                                <Text style={styles.aiCoachTitle}>AI JOURNEY INTELLIGENCE</Text>
+                                <View style={styles.badgeRow}>
+                                    <Text style={styles.scoreBadge}>{calendarCoach.consistency_score} Consistency</Text>
+                                    <Feather name="chevron-up" size={16} color={theme.colors.textSecondary} />
+                                </View>
                             </View>
-                            <View style={styles.badgeRow}>
-                                <Text style={styles.scoreBadge}>{calendarCoach.consistency_score} Consistency</Text>
-                                <Feather name={coachExpanded ? "chevron-up" : "chevron-down"} size={16} color={theme.colors.textSecondary} />
-                            </View>
-                        </View>
 
-                        <Text style={styles.aiCoachSummary} numberOfLines={coachExpanded ? undefined : 1}>
-                            {calendarCoach.summary}
-                        </Text>
-
-                        {coachExpanded ? (
                             <View style={styles.expandedAiContent}>
                                 <View style={styles.simpleSummaryBlock}>
                                     <Text style={styles.simpleSummaryText}>
@@ -273,12 +269,14 @@ export default function CalendarScreen({ navigation }) {
                                     </View>
                                 )}
                             </View>
-                        ) : (
-                            <View style={styles.tapPrompt}>
-                                <Text style={styles.tapPromptText}>Tap to reveal visual AI training milestones</Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity activeOpacity={0.8} style={styles.minimalCoachTrigger} onPress={toggleCoach}>
+                            <Ionicons name="sparkles" size={14} color="#FFF" style={{marginRight: 6}} />
+                            <Text style={styles.minimalCoachTriggerText}>✨ Journey Analyst</Text>
+                            <Feather name="chevron-down" size={14} color="#FFF" style={{marginLeft: 6}} />
+                        </TouchableOpacity>
+                    )
                 )}
 
                 {/* Day Details */}
@@ -523,5 +521,30 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(28, 28, 30, 0.06)', // Translucent outline circle
         borderWidth: 0.5,
         borderColor: 'rgba(28, 28, 30, 0.15)',
+    },
+    minimalCoachTrigger: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#1C1C1E',
+        borderRadius: 24,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        alignSelf: 'center',
+        marginTop: 10,
+        marginBottom: 16,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 45, 85, 0.3)',
+        shadowColor: '#FF2D55',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    minimalCoachTriggerText: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#FFF',
+        letterSpacing: 0.5,
     },
 });

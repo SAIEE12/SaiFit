@@ -405,12 +405,13 @@ exports.getCalendarCoach = async (req, res) => {
             Provide workout split consistency assessments, rest warnings, logical tomorrow workout forecasts, best time suggestions based on log trends, and compiled milestones achievements.
             Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
             {
-              "summary": "Short calendar intelligence performance preview.",
+              "summary": "Exactly one short sentence overview of the user's active journey.",
+              "expanded_narrative": "A simple, friendly 5 to 6 sentence paragraph summarizing the user's complete calendar activity and previous tracked data over the past 14 days, including workout types, macro habits, rest, and predicted goals.",
               "consistency_score": "e.g. 85%",
               "streak_analysis": "Streak details and habit advice.",
               "workout_predictions": "Logical workout prediction details.",
               "best_time_suggestion": "Optimal workout hours reasoning based on active logs.",
-              "overtraining_alerts": " Overtraining recovery alerts or rest validation.",
+              "overtraining_alerts": "Overtraining recovery alerts or rest validation.",
               "milestones": ["Completed multiple splits this week!", "Consistent habit logger."]
             }
         `;
@@ -426,7 +427,8 @@ exports.getCalendarCoach = async (req, res) => {
             calendarAnalysis = JSON.parse(jsonMatch[0]);
         } catch (err) {
             calendarAnalysis = {
-                summary: "Calendar Intelligence: 80% consistency score this week.",
+                summary: "Excellent calendar activity recorded over the last two weeks.",
+                expanded_narrative: `Based on your previous activity logs over the last 14 days, you have completed multiple high-quality workouts and meals. Your consistency remains excellent at 80% with a steady daily logger pattern. Rest splits are perfectly balanced to ensure optimal recovery, and log timings suggest your current routine aligns well with your natural daily energy peaks. Let's keep this momentum going!`,
                 consistency_score: "80%",
                 streak_analysis: `Your ${streak}-day active streak shows excellent habit automation.`,
                 workout_predictions: "Predicted to train Core & Lower Body based on your upper power split log.",

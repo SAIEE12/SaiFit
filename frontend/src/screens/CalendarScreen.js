@@ -34,6 +34,7 @@ export default function CalendarScreen({ navigation }) {
     const [calendarCoach, setCalendarCoach] = useState(null);
     const [loadingCoach, setLoadingCoach] = useState(false);
     const [coachExpanded, setCoachExpanded] = useState(false);
+    const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
 
     useEffect(() => {
         fetchDayDetails(selectedDate);
@@ -41,6 +42,7 @@ export default function CalendarScreen({ navigation }) {
 
     useEffect(() => {
         fetchCalendarCoach();
+        checkSmartSearchStatus();
     }, []);
 
     const fetchDayDetails = async (date) => {
@@ -71,6 +73,15 @@ export default function CalendarScreen({ navigation }) {
             console.error("Error fetching day details:", e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const checkSmartSearchStatus = async () => {
+        try {
+            const res = await apiClient.get('/nutrition/smart-search/status');
+            setIsSmartSearchEnabled(res.data.enabled);
+        } catch (e) {
+            console.error("Failed to check smart search status", e);
         }
     };
 
@@ -144,7 +155,7 @@ export default function CalendarScreen({ navigation }) {
                 </View>
 
                 {/* AI Calendar Journey Intelligence */}
-                {calendarCoach && (
+                {isSmartSearchEnabled && calendarCoach && (
                     <TouchableOpacity activeOpacity={0.9} style={styles.aiCoachCard} onPress={toggleCoach}>
                         <View style={styles.aiCoachHeader}>
                             <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -159,10 +170,18 @@ export default function CalendarScreen({ navigation }) {
                             </View>
                         </View>
 
-                        <Text style={styles.aiCoachSummary}>{calendarCoach.summary}</Text>
+                        <Text style={styles.aiCoachSummary} numberOfLines={coachExpanded ? undefined : 1}>
+                            {calendarCoach.summary}
+                        </Text>
 
                         {coachExpanded ? (
                             <View style={styles.expandedAiContent}>
+                                <View style={styles.simpleSummaryBlock}>
+                                    <Text style={styles.simpleSummaryText}>
+                                        {calendarCoach.expanded_narrative}
+                                    </Text>
+                                </View>
+
                                 <View style={styles.insightSegment}>
                                     <View style={styles.segmentHeader}>
                                         <Feather name="trending-up" size={14} color={theme.colors.primary} style={{marginRight: 6}} />
@@ -299,7 +318,7 @@ const styles = StyleSheet.create({
         ...theme.shadows.soft,
         marginBottom: 16,
     },
-    monthHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+    monthHeader: { flexDirection: 'row', justifynContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     monthTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary },
     navBtns: { flexDirection: 'row' },
     navBtn: { padding: 5, marginLeft: 10 },
@@ -401,6 +420,20 @@ const styles = StyleSheet.create({
         borderTopColor: theme.colors.border,
         paddingTop: 14,
         gap: 12,
+    },
+    simpleSummaryBlock: {
+        backgroundColor: theme.colors.accentPinkLight,
+        borderRadius: theme.borderRadius.lg,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 45, 85, 0.1)',
+        marginBottom: 4,
+    },
+    simpleSummaryText: {
+        fontSize: 13,
+        color: theme.colors.primary,
+        fontWeight: '600',
+        lineHeight: 20,
     },
     insightSegment: {
         backgroundColor: theme.colors.background,

@@ -278,7 +278,8 @@ export default function ProfileScreen({ navigation, onLogout }) {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+          <Feather name="log-out" size={18} color="#FFF" style={{ marginRight: 10 }} />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
         
@@ -453,15 +454,20 @@ const styles = StyleSheet.create({
   menuItemText: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
   logoutBtn: { 
     marginHorizontal: theme.spacing.xxl, 
-    backgroundColor: theme.colors.accentPinkLight, 
+    backgroundColor: '#FF3B30', // Redesign: premium vibrant danger red
     paddingVertical: 16, 
     borderRadius: theme.borderRadius.xxl, 
     alignItems: 'center', 
-    borderWidth: 1, 
-    borderColor: 'rgba(255, 45, 85, 0.15)',
-    ...theme.shadows.soft
+    justifyContent: 'center',
+    flexDirection: 'row',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    marginTop: 8,
   },
-  logoutText: { color: theme.colors.primary, fontSize: 16, fontWeight: '800' },
+  logoutText: { color: '#FFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
   
   // Modal Edit Styles
   modalContainer: { flex: 1, backgroundColor: theme.colors.card },

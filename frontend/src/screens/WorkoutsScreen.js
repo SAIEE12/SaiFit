@@ -67,7 +67,7 @@ export default function WorkoutsScreen() {
   const fetchRecommendation = async () => {
     try {
       setLoadingRecommendation(true);
-      const res = await apiClient.get('/recommendations');
+      const res = await apiClient.get('/recommendations/workout-coach');
       setRecommendation(res.data);
     } catch (e) {
       console.error("Failed to fetch recommendation", e);

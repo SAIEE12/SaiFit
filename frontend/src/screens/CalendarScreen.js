@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 import { theme } from '../theme';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -26,9 +30,18 @@ export default function CalendarScreen({ navigation }) {
         totals: { calories: 0, protein: 0, carbs: 0, fats: 0 }
     });
 
+    // AI Calendar Coach State
+    const [calendarCoach, setCalendarCoach] = useState(null);
+    const [loadingCoach, setLoadingCoach] = useState(false);
+    const [coachExpanded, setCoachExpanded] = useState(false);
+
     useEffect(() => {
         fetchDayDetails(selectedDate);
     }, [selectedDate]);
+
+    useEffect(() => {
+        fetchCalendarCoach();
+    }, []);
 
     const fetchDayDetails = async (date) => {
         const dateStr = getLocalDateString(date);
@@ -59,6 +72,23 @@ export default function CalendarScreen({ navigation }) {
         } finally {
             setLoading(false);
         }
+    };
+
+    const fetchCalendarCoach = async () => {
+        try {
+            setLoadingCoach(true);
+            const res = await apiClient.get('/recommendations/calendar-coach');
+            setCalendarCoach(res.data);
+        } catch (e) {
+            console.error("Failed to load calendar coach:", e);
+        } finally {
+            setLoadingCoach(false);
+        }
+    };
+
+    const toggleCoach = () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setCoachExpanded(!coachExpanded);
     };
 
     const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -112,6 +142,80 @@ export default function CalendarScreen({ navigation }) {
                     <View style={styles.weekDays}>{DAYS.map(day => <Text key={day} style={styles.weekDayText}>{day.toUpperCase()}</Text>)}</View>
                     <View style={styles.daysGrid}>{renderCalendar()}</View>
                 </View>
+
+                {/* AI Calendar Journey Intelligence */}
+                {calendarCoach && (
+                    <TouchableOpacity activeOpacity={0.9} style={styles.aiCoachCard} onPress={toggleCoach}>
+                        <View style={styles.aiCoachHeader}>
+                            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                <View style={styles.sparkleBg}>
+                                    <Ionicons name="sparkles" size={14} color="#FFF" />
+                                </View>
+                                <Text style={styles.aiCoachTitle}>AI JOURNEY INTELLIGENCE</Text>
+                            </View>
+                            <View style={styles.badgeRow}>
+                                <Text style={styles.scoreBadge}>{calendarCoach.consistency_score} Consistency</Text>
+                                <Feather name={coachExpanded ? "chevron-up" : "chevron-down"} size={16} color={theme.colors.textSecondary} />
+                            </View>
+                        </View>
+
+                        <Text style={styles.aiCoachSummary}>{calendarCoach.summary}</Text>
+
+                        {coachExpanded ? (
+                            <View style={styles.expandedAiContent}>
+                                <View style={styles.insightSegment}>
+                                    <View style={styles.segmentHeader}>
+                                        <Feather name="trending-up" size={14} color={theme.colors.primary} style={{marginRight: 6}} />
+                                        <Text style={styles.segmentTitle}>Streak Analysis</Text>
+                                    </View>
+                                    <Text style={styles.segmentText}>{calendarCoach.streak_analysis}</Text>
+                                </View>
+
+                                <View style={styles.insightSegment}>
+                                    <View style={styles.segmentHeader}>
+                                        <Feather name="clock" size={14} color={theme.colors.secondary} style={{marginRight: 6}} />
+                                        <Text style={styles.segmentTitle}>Best Workout Time</Text>
+                                    </View>
+                                    <Text style={styles.segmentText}>{calendarCoach.best_time_suggestion}</Text>
+                                </View>
+
+                                <View style={styles.insightSegment}>
+                                    <View style={styles.segmentHeader}>
+                                        <Feather name="compass" size={14} color={theme.colors.green} style={{marginRight: 6}} />
+                                        <Text style={styles.segmentTitle}>Split Predictions</Text>
+                                    </View>
+                                    <Text style={styles.segmentText}>{calendarCoach.workout_predictions}</Text>
+                                </View>
+
+                                <View style={styles.insightSegment}>
+                                    <View style={styles.segmentHeader}>
+                                        <Feather name="heart" size={14} color={theme.colors.orange} style={{marginRight: 6}} />
+                                        <Text style={styles.segmentTitle}>Overtraining Status</Text>
+                                    </View>
+                                    <Text style={styles.segmentText}>{calendarCoach.overtraining_alerts}</Text>
+                                </View>
+
+                                {calendarCoach.milestones && calendarCoach.milestones.length > 0 && (
+                                    <View style={styles.milestonesBlock}>
+                                        <Text style={styles.actionsHeading}>JOURNEY MILESTONES</Text>
+                                        <View style={styles.milestoneGrid}>
+                                            {calendarCoach.milestones.map((mil, idx) => (
+                                                <View key={idx} style={styles.milestonePill}>
+                                                    <Ionicons name="trophy-outline" size={12} color={theme.colors.primary} style={{marginRight: 6}} />
+                                                    <Text style={styles.milestoneText}>{mil}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                )}
+                            </View>
+                        ) : (
+                            <View style={styles.tapPrompt}>
+                                <Text style={styles.tapPromptText}>Tap to reveal visual AI training milestones</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                )}
 
                 {/* Day Details */}
                 <View style={styles.detailsContainer}>
@@ -193,6 +297,7 @@ const styles = StyleSheet.create({
         borderWidth: 1, 
         borderColor: theme.colors.border,
         ...theme.shadows.soft,
+        marginBottom: 16,
     },
     monthHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     monthTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary },
@@ -207,7 +312,7 @@ const styles = StyleSheet.create({
     selectedDayText: { color: '#FFF', fontWeight: '800' },
     todayText: { color: theme.colors.primary, fontWeight: '800' },
     todayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: theme.colors.primary, marginTop: 2 },
-    detailsContainer: { paddingHorizontal: theme.spacing.xxl, paddingTop: 20 },
+    detailsContainer: { paddingHorizontal: theme.spacing.xxl, paddingTop: 10 },
     dateDisplay: { fontSize: 20, fontWeight: '800', color: theme.colors.textPrimary, marginBottom: 20 },
     summaryCard: { backgroundColor: theme.colors.card, padding: 20, borderRadius: theme.borderRadius.xxl, marginBottom: 25, borderWidth: 1, borderColor: theme.colors.border, ...theme.shadows.soft },
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -222,5 +327,130 @@ const styles = StyleSheet.create({
     logTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.textPrimary },
     logSubtitle: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 },
     emptyActivity: { padding: 24, backgroundColor: theme.colors.card, borderRadius: theme.borderRadius.xxl, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', gap: 10 },
-    emptyText: { fontSize: 13, color: theme.colors.textSecondary, fontWeight: '600' }
+    emptyText: { fontSize: 13, color: theme.colors.textSecondary, fontWeight: '600' },
+
+    // Premium Collapsible AI Coach Card styles
+    aiCoachCard: {
+        backgroundColor: theme.colors.card,
+        marginHorizontal: theme.spacing.xxl,
+        padding: 20,
+        borderRadius: theme.borderRadius.xxl,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 45, 85, 0.12)',
+        ...theme.shadows.premium,
+        marginBottom: 20,
+    },
+    aiCoachHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    sparkleBg: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: theme.colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
+    },
+    aiCoachTitle: {
+        fontSize: 10,
+        fontWeight: '900',
+        color: theme.colors.primary,
+        letterSpacing: 1.5,
+    },
+    badgeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    scoreBadge: {
+        fontSize: 10,
+        fontWeight: '800',
+        backgroundColor: theme.colors.accentPinkLight,
+        color: theme.colors.primary,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+        marginRight: 8,
+        overflow: 'hidden',
+    },
+    aiCoachSummary: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: theme.colors.textPrimary,
+        lineHeight: 22,
+    },
+    tapPrompt: {
+        marginTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+        paddingTop: 10,
+        alignItems: 'center',
+    },
+    tapPromptText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: theme.colors.primary,
+        letterSpacing: 0.5,
+    },
+    expandedAiContent: {
+        marginTop: 14,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+        paddingTop: 14,
+        gap: 12,
+    },
+    insightSegment: {
+        backgroundColor: theme.colors.background,
+        borderRadius: theme.borderRadius.lg,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    segmentHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    segmentTitle: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: theme.colors.textPrimary,
+    },
+    segmentText: {
+        fontSize: 12,
+        color: theme.colors.textSecondary,
+        lineHeight: 18,
+        fontWeight: '500',
+    },
+    milestonesBlock: {
+        marginTop: 8,
+    },
+    actionsHeading: {
+        fontSize: 9,
+        fontWeight: '800',
+        color: theme.colors.textSecondary,
+        letterSpacing: 1.5,
+        marginBottom: 8,
+    },
+    milestoneGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    milestonePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.colors.accentPinkLight,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    milestoneText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: theme.colors.primary,
+    },
 });

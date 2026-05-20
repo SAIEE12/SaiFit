@@ -110,14 +110,17 @@ export default function MealsScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.8,
+      quality: 0.2, // Highly compressed for rapid AI scanning
     });
     if (!result.canceled) analyzeImage(result.assets[0].uri, 'upload');
   };
 
   const handleTakePicture = async () => {
     if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+      const photo = await cameraRef.current.takePictureAsync({ 
+        quality: 0.2, // Compressed camera resolution
+        skipProcessing: false
+      });
       setShowCamera(false);
       analyzeImage(photo.uri, 'scan');
     }

@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import apiClient, { setAuthToken } from '../api/client';
 import { theme } from '../theme';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function ProfileScreen({ navigation, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
   const [userData, setUserData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  // AI Progression Coach State
+  const [profileCoach, setProfileCoach] = useState(null);
+  const [loadingCoach, setLoadingCoach] = useState(false);
+  const [coachExpanded, setCoachExpanded] = useState(false);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -26,6 +35,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
 
   useEffect(() => {
       fetchProfile();
+      fetchProfileCoach();
   }, []);
 
   const fetchProfile = async () => {
@@ -50,6 +60,23 @@ export default function ProfileScreen({ navigation, onLogout }) {
       }
   };
 
+  const fetchProfileCoach = async () => {
+      try {
+          setLoadingCoach(true);
+          const res = await apiClient.get('/recommendations/profile-coach');
+          setProfileCoach(res.data);
+      } catch (e) {
+          console.error("Failed to load profile coach recommendations", e);
+      } finally {
+          setLoadingCoach(false);
+      }
+  };
+
+  const toggleCoach = () => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setCoachExpanded(!coachExpanded);
+  };
+
   const handleSave = async () => {
       try {
           setLoading(true);
@@ -66,7 +93,9 @@ export default function ProfileScreen({ navigation, onLogout }) {
           const res = await apiClient.put('/profile', payload);
           setProfileData(res.data);
           setIsEditing(false);
-          Alert.alert("Success", "Profile updated successfully!");
+          Alert.alert("Success", "Profile updated successfully!", [
+              { text: "OK", onPress: () => fetchProfileCoach() }
+          ]);
       } catch(e) {
           Alert.alert("Error", "Could not save profile.");
       } finally {
@@ -124,6 +153,63 @@ export default function ProfileScreen({ navigation, onLogout }) {
             <Text style={styles.statLabel}>Age</Text>
           </View>
         </View>
+
+        {/* AI Progression Intelligence */}
+        {profileCoach && (
+            <TouchableOpacity activeOpacity={0.9} style={styles.aiCoachCard} onPress={toggleCoach}>
+                <View style={styles.aiCoachHeader}>
+                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                        <View style={styles.sparkleBg}>
+                            <Ionicons name="sparkles" size={14} color="#FFF" />
+                        </View>
+                        <Text style={styles.aiCoachTitle}>AI PROGRESSION INTELLIGENCE</Text>
+                    </View>
+                    <View style={styles.badgeRow}>
+                        <View style={styles.scorePill}>
+                            <Text style={styles.scorePillText}>FITNESS SCORE: {profileCoach.fitness_score}/100</Text>
+                        </View>
+                        <Feather name={coachExpanded ? "chevron-up" : "chevron-down"} size={16} color={theme.colors.textSecondary} />
+                    </View>
+                </View>
+
+                <Text style={styles.aiCoachSummary}>{profileCoach.summary}</Text>
+
+                {coachExpanded ? (
+                    <View style={styles.expandedAiContent}>
+                        <View style={styles.progressRow}>
+                            <View style={styles.progressStat}>
+                                <Text style={styles.progressLabel}>STRENGTHS</Text>
+                                <Text style={styles.progressText}>{profileCoach.strengths}</Text>
+                            </View>
+                            <View style={styles.progressStat}>
+                                <Text style={styles.progressLabel}>AREAS TO IMPROVE</Text>
+                                <Text style={styles.progressText}>{profileCoach.weaknesses}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.predictionBox}>
+                            <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 6}}>
+                                <Feather name="calendar" size={14} color={theme.colors.primary} style={{marginRight: 6}} />
+                                <Text style={styles.predictionLabel}>TARGET WEIGHT TIMELINE</Text>
+                            </View>
+                            <Text style={styles.predictionText}>{profileCoach.target_weight_timeline}</Text>
+                        </View>
+
+                        <View style={styles.predictionBox}>
+                            <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 6}}>
+                                <Feather name="trending-up" size={14} color={theme.colors.green} style={{marginRight: 6}} />
+                                <Text style={styles.predictionLabel}>ADAPTIVE GOAL SUGGESTIONS</Text>
+                            </View>
+                            <Text style={styles.predictionText}>{profileCoach.adaptive_goal_suggestions}</Text>
+                        </View>
+                    </View>
+                ) : (
+                    <View style={styles.tapPrompt}>
+                        <Text style={styles.tapPromptText}>Tap to reveal comprehensive body & goal metrics</Text>
+                    </View>
+                )}
+            </TouchableOpacity>
+        )}
 
         {/* Fitness Goal Banner */}
         <TouchableOpacity style={styles.goalBanner} onPress={() => setIsEditing(true)}>
@@ -391,5 +477,124 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary, padding: 16, borderRadius: theme.borderRadius.lg, alignItems: 'center', marginTop: 30,
     shadowColor: theme.colors.primary, shadowOpacity: 0.2, shadowRadius: 10, elevation: 4
   },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' }
+  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+
+  // Premium AI Progression Coach styling
+  aiCoachCard: {
+      backgroundColor: theme.colors.card,
+      marginHorizontal: theme.spacing.xxl,
+      padding: 20,
+      borderRadius: theme.borderRadius.xxl,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 45, 85, 0.15)',
+      ...theme.shadows.premium,
+      marginBottom: 28,
+  },
+  aiCoachHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+  },
+  sparkleBg: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: theme.colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 8,
+  },
+  aiCoachTitle: {
+      fontSize: 10,
+      fontWeight: '900',
+      color: theme.colors.primary,
+      letterSpacing: 1.5,
+  },
+  badgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+  },
+  scorePill: {
+      backgroundColor: theme.colors.accentPinkLight,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      marginRight: 8,
+  },
+  scorePillText: {
+      fontSize: 9,
+      fontWeight: '900',
+      color: theme.colors.primary,
+  },
+  aiCoachSummary: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+      lineHeight: 22,
+  },
+  tapPrompt: {
+      marginTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: 10,
+      alignItems: 'center',
+  },
+  tapPromptText: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: theme.colors.primary,
+      letterSpacing: 0.5,
+  },
+  expandedAiContent: {
+      marginTop: 14,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: 14,
+      gap: 12,
+  },
+  progressRow: {
+      flexDirection: 'row',
+      gap: 12,
+  },
+  progressStat: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.borderRadius.lg,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+  },
+  progressLabel: {
+      fontSize: 9,
+      fontWeight: '900',
+      color: theme.colors.textSecondary,
+      letterSpacing: 1,
+      marginBottom: 4,
+  },
+  progressText: {
+      fontSize: 12,
+      color: theme.colors.textPrimary,
+      fontWeight: '700',
+      lineHeight: 16,
+  },
+  predictionBox: {
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.borderRadius.lg,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+  },
+  predictionLabel: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.colors.textPrimary,
+      letterSpacing: 1,
+  },
+  predictionText: {
+      fontSize: 12,
+      color: theme.colors.textSecondary,
+      lineHeight: 18,
+      fontWeight: '600',
+  },
 });

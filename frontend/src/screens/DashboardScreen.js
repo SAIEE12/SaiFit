@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 import CalendarStrip from '../components/CalendarStrip';
 import { theme } from '../theme';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -14,13 +18,15 @@ const getLocalDateString = (date = new Date()) => {
 };
 
 export default function DashboardScreen({ navigation }) {
-  const [recommendation, setRecommendation] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   const [nutritionSummary, setNutritionSummary] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [hydration, setHydration] = useState(0);
   const [dailyWorkouts, setDailyWorkouts] = useState([]);
   const [dailyMeals, setDailyMeals] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [insightExpanded, setInsightExpanded] = useState(false);
+  const [completedActions, setCompletedActions] = useState({});
 
   useEffect(() => {
     fetchDashboardData();
@@ -30,13 +36,13 @@ export default function DashboardScreen({ navigation }) {
     try {
       setLoading(true);
       const [recRes, mealsRes, workoutsRes, hydrationRes] = await Promise.all([
-        apiClient.get('/recommendations'),
+        apiClient.get('/recommendations/insight'),
         apiClient.get(`/nutrition/meals?date=${selectedDate}`),
         apiClient.get(`/workouts?date=${selectedDate}`),
         apiClient.get(`/hydration?date=${selectedDate}`)
       ]);
       
-      setRecommendation(recRes.data);
+      setInsight(recRes.data);
       setDailyWorkouts(workoutsRes.data);
       setDailyMeals(mealsRes.data);
       setHydration(hydrationRes.data.amount_ml || 0);
@@ -44,10 +50,10 @@ export default function DashboardScreen({ navigation }) {
       // Calculate totals
       let totals = { calories: 0, protein: 0, carbs: 0, fats: 0 };
       mealsRes.data.forEach(meal => {
-        totals.calories += meal.total_calories;
-        totals.protein += meal.total_protein;
-        totals.carbs += meal.total_carbs;
-        totals.fats += meal.total_fats;
+        totals.calories += meal.total_calories || 0;
+        totals.protein += meal.total_protein || 0;
+        totals.carbs += meal.total_carbs || 0;
+        totals.fats += meal.total_fats || 0;
       });
       setNutritionSummary(totals);
       
@@ -67,6 +73,18 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
+  const toggleInsight = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setInsightExpanded(!insightExpanded);
+  };
+
+  const toggleAction = (idx) => {
+    setCompletedActions(prev => ({
+      ...prev,
+      [idx]: !prev[idx]
+    }));
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
@@ -82,6 +100,57 @@ export default function DashboardScreen({ navigation }) {
           <ActivityIndicator size="large" color={theme.colors.primary} style={{marginTop: 50}} />
         ) : (
           <>
+            {/* Context-Aware AI Personal Trainer Panel */}
+            {insight && (
+              <TouchableOpacity activeOpacity={0.9} style={styles.aiCoachCard} onPress={toggleInsight}>
+                <View style={styles.aiCoachHeader}>
+                  <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                    <View style={styles.sparkleBg}>
+                      <Ionicons name="sparkles" size={14} color="#FFF" />
+                    </View>
+                    <Text style={styles.aiCoachTitle}>AI PERSONAL TRAINER</Text>
+                  </View>
+                  <Feather name={insightExpanded ? "chevron-up" : "chevron-down"} size={18} color={theme.colors.textSecondary} />
+                </View>
+
+                <Text style={styles.aiCoachSummary}>{insight.summary}</Text>
+
+                {insightExpanded ? (
+                  <View style={styles.expandedAiContent}>
+                    <Text style={styles.aiCoachAnalysis}>{insight.analysis}</Text>
+                    
+                    {insight.motivational_quote && (
+                      <View style={styles.quoteBlock}>
+                        <Feather name="info" size={16} color={theme.colors.primary} style={{marginRight: 8, marginTop: 2}} />
+                        <Text style={styles.quoteText}>"{insight.motivational_quote}"</Text>
+                      </View>
+                    )}
+
+                    {insight.next_actions && insight.next_actions.length > 0 && (
+                      <View style={styles.actionsBlock}>
+                        <Text style={styles.actionsHeading}>TRAINER SUGGESTED ACTIONS</Text>
+                        {insight.next_actions.map((act, idx) => {
+                          const isDone = !!completedActions[idx];
+                          return (
+                            <TouchableOpacity key={idx} style={styles.actionRowItem} onPress={() => toggleAction(idx)}>
+                              <View style={[styles.checkBoxCircle, isDone && styles.checkBoxCircleDone]}>
+                                {isDone && <Feather name="check" size={10} color="#FFF" />}
+                              </View>
+                              <Text style={[styles.actionRowText, isDone && styles.actionRowTextDone]}>{act}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.tapPrompt}>
+                    <Text style={styles.tapPromptText}>Tap to reveal full trainer analysis & goals</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+
             {/* Unified Stats Card */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -171,21 +240,6 @@ export default function DashboardScreen({ navigation }) {
                     ))}
                 </View>
             )}
-
-            {/* AI Recommendation */}
-            {recommendation && (
-              <View style={[styles.card, {backgroundColor: theme.colors.darkBase, borderColor: theme.colors.primary}]}>
-                <View style={styles.cardHeader}>
-                  <Text style={[styles.cardTitle, {color: '#FFF'}]}>AI Coach Insights</Text>
-                  <Ionicons name="sparkles" size={16} color={theme.colors.primary} />
-                </View>
-                <Text style={[styles.recTitle, {color: '#FFF'}]}>{recommendation.workout_plan}</Text>
-                <View style={styles.tipBox}>
-                    <Text style={styles.tipText}>{recommendation.recovery_advice}</Text>
-                </View>
-              </View>
-            )}
-
           </>
         )}
         
@@ -380,22 +434,130 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: theme.colors.textPrimary,
   },
-  recTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFF',
-    marginBottom: 10,
-  },
-  tipBox: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    padding: 12,
-    borderRadius: 12,
+
+  // Premium Context-Aware AI Coach Card styles
+  aiCoachCard: {
+    backgroundColor: theme.colors.card,
+    marginHorizontal: theme.spacing.xxl,
+    padding: 20,
+    borderRadius: theme.borderRadius.xxl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.15)',
+    ...theme.shadows.premium,
+    marginBottom: 16,
     marginTop: 5,
   },
-  tipText: {
+  aiCoachHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sparkleBg: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  aiCoachTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: theme.colors.primary,
+    letterSpacing: 1.5,
+  },
+  aiCoachSummary: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    lineHeight: 22,
+  },
+  tapPrompt: {
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: 10,
+    alignItems: 'center',
+  },
+  tapPromptText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: theme.colors.primary,
+    letterSpacing: 0.5,
+  },
+  expandedAiContent: {
+    marginTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: 14,
+  },
+  aiCoachAnalysis: {
+    fontSize: 13,
+    color: '#444',
+    lineHeight: 20,
+    fontWeight: '500',
+    marginBottom: 14,
+  },
+  quoteBlock: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.accentPinkLight,
+    padding: 14,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.1)',
+    marginBottom: 16,
+  },
+  quoteText: {
+    flex: 1,
     fontSize: 12,
-    color: '#EEE',
-    lineHeight: 18,
+    color: theme.colors.primary,
+    fontWeight: '700',
     fontStyle: 'italic',
-  }
+    lineHeight: 18,
+  },
+  actionsBlock: {
+    marginTop: 5,
+  },
+  actionsHeading: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: theme.colors.textSecondary,
+    letterSpacing: 1.5,
+    marginBottom: 10,
+  },
+  actionRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    padding: 12,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  checkBoxCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: theme.colors.textSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  checkBoxCircleDone: {
+    backgroundColor: theme.colors.green,
+    borderColor: theme.colors.green,
+  },
+  actionRowText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  },
+  actionRowTextDone: {
+    color: theme.colors.textSecondary,
+    textDecorationLine: 'line-through',
+  },
 });

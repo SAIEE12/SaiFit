@@ -216,20 +216,55 @@ exports.smartSearch = async (req, res) => {
         return res.status(403).json({ error: 'Smart search is currently disabled in system settings.' });
     }
 
+    const userId = req.user.id;
+    const targetDate = new Date().toISOString().split('T')[0];
+
+    // Fetch today's logged meals
+    const mealsRes = await db.query('SELECT * FROM meals WHERE user_id = ? AND date = ?', [userId, targetDate]);
+    let totalCals = 0, totalProt = 0, totalCarb = 0, totalFat = 0;
+    mealsRes.rows.forEach(meal => {
+        totalCals += meal.total_calories || 0;
+        totalProt += meal.total_protein || 0;
+        totalCarb += meal.total_carbs || 0;
+        totalFat += meal.total_fats || 0;
+    });
+
+    // Fetch goals
+    const goalsRes = await db.query('SELECT * FROM user_goals WHERE user_id = ?', [userId]);
+    const profileRes = await db.query('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
+    
+    const goal = goalsRes.rows[0] || { target_calories: 2000, target_protein: 150, target_carbs: 200, target_fats: 65 };
+    const profile = profileRes.rows[0] || { fitness_goal: 'general fitness', activity_level: 'Intermediate' };
+
+    const remainingCals = Math.max(0, (goal.target_calories || 2000) - totalCals);
+    const remainingProt = Math.max(0, (goal.target_protein || 150) - totalProt);
+    const remainingCarb = Math.max(0, (goal.target_carbs || 200) - totalCarb);
+    const remainingFat = Math.max(0, (goal.target_fats || 65) - totalFat);
+
     const ai = await getAIInstance();
     const modelName = await getModelName();
     const model = ai.getGenerativeModel({ model: modelName });
 
-    const finalPrompt = `Act as an expert AI nutrition coach. The user is asking a conceptual query: "${query}".
-    Please recommend a precise food, meal, or recipe that perfectly matches their query and intent.
+    const finalPrompt = `Act as an elite AI nutrition coach and personal trainer. The user is asking a conceptual query: "${query}".
+    Today's Date: ${targetDate}.
+    Current User Nutrition Status Today:
+    - Logged so far: ${totalCals} kcal (P: ${totalProt}g, C: ${totalCarb}g, F: ${totalFat}g)
+    - Target goals: ${goal.target_calories || 2000} kcal (P: ${goal.target_protein || 150}g, C: ${goal.target_carbs || 200}g, F: ${goal.target_fats || 65}g)
+    - Remaining today: ${remainingCals} kcal (P: ${remainingProt}g, C: ${remainingCarb}g, F: ${remainingFat}g)
+    
+    User Profile Context:
+    - Goal: ${profile.fitness_goal}
+    - Level: ${profile.activity_level}
+    
+    Please recommend a precise recipe, food, or nearby meal recommendation that perfectly matches their query, matches their current time and location preferences, and dynamically balances their remaining targets today.
     Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
     {
-      "food_name": "Name of recommended food/meal",
+      "food_name": "Name of recommended food/meal/recipe",
       "calories": 0,
       "protein": 0,
       "carbs": 0,
       "fats": 0,
-      "advice": "A brief explanation of why this matches their query (under 15 words)"
+      "advice": "Context-aware explanation of why this fits their exact query and nutritional balance (under 25 words)"
     }`;
 
     let result;

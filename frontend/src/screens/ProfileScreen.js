@@ -275,13 +275,18 @@ export default function ProfileScreen({ navigation, onLogout }) {
               <Text style={styles.menuItemText}>Role: {userData?.role.toUpperCase()}</Text>
             </View>
           </View>
-        </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
-          <Feather name="log-out" size={18} color="#FFF" style={{ marginRight: 10 }} />
-          <Text style={styles.logoutText}>Log Out</Text>
-        </TouchableOpacity>
+          {/* Premium Integrated Logout Card */}
+          <TouchableOpacity style={[styles.menuItem, styles.logoutCard]} onPress={handleLogout} activeOpacity={0.85}>
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIconWrap, {backgroundColor: 'rgba(255, 59, 48, 0.08)'}]}>
+                <Feather name="log-out" size={16} color="#FF3B30" />
+              </View>
+              <Text style={styles.logoutCardText}>Log Out</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color="#FF3B30" />
+          </TouchableOpacity>
+        </View>
         
         <View style={{height: 60}} />
       </ScrollView>
@@ -452,22 +457,17 @@ const styles = StyleSheet.create({
   menuItemLeft: { flexDirection: 'row', alignItems: 'center' },
   menuIconWrap: { width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   menuItemText: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
-  logoutBtn: { 
-    marginHorizontal: theme.spacing.xxl, 
-    backgroundColor: '#FF3B30', // Redesign: premium vibrant danger red
-    paddingVertical: 16, 
-    borderRadius: theme.borderRadius.xxl, 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    flexDirection: 'row',
+  logoutCard: {
+    borderColor: 'rgba(255, 59, 48, 0.18)',
     shadowColor: '#FF3B30',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-    marginTop: 8,
+    shadowOpacity: 0.04,
   },
-  logoutText: { color: '#FFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
+  logoutCardText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FF3B30',
+    letterSpacing: -0.2,
+  },
   
   // Modal Edit Styles
   modalContainer: { flex: 1, backgroundColor: theme.colors.card },

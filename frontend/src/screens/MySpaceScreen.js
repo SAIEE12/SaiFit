@@ -391,13 +391,52 @@ export default function MySpaceScreen({ navigation }) {
                   onPress={() => setInsightExpanded(false)}
                 >
                   <View style={styles.insightHeader}>
-                    <View style={styles.insightIconWrap}>
-                      <Ionicons name="sparkles" size={16} color="#FFF" />
+                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                      <View style={styles.insightIconWrap}>
+                        <Ionicons name="sparkles" size={14} color="#FFF" />
+                      </View>
+                      <Text style={styles.insightTitle}>COACH'S DAILY INSIGHT</Text>
                     </View>
-                    <Text style={styles.insightTitle}>COACH'S DAILY INSIGHT</Text>
-                    <Feather name="chevron-up" size={16} color="#FFF" style={{ marginLeft: 'auto' }} />
+                    <Feather name="chevron-up" size={18} color="#8E8E93" style={{ marginLeft: 'auto' }} />
                   </View>
-                  <Text style={styles.insightText}>{recommendation.recovery_advice}</Text>
+
+                  {/* Dedicated Highlighted Score Bar */}
+                  <View style={styles.scoreHighlightBar}>
+                    <Text style={styles.scoreHighlightLabel}>RECOVERY STATUS</Text>
+                    <View style={styles.scoreHighlightBadge}>
+                      <Text style={styles.scoreHighlightValue}>Optimal Recovery</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.expandedAiContent}>
+                    <View style={styles.simpleSummaryBlock}>
+                      <Text style={styles.simpleSummaryText}>{recommendation.recovery_advice}</Text>
+                    </View>
+
+                    {recommendation.workout_plan && (
+                      <View style={styles.insightSegment}>
+                        <View style={styles.segmentHeader}>
+                          <Feather name="trending-up" size={14} color="#FF2D55" style={{ marginRight: 6 }} />
+                          <Text style={styles.segmentTitle}>Workout Focus</Text>
+                        </View>
+                        <Text style={styles.segmentText}>{recommendation.workout_plan}</Text>
+                      </View>
+                    )}
+
+                    {recommendation.exercises && recommendation.exercises.length > 0 && (
+                      <View style={styles.milestonesBlock}>
+                        <Text style={styles.actionsHeading}>RECOMMENDED EXERCISES</Text>
+                        <View style={styles.milestoneGrid}>
+                          {recommendation.exercises.map((ex, idx) => (
+                            <View key={idx} style={styles.milestonePill}>
+                              <Ionicons name="fitness-outline" size={12} color="#FF2D55" style={{ marginRight: 6 }} />
+                              <Text style={styles.milestoneText}>{ex}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity 
@@ -1270,5 +1309,106 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FF2D55',
     letterSpacing: 0.2,
+  },
+  scoreHighlightBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.08)',
+  },
+  scoreHighlightLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FF2D55',
+    letterSpacing: 1,
+  },
+  scoreHighlightBadge: {
+    backgroundColor: '#FF2D55',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  scoreHighlightValue: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  expandedAiContent: {
+    marginTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F2F3F5',
+    paddingTop: 14,
+    gap: 12,
+  },
+  simpleSummaryBlock: {
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.1)',
+    marginBottom: 4,
+  },
+  simpleSummaryText: {
+    fontSize: 13,
+    color: '#FF2D55',
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  insightSegment: {
+    backgroundColor: '#FAFBFC',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+  },
+  segmentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  segmentTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1C1C1E',
+  },
+  segmentText: {
+    fontSize: 12,
+    color: '#8E8E93',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  milestonesBlock: {
+    marginTop: 8,
+  },
+  actionsHeading: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8E8E93',
+    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  milestoneGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  milestonePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 45, 85, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  milestoneText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FF2D55',
   },
 });

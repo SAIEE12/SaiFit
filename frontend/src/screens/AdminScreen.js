@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Platform, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Platform, Switch, LayoutAnimation, UIManager } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 import CustomDialog from '../components/CustomDialog';
 import { theme } from '../theme';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const defaultMealPrompt = `Analyze the food. Estimate its nutritional value. Return a JSON object exactly like this (no markdown block, pure JSON):
 {
@@ -29,6 +33,30 @@ Format the response as a valid JSON object with the following structure (no mark
   "recovery_advice": "String with recovery advice"
 }`;
 
+const DEFAULT_PROMPTS = {
+    PROMPT_GLOBAL_INSIGHT: 'Act as an elite AI Personal Health Companion. Analyze today and yesterday health data: {{DATA}}. Highlight improvements, hydration, macros, and workout splits in 2 sentences.',
+    PROMPT_WORKOUT_SUGGESTION: defaultWorkoutPrompt,
+    PROMPT_MEAL_ANALYSIS: defaultMealPrompt,
+    PROMPT_SMART_SEARCH: 'Act as an expert AI Nutrition Chef. Suggest premium, high-density recipes or ingredient alternatives based on user search: {{QUERY}}. Return a friendly markdown response.',
+    PROMPT_CALENDAR_COACH: 'Act as an elite AI Fitness Journey Analyst from Apple and Google Fit. Analyze the user last 14 days logs: {{LOGS}}. Streak: {{STREAK}} days. Provide workout splits consistency score, overtraining alerts, and milestones. Format as JSON with keys summary, expanded_narrative, consistency_score, streak_analysis, workout_predictions, best_time_suggestion, overtraining_alerts, milestones.',
+    PROMPT_PROFILE_COACH: 'Act as an expert AI Progress & Body Metrics Analyst. Analyze user profile weights, height, target weights, gender, age: {{PROFILE}}. Provide adaptive progress timelines, body predictions, adaptive suggestions, and a dynamic fitness score.',
+    PROMPT_SMART_NOTIFICATIONS: 'Act as an elite, ultra-encouraging notification copywriter from Apple/Nike. Write a personalized push notification copy based on user status: {{STATUS}} suggesting actions.',
+    PROMPT_HYDRATION_COACH: 'Act as an expert AI Hydration Specialist. Design a simple personalized water drinking schedule based on user total logged exercises and activities: {{HYDRATION_DATA}}. Provide a simple hourly timeline.',
+    PROMPT_SLEEP_ADVISOR: 'Act as an expert AI Sleep & Muscle Recovery Advisor. Analyze user daily active logs and suggest sleep targets, recovery suggestions, and fatigue checks: {{RECOVERY_DATA}}.'
+};
+
+const PROMPT_LABELS = {
+    PROMPT_GLOBAL_INSIGHT: 'Dashboard Insights',
+    PROMPT_WORKOUT_SUGGESTION: 'Workout Trainer',
+    PROMPT_MEAL_ANALYSIS: 'Meal Nutrition Scanner',
+    PROMPT_SMART_SEARCH: 'Conceptual Smart Search',
+    PROMPT_CALENDAR_COACH: 'Calendar Analyst',
+    PROMPT_PROFILE_COACH: 'Profile Progress Predictor',
+    PROMPT_SMART_NOTIFICATIONS: 'Smart Notifications Copy',
+    PROMPT_HYDRATION_COACH: 'Hydration Scheduler',
+    PROMPT_SLEEP_ADVISOR: 'Sleep & Muscle Recovery'
+};
+
 export default function AdminScreen({ navigation }) {
     const [users, setUsers] = useState([]);
     const [invites, setInvites] = useState([]);
@@ -36,13 +64,39 @@ export default function AdminScreen({ navigation }) {
         GEMINI_API_KEY: '', 
         GEMINI_MODEL_NAME: 'gemini-3-pro',
         ENABLE_AI_FEATURES: 'true',
+        ENABLE_GLOBAL_INSIGHT: 'true',
+        ENABLE_MEAL_SCAN: 'true',
+        ENABLE_WORKOUT_COACH: 'true',
         ENABLE_SMART_SEARCH: 'false',
+        ENABLE_CALENDAR_COACH: 'true',
+        ENABLE_PROFILE_COACH: 'true',
+        ENABLE_SMART_NOTIFICATIONS: 'true',
+        ENABLE_HYDRATION_COACH: 'true',
+        ENABLE_SLEEP_ADVISOR: 'true',
         AI_PROVIDER: 'Google Gemini',
+        PROMPT_GLOBAL_INSIGHT: '',
+        PROMPT_WORKOUT_SUGGESTION: '',
         PROMPT_MEAL_ANALYSIS: '',
-        PROMPT_WORKOUT_SUGGESTION: ''
+        PROMPT_SMART_SEARCH: '',
+        PROMPT_CALENDAR_COACH: '',
+        PROMPT_PROFILE_COACH: '',
+        PROMPT_SMART_NOTIFICATIONS: '',
+        PROMPT_HYDRATION_COACH: '',
+        PROMPT_SLEEP_ADVISOR: ''
     });
     const [loading, setLoading] = useState(false);
     const [newCodeLimit, setNewCodeLimit] = useState('10');
+    
+    // Accordion Expansion State
+    const [expandedSections, setExpandedSections] = useState({
+        aiCore: true,
+        prompts: false,
+        tokens: false,
+        users: false
+    });
+
+    // Currently Selected Prompt Tab inside Prompt Tuner Section
+    const [selectedPromptKey, setSelectedPromptKey] = useState('PROMPT_GLOBAL_INSIGHT');
 
     // Dialog state
     const [dialog, setDialog] = useState({
@@ -78,6 +132,11 @@ export default function AdminScreen({ navigation }) {
     useEffect(() => {
         fetchData();
     }, []);
+
+    const toggleSection = (section) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    };
 
     const fetchData = async () => {
         try {
@@ -122,17 +181,17 @@ export default function AdminScreen({ navigation }) {
     };
 
     const handleResetPrompt = async (key) => {
-        const defaultValue = key === 'PROMPT_MEAL_ANALYSIS' ? defaultMealPrompt : defaultWorkoutPrompt;
+        const defaultValue = DEFAULT_PROMPTS[key];
         showDialog(
             "Reset System Prompt",
-            "Are you sure you want to reset this prompt instruction to system default values?",
+            `Are you sure you want to reset the prompt for "${PROMPT_LABELS[key]}" to default system template?`,
             "warning",
             async () => {
                 try {
                     setLoading(true);
                     await apiClient.post('/admin/settings', { key, value: defaultValue });
                     setSettings(prev => ({ ...prev, [key]: defaultValue }));
-                    showDialog("Reset Completed! ✨", "Successfully reverted system instruction prompt to system default values.", "success");
+                    showDialog("Reset Completed! ✨", "Successfully reverted system instruction prompt to template values.", "success");
                 } catch (err) {
                     showDialog("Error", "Could not reset prompt settings.", "error");
                 } finally {
@@ -211,241 +270,413 @@ export default function AdminScreen({ navigation }) {
                     <Feather name="chevron-left" size={20} color={theme.colors.primary} />
                     <Text style={styles.backBtnText}>Back to Profile</Text>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>System Governance</Text>
-                <Text style={styles.headerSubtitle}>Configure prompts, tokens, and active invite codes</Text>
+                <Text style={styles.headerTitle}>Governance Portal</Text>
+                <Text style={styles.headerSubtitle}>Configure AI cores, system settings, and security keys</Text>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-                {/* AI Configuration Section */}
-                <View style={styles.configSection}>
-                    <View style={styles.sectionTitleRow}>
-                        <Ionicons name="sparkles" size={18} color={theme.colors.primary} />
-                        <View style={{marginLeft: 10}}>
-                            <Text style={styles.sectionMainTitle}>AI Configuration</Text>
-                            <Text style={styles.sectionSubTitle}>Configure system providers, model naming, and secure tokens.</Text>
-                        </View>
-                    </View>
-                    
-                    <View style={styles.statusBadge}>
-                        <View style={styles.statusDot} />
-                        <Text style={styles.statusText}>AI Core Active & Synchronized</Text>
-                    </View>
-
-                    {/* Toggles */}
-                    <View style={styles.card}>
-                        <View style={styles.toggleRow}>
-                            <View style={{flex: 1, paddingRight: 10}}>
-                                <Text style={styles.toggleLabel}>Enable AI Features</Text>
-                                <Text style={styles.toggleDesc}>Toggle all AI functionalities across the platform.</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollStyle}>
+                
+                {/* ⚙️ ACCORDION SECTION 1: AI Engine & Master Feature Suites */}
+                <TouchableOpacity style={styles.accordionHeaderCard} activeOpacity={0.8} onPress={() => toggleSection('aiCore')}>
+                    <View style={styles.accordionHeaderRow}>
+                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                            <View style={[styles.accordionIconBg, {backgroundColor: theme.colors.accentPinkLight}]}>
+                                <Ionicons name="sparkles" size={16} color={theme.colors.primary} />
                             </View>
-                            <Switch 
-                                value={settings.ENABLE_AI_FEATURES === 'true'}
-                                onValueChange={(val) => updateSetting('ENABLE_AI_FEATURES', val)}
-                                trackColor={{ false: "#D1D1D6", true: theme.colors.primary }}
-                            />
-                        </View>
-                        <View style={[styles.toggleRow, {borderTopWidth: 1, borderTopColor: theme.colors.border, marginTop: 15, paddingTop: 15}]}>
-                            <View style={{flex: 1, paddingRight: 10}}>
-                                <Text style={styles.toggleLabel}>Enable Smart Search</Text>
-                                <Text style={styles.toggleDesc}>Expose conceptual AI search capabilities to users on their nutrition dashboard.</Text>
+                            <View style={{marginLeft: 12}}>
+                                <Text style={styles.accordionTitle}>AI Engine & Suite Controls</Text>
+                                <Text style={styles.accordionSubtitle}>Model select, provider key, and master features</Text>
                             </View>
-                            <Switch 
-                                value={settings.ENABLE_SMART_SEARCH === 'true'}
-                                onValueChange={(val) => updateSetting('ENABLE_SMART_SEARCH', val)}
-                                trackColor={{ false: "#D1D1D6", true: theme.colors.primary }}
-                            />
+                        </View>
+                        <Feather name={expandedSections.aiCore ? "chevron-up" : "chevron-down"} size={18} color={theme.colors.textSecondary} />
+                    </View>
+                </TouchableOpacity>
+
+                {expandedSections.aiCore && (
+                    <View style={styles.accordionContent}>
+                        {/* Global Feature Access Switch Card */}
+                        <View style={styles.globalCard}>
+                            <View style={styles.toggleRow}>
+                                <View style={{flex: 1, paddingRight: 10}}>
+                                    <Text style={styles.globalToggleLabel}>Master AI Integration</Text>
+                                    <Text style={styles.toggleDesc}>Shut down or activate all artificial intelligence cores application-wide.</Text>
+                                </View>
+                                <Switch 
+                                    value={settings.ENABLE_AI_FEATURES === 'true'}
+                                    onValueChange={(val) => updateSetting('ENABLE_AI_FEATURES', val)}
+                                    trackColor={{ false: "#D1D1D6", true: theme.colors.primary }}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Model Configuration Params */}
+                        <View style={styles.formRow}>
+                            <View style={{flex: 1}}>
+                                <Text style={styles.fieldLabel}>Core AI Provider</Text>
+                                <View style={styles.pickerWrap}>
+                                    <Picker
+                                        selectedValue={settings.AI_PROVIDER}
+                                        onValueChange={(val) => updateSetting('AI_PROVIDER', val)}
+                                        style={styles.picker}
+                                    >
+                                        <Picker.Item label="Google Gemini" value="Google Gemini" />
+                                        <Picker.Item label="OpenAI (Soon)" value="OpenAI" enabled={false} />
+                                    </Picker>
+                                </View>
+                            </View>
+                            <View style={{flex: 1}}>
+                                <Text style={styles.fieldLabel}>Active Model</Text>
+                                <View style={styles.pickerWrap}>
+                                    <Picker
+                                        selectedValue={settings.GEMINI_MODEL_NAME}
+                                        onValueChange={(val) => updateSetting('GEMINI_MODEL_NAME', val)}
+                                        style={styles.picker}
+                                    >
+                                        <Picker.Item label="Gemini 3 Pro" value="gemini-3-pro" />
+                                        <Picker.Item label="Gemini 2.5 Flash-Lite" value="gemini-2.5-flash-lite" />
+                                        <Picker.Item label="Gemini 2.0 Flash" value="gemini-2.0-flash" />
+                                        <Picker.Item label="Gemini 1.5 Pro" value="gemini-1.5-pro" />
+                                    </Picker>
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={{marginTop: 14}}>
+                            <Text style={styles.fieldLabel}>Secure Key Token (Gemini Credentials)</Text>
+                            <View style={styles.inputContainer}>
+                                <Feather name="key" size={15} color={theme.colors.textTertiary} style={{marginRight: 8}} />
+                                <TextInput 
+                                    style={styles.apiKeyInput}
+                                    value={settings.GEMINI_API_KEY}
+                                    onChangeText={(v) => setSettings({...settings, GEMINI_API_KEY: v})}
+                                    onBlur={() => updateSetting('GEMINI_API_KEY', settings.GEMINI_API_KEY)}
+                                    placeholder="••••••••••••••••••••••••••••••••"
+                                    secureTextEntry={true}
+                                    placeholderTextColor={theme.colors.textTertiary}
+                                />
+                            </View>
+                            <Text style={styles.helperText}>Uses standard environment variables default key if left empty.</Text>
+                        </View>
+
+                        {/* Grouped Master Feature Suite Cards */}
+                        <Text style={styles.sectionHeadingText}>SUITE MASTER ACCESS CARDS</Text>
+
+                        {/* Suite 1: AI Companion Core */}
+                        <View style={styles.suiteCard}>
+                            <View style={styles.suiteHeader}>
+                                <Ionicons name="sparkles" size={16} color={theme.colors.primary} />
+                                <Text style={styles.suiteTitle}>AI Companion Core</Text>
+                            </View>
+                            <View style={styles.suiteRow}>
+                                <View style={{flex: 1}}>
+                                    <Text style={styles.suiteFeatureName}>Daily Insights</Text>
+                                    <Text style={styles.suiteFeatureDesc}>Compares logs to outline improvements.</Text>
+                                </View>
+                                <Switch 
+                                    value={settings.ENABLE_GLOBAL_INSIGHT === 'true'}
+                                    onValueChange={(val) => updateSetting('ENABLE_GLOBAL_INSIGHT', val)}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.primary }}
+                                />
+                            </View>
+                            <View style={[styles.suiteRow, styles.topDivider]}>
+                                <View style={{flex: 1}}>
+                                    <Text style={styles.suiteFeatureName}>Sleep & Muscle Advisor</Text>
+                                    <Text style={styles.suiteFeatureDesc}>Recovery suggestions and resting analysis.</Text>
+                                </View>
+                                <Switch 
+                                    value={settings.ENABLE_SLEEP_ADVISOR === 'true'}
+                                    onValueChange={(val) => updateSetting('ENABLE_SLEEP_ADVISOR', val)}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.primary }}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Suite 2: Nutrition Smart Suite */}
+                        <View style={styles.suiteCard}>
+                            <View style={styles.suiteHeader}>
+                                <MaterialCommunityIcons name="food-apple" size={16} color={theme.colors.green} />
+                                <Text style={[styles.suiteTitle, {color: theme.colors.green}]}>Nutrition Smart Suite</Text>
+                            </View>
+                            <View style={styles.suiteRow}>
+                                <View style={{flex: 1}}>
+                                    <Text style={styles.suiteFeatureName}>Meal Scan Analyzer</Text>
+                                    <Text style={styles.suiteFeatureDesc}>Analyze food description logs.</Text>
+                                </View>
+                                <Switch 
+                                    value={settings.ENABLE_MEAL_SCAN === 'true'}
+                                    onValueChange={(val) => updateSetting('ENABLE_MEAL_SCAN', val)}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.green }}
+                                />
+                            </View>
+                            <View style={[styles.suiteRow, styles.topDivider]}>
+                                <View style={{flex: 1}}>
+                                    <Text style={styles.suiteFeatureName}>Conceptual Smart Search</Text>
+                                    <Text style={styles.suiteFeatureDesc}>Admin toggled AI conceptual food recipes search.</Text>
+                                </View>
+                                <Switch 
+                                    value={settings.ENABLE_SMART_SEARCH === 'true'}
+                                    onValueChange={(val) => updateSetting('ENABLE_SMART_SEARCH', val)}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.green }}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Suite 3: Active Trainer Suite */}
+                        <View style={styles.suiteCard}>
+                            <View style={styles.suiteHeader}>
+                                <FontAwesome5 name="running" size={14} color={theme.colors.secondary} />
+                                <Text style={[styles.suiteTitle, {color: theme.colors.secondary}]}>Active Trainer Suite</Text>
+                            </View>
+                            <View style={styles.suiteRow}>
+                                <View style={{flex: 1}}>
+                                    <Text style={styles.suiteFeatureName}>Workout Recommender</Text>
+                                    <Text style={styles.suiteFeatureDesc}>Personalized training coach splits.</Text>
+                                </View>
+                                <Switch 
+                                    value={settings.ENABLE_WORKOUT_COACH === 'true'}
+                                    onValueChange={(val) => updateSetting('ENABLE_WORKOUT_COACH', val)}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.secondary }}
+                                />
+                            </View>
+                            <View style={[styles.suiteRow, styles.topDivider]}>
+                                <View style={{flex: 1}}>
+                                    <Text style={styles.suiteFeatureName}>Hydration Scheduler</Text>
+                                    <Text style={styles.suiteFeatureDesc}>Hourly schedules calculated via exercise level.</Text>
+                                </View>
+                                <Switch 
+                                    value={settings.ENABLE_HYDRATION_COACH === 'true'}
+                                    onValueChange={(val) => updateSetting('ENABLE_HYDRATION_COACH', val)}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.secondary }}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Suite 4: Journey Analytics Suite */}
+                        <View style={styles.suiteCard}>
+                            <View style={styles.suiteHeader}>
+                                <Feather name="trending-up" size={15} color={theme.colors.orange} />
+                                <Text style={[styles.suiteTitle, {color: theme.colors.orange}]}>Journey Analytics Suite</Text>
+                            </View>
+                            <View style={styles.suiteRow}>
+                                <View style={{flex: 1}}>
+                                    <Text style={styles.suiteFeatureName}>14-Day Calendar Analyst</Text>
+                                    <Text style={styles.suiteFeatureDesc}>Muscle splits and habit streak calculations.</Text>
+                                </View>
+                                <Switch 
+                                    value={settings.ENABLE_CALENDAR_COACH === 'true'}
+                                    onValueChange={(val) => updateSetting('ENABLE_CALENDAR_COACH', val)}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.orange }}
+                                />
+                            </View>
+                            <View style={[styles.suiteRow, styles.topDivider]}>
+                                <View style={{flex: 1}}>
+                                    <Text style={styles.suiteFeatureName}>Body Progress Predictor</Text>
+                                    <Text style={styles.suiteFeatureDesc}>Adaptive goal estimations and score predictor.</Text>
+                                </View>
+                                <Switch 
+                                    value={settings.ENABLE_PROFILE_COACH === 'true'}
+                                    onValueChange={(val) => updateSetting('ENABLE_PROFILE_COACH', val)}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.orange }}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Suite 5: Smart Notification Core */}
+                        <View style={styles.suiteCard}>
+                            <View style={styles.suiteHeader}>
+                                <Ionicons name="notifications-outline" size={16} color={theme.colors.primary} />
+                                <Text style={styles.suiteTitle}>Alert Action Engine</Text>
+                            </View>
+                            <View style={styles.suiteRow}>
+                                <View style={{flex: 1}}>
+                                    <Text style={styles.suiteFeatureName}>Smart Notifications Copy</Text>
+                                    <Text style={styles.suiteFeatureDesc}>Writes personalized push notification reminders.</Text>
+                                </View>
+                                <Switch 
+                                    value={settings.ENABLE_SMART_NOTIFICATIONS === 'true'}
+                                    onValueChange={(val) => updateSetting('ENABLE_SMART_NOTIFICATIONS', val)}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.primary }}
+                                />
+                            </View>
                         </View>
                     </View>
+                )}
 
-                    {/* API Configuration */}
-                    <View style={styles.subHeaderRow}>
-                        <Feather name="settings" size={14} color={theme.colors.textSecondary} />
-                        <Text style={styles.subHeaderTitle}>API CREDENTIALS & MODELS</Text>
+                {/* ✍️ ACCORDION SECTION 2: System Prompts tuner */}
+                <TouchableOpacity style={[styles.accordionHeaderCard, {marginTop: 12}]} activeOpacity={0.8} onPress={() => toggleSection('prompts')}>
+                    <View style={styles.accordionHeaderRow}>
+                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                            <View style={[styles.accordionIconBg, {backgroundColor: theme.colors.accentBlueLight}]}>
+                                <Ionicons name="create-outline" size={16} color={theme.colors.secondary} />
+                            </View>
+                            <View style={{marginLeft: 12}}>
+                                <Text style={styles.accordionTitle}>System Prompt Tuner</Text>
+                                <Text style={styles.accordionSubtitle}>Fine-tune 9 individual generative prompts</Text>
+                            </View>
+                        </View>
+                        <Feather name={expandedSections.prompts ? "chevron-up" : "chevron-down"} size={18} color={theme.colors.textSecondary} />
                     </View>
-                    
-                    <View style={styles.rowGap}>
-                        <View style={{flex: 1}}>
-                            <Text style={styles.fieldLabel}>AI Provider</Text>
-                            <View style={styles.pickerWrap}>
-                                <Picker
-                                    selectedValue={settings.AI_PROVIDER}
-                                    onValueChange={(val) => updateSetting('AI_PROVIDER', val)}
-                                    style={styles.picker}
+                </TouchableOpacity>
+
+                {expandedSections.prompts && (
+                    <View style={styles.accordionContent}>
+                        {/* Horizontal Tab pills selection */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillsContainer}>
+                            {Object.keys(PROMPT_LABELS).map((key) => (
+                                <TouchableOpacity 
+                                    key={key} 
+                                    style={[styles.pillBtn, selectedPromptKey === key && styles.activePillBtn]}
+                                    onPress={() => setSelectedPromptKey(key)}
                                 >
-                                    <Picker.Item label="Google Gemini" value="Google Gemini" />
-                                    <Picker.Item label="OpenAI (Soon)" value="OpenAI" enabled={false} />
-                                </Picker>
-                            </View>
-                        </View>
-                        <View style={{flex: 1}}>
-                            <Text style={styles.fieldLabel}>Model Select</Text>
-                            <View style={styles.pickerWrap}>
-                                <Picker
-                                    selectedValue={settings.GEMINI_MODEL_NAME}
-                                    onValueChange={(val) => updateSetting('GEMINI_MODEL_NAME', val)}
-                                    style={styles.picker}
-                                >
-                                    <Picker.Item label="Gemini 3 Pro" value="gemini-3-pro" />
-                                    <Picker.Item label="Gemini 2.5 Flash-Lite" value="gemini-2.5-flash-lite" />
-                                    <Picker.Item label="Gemini 2.0 Flash" value="gemini-2.0-flash" />
-                                    <Picker.Item label="Gemini 1.5 Pro" value="gemini-1.5-pro" />
-                                </Picker>
-                            </View>
-                        </View>
-                    </View>
+                                    <Text style={[styles.pillText, selectedPromptKey === key && styles.activePillText]}>
+                                        {PROMPT_LABELS[key]}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
 
-                    <View style={{marginTop: 15}}>
-                        <Text style={styles.fieldLabel}>API Credentials Key *</Text>
-                        <View style={styles.inputContainer}>
-                            <Feather name="key" size={16} color={theme.colors.textTertiary} style={{marginRight: 10}} />
+                        {/* Interactive Editor panel for selected prompt */}
+                        <View style={styles.promptCard}>
+                            <View style={styles.promptHeader}>
+                                <Text style={styles.promptLabel}>{PROMPT_LABELS[selectedPromptKey]}</Text>
+                                <TouchableOpacity onPress={() => handleResetPrompt(selectedPromptKey)}>
+                                    <Text style={styles.resetText}>Reset to Default</Text>
+                                </TouchableOpacity>
+                            </View>
+                            
                             <TextInput 
-                                style={styles.apiKeyInput}
-                                value={settings.GEMINI_API_KEY}
-                                onChangeText={(v) => setSettings({...settings, GEMINI_API_KEY: v})}
-                                onBlur={() => updateSetting('GEMINI_API_KEY', settings.GEMINI_API_KEY)}
-                                placeholder="••••••••••••••••••••••••••••••••"
-                                secureTextEntry={true}
+                                style={styles.textArea}
+                                multiline
+                                value={settings[selectedPromptKey]}
+                                onChangeText={(v) => setSettings({...settings, [selectedPromptKey]: v})}
+                                onBlur={() => updateSetting(selectedPromptKey, settings[selectedPromptKey])}
+                                placeholder="Edit AI Instructions..."
                                 placeholderTextColor={theme.colors.textTertiary}
                             />
-                        </View>
-                        <Text style={styles.helperText}>Stored securely. Defaults to system .env key if left empty.</Text>
-                    </View>
-
-                    {/* Prompt Configuration */}
-                    <View style={[styles.subHeaderRow, {marginTop: 30}]}>
-                        <Feather name="edit-2" size={14} color={theme.colors.textSecondary} />
-                        <Text style={styles.subHeaderTitle}>PROMPT ALGORITHMS CONFIG</Text>
-                    </View>
-
-                    <View style={styles.promptCard}>
-                        <View style={styles.promptHeader}>
-                            <Text style={styles.promptLabel}>Meal Analysis Prompt</Text>
-                            <TouchableOpacity onPress={() => handleResetPrompt('PROMPT_MEAL_ANALYSIS')}>
-                                <Text style={styles.resetText}>Reset to Default</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <TextInput 
-                            style={styles.textArea}
-                            multiline
-                            value={settings.PROMPT_MEAL_ANALYSIS}
-                            onChangeText={(v) => setSettings({...settings, PROMPT_MEAL_ANALYSIS: v})}
-                            onBlur={() => updateSetting('PROMPT_MEAL_ANALYSIS', settings.PROMPT_MEAL_ANALYSIS)}
-                            placeholder="Meal analysis prompt structure..."
-                            placeholderTextColor={theme.colors.textTertiary}
-                        />
-                    </View>
-
-                    <View style={[styles.promptCard, {marginTop: 20}]}>
-                        <View style={styles.promptHeader}>
-                            <Text style={styles.promptLabel}>Workout Suggestion Prompt</Text>
-                            <TouchableOpacity onPress={() => handleResetPrompt('PROMPT_WORKOUT_SUGGESTION')}>
-                                <Text style={styles.resetText}>Reset to Default</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <TextInput 
-                            style={styles.textArea}
-                            multiline
-                            value={settings.PROMPT_WORKOUT_SUGGESTION}
-                            onChangeText={(v) => setSettings({...settings, PROMPT_WORKOUT_SUGGESTION: v})}
-                            onBlur={() => updateSetting('PROMPT_WORKOUT_SUGGESTION', settings.PROMPT_WORKOUT_SUGGESTION)}
-                            placeholder="Workout recommender prompt structure..."
-                            placeholderTextColor={theme.colors.textTertiary}
-                        />
-                    </View>
-                </View>
-
-                {/* User & Invite Management Section */}
-                <View style={[styles.configSection, {marginTop: 10}]}>
-                     <View style={styles.sectionTitleRow}>
-                        <Feather name="users" size={18} color={theme.colors.textPrimary} />
-                        <Text style={[styles.sectionMainTitle, {marginLeft: 10}]}>User & Token Access</Text>
-                    </View>
-
-                    {/* Invite Code Generator Card */}
-                    <View style={styles.card}>
-                        <Text style={styles.toggleLabel}>Create Invite Access Token</Text>
-                        <Text style={styles.toggleDesc}>Set a daily usage query quota limit for the invite token.</Text>
-                        <View style={styles.inviteInputRow}>
-                            <TextInput 
-                                style={styles.inviteInput}
-                                value={newCodeLimit}
-                                onChangeText={setNewCodeLimit}
-                                keyboardType="numeric"
-                                placeholder="Requests Limit (e.g. 10)"
-                                placeholderTextColor={theme.colors.textTertiary}
-                            />
-                            <TouchableOpacity style={styles.inviteBtn} onPress={generateInvite}>
-                                <Text style={styles.inviteBtnText}>Generate</Text>
-                            </TouchableOpacity>
+                            
+                            {/* Preview default template preview panel */}
+                            <Text style={styles.previewHeading}>SYSTEM TEMPLATE PREVIEW:</Text>
+                            <View style={styles.previewBox}>
+                                <Text style={styles.previewText}>{DEFAULT_PROMPTS[selectedPromptKey]}</Text>
+                            </View>
                         </View>
                     </View>
+                )}
 
-                    {/* Invites list */}
-                    <View style={[styles.subHeaderRow, {marginTop: 30}]}>
-                        <Feather name="key" size={14} color={theme.colors.textSecondary} />
+                {/* 🔑 ACCORDION SECTION 3: Invites & Security keys */}
+                <TouchableOpacity style={[styles.accordionHeaderCard, {marginTop: 12}]} activeOpacity={0.8} onPress={() => toggleSection('tokens')}>
+                    <View style={styles.accordionHeaderRow}>
+                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                            <View style={[styles.accordionIconBg, {backgroundColor: theme.colors.accentGreenLight}]}>
+                                <Ionicons name="key-outline" size={16} color={theme.colors.green} />
+                            </View>
+                            <View style={{marginLeft: 12}}>
+                                <Text style={styles.accordionTitle}>Token Key Governance</Text>
+                                <Text style={styles.accordionSubtitle}>Create and audit invite tokens access</Text>
+                            </View>
+                        </View>
+                        <Feather name={expandedSections.tokens ? "chevron-up" : "chevron-down"} size={18} color={theme.colors.textSecondary} />
+                    </View>
+                </TouchableOpacity>
+
+                {expandedSections.tokens && (
+                    <View style={styles.accordionContent}>
+                        {/* Invite Code Generator Card */}
+                        <View style={styles.card}>
+                            <Text style={styles.toggleLabel}>Create Invite Access Token</Text>
+                            <Text style={styles.toggleDesc}>Set a daily usage query quota limit for the invite token.</Text>
+                            <View style={styles.inviteInputRow}>
+                                <TextInput 
+                                    style={styles.inviteInput}
+                                    value={newCodeLimit}
+                                    onChangeText={setNewCodeLimit}
+                                    keyboardType="numeric"
+                                    placeholder="Requests Limit (e.g. 10)"
+                                    placeholderTextColor={theme.colors.textTertiary}
+                                />
+                                <TouchableOpacity style={styles.inviteBtn} onPress={generateInvite}>
+                                    <Text style={styles.inviteBtnText}>Generate</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Invites list */}
                         <Text style={styles.subHeaderTitle}>ACCESS TOKENS ({invites.length})</Text>
-                    </View>
-                    
-                    <View style={styles.listContainer}>
-                        {invites.map((inv) => (
-                            <View key={inv.id} style={styles.listItem}>
-                                <View style={styles.listItemLeft}>
-                                    <View style={[styles.listIconWrap, {backgroundColor: inv.is_used ? theme.colors.accentPinkLight : theme.colors.accentBlueLight}]}>
-                                        <Feather name="key" size={16} color={inv.is_used ? theme.colors.primary : theme.colors.secondary} />
+                        <View style={styles.listContainer}>
+                            {invites.map((inv) => (
+                                <View key={inv.id} style={styles.listItem}>
+                                    <View style={styles.listItemLeft}>
+                                        <View style={[styles.listIconWrap, {backgroundColor: inv.is_used ? theme.colors.accentPinkLight : theme.colors.accentBlueLight}]}>
+                                            <Feather name="key" size={16} color={inv.is_used ? theme.colors.primary : theme.colors.secondary} />
+                                        </View>
+                                        <View style={{flex: 1}}>
+                                            <Text style={styles.itemCode}>{inv.code}</Text>
+                                            <Text style={styles.itemSub}>Quota: {inv.max_daily_requests} reqs/day</Text>
+                                            {inv.is_used ? (
+                                                <Text style={[styles.itemStatus, {color: theme.colors.primary}]}>Registered: @{inv.assigned_username}</Text>
+                                            ) : (
+                                                <Text style={[styles.itemStatus, {color: theme.colors.secondary}]}>Unused & Active</Text>
+                                            )}
+                                        </View>
                                     </View>
-                                    <View style={{flex: 1}}>
-                                        <Text style={styles.itemCode}>{inv.code}</Text>
-                                        <Text style={styles.itemSub}>Quota: {inv.max_daily_requests} reqs/day</Text>
-                                        {inv.is_used ? (
-                                            <Text style={[styles.itemStatus, {color: theme.colors.primary}]}>Registered: @{inv.assigned_username}</Text>
-                                        ) : (
-                                            <Text style={[styles.itemStatus, {color: theme.colors.secondary}]}>Unused & Active</Text>
-                                        )}
-                                    </View>
+                                    {!inv.is_used && (
+                                        <TouchableOpacity onPress={() => deleteInvite(inv.id)} style={styles.deleteAction}>
+                                            <Feather name="trash-2" size={18} color="#FF3B30" />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
-                                {!inv.is_used && (
-                                    <TouchableOpacity onPress={() => deleteInvite(inv.id)} style={styles.deleteAction}>
-                                        <Feather name="trash-2" size={18} color="#FF3B30" />
-                                    </TouchableOpacity>
-                                )}
+                            ))}
+                            {invites.length === 0 && (
+                                <Text style={styles.emptyListText}>No invite codes generated yet.</Text>
+                            )}
+                        </View>
+                    </View>
+                )}
+
+                {/* 👥 ACCORDION SECTION 4: Registered User Accounts */}
+                <TouchableOpacity style={[styles.accordionHeaderCard, {marginTop: 12, marginBottom: 20}]} activeOpacity={0.8} onPress={() => toggleSection('users')}>
+                    <View style={styles.accordionHeaderRow}>
+                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                            <View style={[styles.accordionIconBg, {backgroundColor: 'rgba(28,28,30,0.08)'}]}>
+                                <Feather name="users" size={15} color={theme.colors.textPrimary} />
                             </View>
-                        ))}
-                        {invites.length === 0 && (
-                            <Text style={styles.emptyListText}>No invite codes generated yet.</Text>
-                        )}
+                            <View style={{marginLeft: 12}}>
+                                <Text style={styles.accordionTitle}>Registered Accounts</Text>
+                                <Text style={styles.accordionSubtitle}>Total user base details and access logs</Text>
+                            </View>
+                        </View>
+                        <Feather name={expandedSections.users ? "chevron-up" : "chevron-down"} size={18} color={theme.colors.textSecondary} />
                     </View>
+                </TouchableOpacity>
 
-                    {/* Users list */}
-                    <View style={[styles.subHeaderRow, {marginTop: 30}]}>
-                        <Feather name="users" size={14} color={theme.colors.textSecondary} />
-                        <Text style={styles.subHeaderTitle}>REGISTERED ACCOUNTS ({users.length})</Text>
-                    </View>
-
-                    <View style={styles.listContainer}>
-                        {users.map((usr) => (
-                            <View key={usr.id} style={styles.listItem}>
-                                <View style={styles.listItemLeft}>
-                                    <View style={[styles.listIconWrap, {backgroundColor: usr.role === 'admin' ? theme.colors.accentPinkLight : theme.colors.accentGreenLight}]}>
-                                        <Feather name="user" size={16} color={usr.role === 'admin' ? theme.colors.primary : theme.colors.green} />
+                {expandedSections.users && (
+                    <View style={styles.accordionContent}>
+                        <View style={styles.listContainer}>
+                            {users.map((usr) => (
+                                <View key={usr.id} style={styles.listItem}>
+                                    <View style={styles.listItemLeft}>
+                                        <View style={[styles.listIconWrap, {backgroundColor: usr.role === 'admin' ? theme.colors.accentPinkLight : theme.colors.accentGreenLight}]}>
+                                            <Feather name="user" size={16} color={usr.role === 'admin' ? theme.colors.primary : theme.colors.green} />
+                                        </View>
+                                        <View style={{flex: 1}}>
+                                            <Text style={styles.itemUsername}>{usr.username} <Text style={styles.itemRole}>({usr.role.toUpperCase()})</Text></Text>
+                                            <Text style={styles.itemSub}>API calls logged today: {usr.daily_usage_count} reqs</Text>
+                                            <Text style={styles.itemDate}>Created: {new Date(usr.created_at).toLocaleDateString()}</Text>
+                                        </View>
                                     </View>
-                                    <View style={{flex: 1}}>
-                                        <Text style={styles.itemUsername}>{usr.username} <Text style={styles.itemRole}>({usr.role.toUpperCase()})</Text></Text>
-                                        <Text style={styles.itemSub}>API calls logged today: {usr.daily_usage_count} reqs</Text>
-                                        <Text style={styles.itemDate}>Created: {new Date(usr.created_at).toLocaleDateString()}</Text>
-                                    </View>
+                                    {usr.role !== 'admin' && (
+                                        <TouchableOpacity onPress={() => deleteUser(usr.id)} style={styles.deleteAction}>
+                                            <Feather name="user-x" size={18} color="#FF3B30" />
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
-                                {usr.role !== 'admin' && (
-                                    <TouchableOpacity onPress={() => deleteUser(usr.id)} style={styles.deleteAction}>
-                                        <Feather name="user-x" size={18} color="#FF3B30" />
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        ))}
-                        {users.length === 0 && (
-                            <Text style={styles.emptyListText}>No user accounts configured.</Text>
-                        )}
+                            ))}
+                            {users.length === 0 && (
+                                <Text style={styles.emptyListText}>No user accounts configured.</Text>
+                            )}
+                        </View>
                     </View>
-                </View>
+                )}
 
                 {loading && (
                     <View style={styles.absoluteLoader}>
@@ -478,98 +709,267 @@ const styles = StyleSheet.create({
     backBtnText: { color: theme.colors.primary, fontSize: 14, fontWeight: '700', marginLeft: 2 },
     headerTitle: { fontSize: 24, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: -0.5 },
     headerSubtitle: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 4, fontWeight: '600' },
-    configSection: { paddingHorizontal: theme.spacing.xxl, paddingTop: 20 },
-    sectionTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-    sectionMainTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary },
-    sectionSubTitle: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 2, fontWeight: '500', lineHeight: 16 },
-    statusBadge: { 
-        flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.accentGreenLight, 
-        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start', marginBottom: 20
+    scrollStyle: { paddingHorizontal: theme.spacing.xxl, paddingTop: 15 },
+    
+    // Collapsible Accordion Header card
+    accordionHeaderCard: {
+        backgroundColor: theme.colors.card,
+        padding: 16,
+        borderRadius: theme.borderRadius.xxl,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        ...theme.shadows.soft,
     },
-    statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.green, marginRight: 8 },
-    statusText: { fontSize: 11, color: theme.colors.green, fontWeight: '800' },
-    card: { 
-        backgroundColor: theme.colors.card, padding: 20, borderRadius: theme.borderRadius.xxl, borderWidth: 1, borderColor: theme.colors.border,
-        ...theme.shadows.soft
+    accordionHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    accordionIconBg: {
+        width: 36,
+        height: 36,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    accordionTitle: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: theme.colors.textPrimary,
+    },
+    accordionSubtitle: {
+        fontSize: 11,
+        color: theme.colors.textSecondary,
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    accordionContent: {
+        marginTop: 10,
+        paddingHorizontal: 4,
+        gap: 12,
+    },
+
+    globalCard: {
+        backgroundColor: theme.colors.card,
+        padding: 16,
+        borderRadius: theme.borderRadius.xxl,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 45, 85, 0.15)',
+        ...theme.shadows.soft,
+        marginBottom: 4,
+    },
+    globalToggleLabel: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: theme.colors.primary,
     },
     toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     toggleLabel: { fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary },
-    toggleDesc: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 16, fontWeight: '500' },
-    subHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, marginTop: 25 },
-    subHeaderTitle: { fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, marginLeft: 8, letterSpacing: 1.5 },
-    rowGap: { flexDirection: 'row', gap: 15 },
-    fieldLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textPrimary, marginBottom: 8 },
+    toggleDesc: { fontSize: 11, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 15, fontWeight: '500' },
+    
+    formRow: { flexDirection: 'row', gap: 12 },
+    fieldLabel: { fontSize: 12, fontWeight: '800', color: theme.colors.textPrimary, marginBottom: 6 },
     pickerWrap: { backgroundColor: theme.colors.card, borderRadius: theme.borderRadius.lg, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' },
-    picker: { height: Platform.OS === 'ios' ? 120 : 50, width: '100%', backgroundColor: 'transparent' },
-    pickerItem: { fontSize: 14 },
+    picker: { height: 50, width: '100%', backgroundColor: 'transparent' },
+    
     inputContainer: { 
         flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.card, 
-        borderRadius: theme.borderRadius.lg, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 15 
+        borderRadius: theme.borderRadius.lg, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 12 
     },
-    apiKeyInput: { flex: 1, height: 50, fontSize: 14, color: theme.colors.textPrimary, fontWeight: '500' },
-    helperText: { fontSize: 11, color: theme.colors.textSecondary, marginTop: 8, fontStyle: 'italic', fontWeight: '500' },
-    promptCard: { backgroundColor: theme.colors.card, borderRadius: theme.borderRadius.xxl, borderWidth: 1, borderColor: theme.colors.border, padding: 20 },
-    promptHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-    promptLabel: { fontSize: 14, fontWeight: '800', color: theme.colors.textPrimary },
-    resetText: { fontSize: 12, color: theme.colors.primary, fontWeight: '700' },
-    textArea: { 
-        backgroundColor: theme.colors.border, borderRadius: theme.borderRadius.lg, padding: 15, fontSize: 13, 
-        color: theme.colors.textPrimary, minHeight: 120, textAlignVertical: 'top', lineHeight: 20, fontWeight: '500'
+    apiKeyInput: { flex: 1, height: 48, fontSize: 13, color: theme.colors.textPrimary, fontWeight: '500' },
+    helperText: { fontSize: 10, color: theme.colors.textSecondary, marginTop: 6, fontStyle: 'italic', fontWeight: '500' },
+    
+    sectionHeadingText: {
+        fontSize: 9,
+        fontWeight: '800',
+        color: theme.colors.textSecondary,
+        letterSpacing: 1.5,
+        marginTop: 16,
+        marginBottom: 4,
     },
-    inviteInputRow: { flexDirection: 'row', marginTop: 15 },
-    inviteInput: { 
-        flex: 1, backgroundColor: theme.colors.border, borderRadius: theme.borderRadius.lg, borderWidth: 1, 
-        borderColor: theme.colors.border, paddingHorizontal: 15, height: 50, marginRight: 10, fontSize: 14, color: theme.colors.textPrimary, fontWeight: '500'
-    },
-    inviteBtn: { backgroundColor: theme.colors.darkBase, paddingHorizontal: 20, borderRadius: theme.borderRadius.lg, justifyContent: 'center' },
-    inviteBtnText: { color: '#FFF', fontWeight: '800' },
 
-    // Dynamic Lists Styling
+    // Grouped Suite Cards
+    suiteCard: {
+        backgroundColor: theme.colors.card,
+        borderRadius: theme.borderRadius.xxl,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        padding: 16,
+        ...theme.shadows.soft,
+    },
+    suiteHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 6,
+    },
+    suiteTitle: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: theme.colors.primary,
+        letterSpacing: 0.5,
+    },
+    suiteRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 10,
+    },
+    suiteFeatureName: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.colors.textPrimary,
+    },
+    suiteFeatureDesc: {
+        fontSize: 11,
+        color: theme.colors.textSecondary,
+        marginTop: 2,
+        fontWeight: '500',
+    },
+    topDivider: {
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+        marginTop: 4,
+        paddingTop: 12,
+    },
+
+    // Horizontal tab switcher pills
+    pillsContainer: {
+        flexDirection: 'row',
+        marginBottom: 8,
+        paddingVertical: 6,
+    },
+    pillBtn: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: theme.colors.card,
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    activePillBtn: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    pillText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: theme.colors.textSecondary,
+    },
+    activePillText: {
+        color: '#FFF',
+    },
+
+    // Interactive Prompt tuner editor
+    promptCard: { 
+        backgroundColor: theme.colors.card, 
+        borderRadius: theme.borderRadius.xxl, 
+        borderWidth: 1, 
+        borderColor: theme.colors.border, 
+        padding: 16,
+        ...theme.shadows.soft,
+    },
+    promptHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' },
+    promptLabel: { fontSize: 14, fontWeight: '800', color: theme.colors.textPrimary },
+    resetText: { fontSize: 11, color: theme.colors.primary, fontWeight: '800' },
+    textArea: { 
+        backgroundColor: theme.colors.background, 
+        borderRadius: theme.borderRadius.lg, 
+        padding: 12, 
+        fontSize: 13, 
+        color: theme.colors.textPrimary, 
+        minHeight: 120, 
+        textAlignVertical: 'top', 
+        lineHeight: 18, 
+        fontWeight: '500',
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    previewHeading: {
+        fontSize: 9,
+        fontWeight: '800',
+        color: theme.colors.textSecondary,
+        letterSpacing: 1,
+        marginTop: 16,
+        marginBottom: 6,
+    },
+    previewBox: {
+        backgroundColor: 'rgba(28, 28, 30, 0.04)',
+        borderRadius: theme.borderRadius.lg,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    previewText: {
+        fontSize: 11,
+        color: theme.colors.textSecondary,
+        lineHeight: 16,
+        fontStyle: 'italic',
+        fontWeight: '500',
+    },
+
+    // Token Key styles
+    card: { 
+        backgroundColor: theme.colors.card, padding: 16, borderRadius: theme.borderRadius.xxl, borderWidth: 1, borderColor: theme.colors.border,
+        ...theme.shadows.soft
+    },
+    inviteInputRow: { flexDirection: 'row', marginTop: 12 },
+    inviteInput: { 
+        flex: 1, backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg, borderWidth: 1, 
+        borderColor: theme.colors.border, paddingHorizontal: 12, height: 46, marginRight: 8, fontSize: 13, color: theme.colors.textPrimary, fontWeight: '500'
+    },
+    inviteBtn: { backgroundColor: theme.colors.darkBase, paddingHorizontal: 16, borderRadius: theme.borderRadius.lg, justifyContent: 'center' },
+    inviteBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
+    subHeaderTitle: { fontSize: 10, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 1.5, marginTop: 18, marginBottom: 6 },
+    
+    // Dynamic lists styling
     listContainer: {
-        marginTop: 5,
+        marginTop: 2,
     },
     listItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         backgroundColor: theme.colors.card,
-        padding: 16,
+        padding: 12,
         borderRadius: theme.borderRadius.xxl,
-        marginBottom: 10,
+        marginBottom: 8,
         borderWidth: 1,
         borderColor: theme.colors.border,
+        ...theme.shadows.soft,
     },
     listItemLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
-        paddingRight: 10,
+        paddingRight: 8,
     },
     listIconWrap: {
-        width: 40,
-        height: 40,
-        borderRadius: 14,
+        width: 36,
+        height: 36,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: 12,
     },
     itemCode: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: theme.colors.textPrimary,
-    },
-    itemUsername: {
         fontSize: 15,
         fontWeight: '800',
         color: theme.colors.textPrimary,
     },
+    itemUsername: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: theme.colors.textPrimary,
+    },
     itemRole: {
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '800',
         color: theme.colors.textSecondary,
     },
     itemSub: {
-        fontSize: 12,
+        fontSize: 11,
         color: theme.colors.textSecondary,
         fontWeight: '500',
         marginTop: 2,
@@ -581,18 +981,18 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     itemStatus: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '800',
-        marginTop: 3,
+        marginTop: 2,
     },
     deleteAction: {
-        padding: 5,
+        padding: 4,
     },
     emptyListText: {
-        fontSize: 13,
+        fontSize: 12,
         color: theme.colors.textSecondary,
         textAlign: 'center',
-        paddingVertical: 20,
+        paddingVertical: 18,
         fontStyle: 'italic',
         fontWeight: '600',
     },
@@ -602,7 +1002,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: 'rgba(255,255,255,0.5)',
+        backgroundColor: 'rgba(255,255,255,0.4)',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,

@@ -135,9 +135,16 @@ CREATE TABLE IF NOT EXISTS ai_cache (
 -- Seed default system settings
 INSERT OR IGNORE INTO system_settings (key, value) VALUES 
 ('GEMINI_MODEL_NAME', 'gemini-3-pro'),
-('ENABLE_AI_FEATURES', 'true'),
-('ENABLE_SMART_SEARCH', 'false'),
 ('AI_PROVIDER', 'Google Gemini'),
+('ENABLE_AI_FEATURES', 'true'),
+('ENABLE_MEAL_SCAN', 'true'),
+('ENABLE_WORKOUT_COACH', 'true'),
+('ENABLE_SMART_SEARCH', 'false'),
+('ENABLE_CALENDAR_COACH', 'true'),
+('ENABLE_PROFILE_COACH', 'true'),
+('ENABLE_SMART_NOTIFICATIONS', 'true'),
+('ENABLE_HYDRATION_COACH', 'true'),
+('ENABLE_SLEEP_ADVISOR', 'true'),
 ('PROMPT_MEAL_ANALYSIS', 'Analyze the food. Estimate its nutritional value. Return a JSON object exactly like this (no markdown block, pure JSON):
 {
   "food_name": "Name of food",
@@ -157,7 +164,14 @@ Format the response as a valid JSON object with the following structure (no mark
   "workout_plan": "String describing the workout plan",
   "exercises": ["Exercise 1", "Exercise 2"],
   "recovery_advice": "String with recovery advice"
-}');
+}'),
+('PROMPT_GLOBAL_INSIGHT', 'Act as an elite AI Personal Health Companion. Analyze today and yesterday health data: {{DATA}}. Highlight improvements, hydration, macros, and workout splits in 2 sentences.'),
+('PROMPT_SMART_SEARCH', 'Act as an expert AI Nutrition Chef. Suggest premium, high-density recipes or ingredient alternatives based on user search: {{QUERY}}. Return a friendly markdown response.'),
+('PROMPT_CALENDAR_COACH', 'Act as an elite AI Fitness Journey Analyst from Apple and Google Fit. Analyze the user last 14 days logs: {{LOGS}}. Streak: {{STREAK}} days. Provide workout splits consistency score, overtraining alerts, and milestones. Format as JSON with keys summary, expanded_narrative, consistency_score, streak_analysis, workout_predictions, best_time_suggestion, overtraining_alerts, milestones.'),
+('PROMPT_PROFILE_COACH', 'Act as an expert AI Progress & Body Metrics Analyst. Analyze user profile weights, height, target weights, gender, age: {{PROFILE}}. Provide adaptive progress timelines, body predictions, adaptive suggestions, and a dynamic fitness score.'),
+('PROMPT_SMART_NOTIFICATIONS', 'Act as an elite, ultra-encouraging notification copywriter from Apple/Nike. Write a personalized push notification copy based on user status: {{STATUS}} suggesting actions.'),
+('PROMPT_HYDRATION_COACH', 'Act as an expert AI Hydration Specialist. Design a simple personalized water drinking schedule based on user total logged exercises and activities: {{HYDRATION_DATA}}. Provide a simple hourly timeline.'),
+('PROMPT_SLEEP_ADVISOR', 'Act as an expert AI Sleep & Muscle Recovery Advisor. Analyze user daily active logs and suggest sleep targets, recovery suggestions, and fatigue checks: {{RECOVERY_DATA}}.');
 
 -- Seed default exercises
 INSERT OR IGNORE INTO exercises (id, name, category, description) VALUES 

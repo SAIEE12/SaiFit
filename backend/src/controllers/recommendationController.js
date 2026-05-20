@@ -203,26 +203,26 @@ exports.getInsight = async (req, res) => {
         );
         const recentDays = recentDaysRes.rows[0]?.count || 0;
 
-        const finalPrompt = `
+        const isFeatureEnabled = await getSystemSetting('ENABLE_GLOBAL_INSIGHT', 'true');
+        if (isFeatureEnabled === 'false') {
+            return res.json({
+                summary: "AI Daily Insights are currently disabled by the administrator.",
+                analysis: "You can re-enable this dashboard intelligence engine anytime via the System Governance panel.",
+                motivational_quote: "Focus on daily incremental consistency.",
+                next_actions: ["Visit your settings panel", "Log water manually"]
+            });
+        }
+
+        const healthData = `
+          Today's Date: ${todayStr}.
+          User Profile: Goal: ${profile.fitness_goal}, Weight: ${profile.weight} kg (Target: ${profile.target_weight} kg), Activity Level: ${profile.activity_level}, Daily Target Calories: ${goal.target_calories} kcal.
+          Yesterday's Performance (${yesterdayStr}): Meals Logged: ${mealsSummary}, Workouts Completed: ${workoutsSummary}, Hydration: ${yesterdayHydration} ml.
+          Consistency Metrics: Logged active workouts in ${recentDays} out of the last 7 days. Habit Streak: ${streak} days.
+        `;
+
+        const defaultPrompt = `
             Act as an elite Senior AI Personal Trainer and Coach from Apple and Google.
-            Today's Date: ${todayStr}.
-            
-            User Profile:
-            - Goal: ${profile.fitness_goal}
-            - Weight: ${profile.weight} kg (Target: ${profile.target_weight} kg)
-            - Activity Level: ${profile.activity_level}
-            - Daily Target Calories: ${goal.target_calories} kcal
-            
-            Yesterday's Performance (${yesterdayStr}):
-            - Meals Logged: ${mealsSummary}
-            - Workouts Completed: ${workoutsSummary}
-            - Hydration: ${yesterdayHydration} ml
-            
-            Consistency metrics:
-            - Logged active workouts in ${recentDays} out of the last 7 days.
-            - Current Habit Streak: ${streak} days.
-            
-            Perform a context-aware, motivational review comparing yesterday's habits against targets. Offer 2 specific best next actions for today.
+            Analyze today and yesterday health data: {{DATA}}. Highlight improvements, hydration, macros, and workout splits in 2 sentences.
             Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
             {
               "summary": "Short 1-2 sentence preview summary of yesterday vs goals.",
@@ -231,6 +231,9 @@ exports.getInsight = async (req, res) => {
               "next_actions": ["Action 1", "Action 2"]
             }
         `;
+
+        const configuredPrompt = await getSystemSetting('PROMPT_GLOBAL_INSIGHT', defaultPrompt);
+        const finalPrompt = configuredPrompt.replace('{{DATA}}', healthData);
 
         let insight;
         try {
@@ -307,22 +310,24 @@ exports.getWorkoutCoach = async (req, res) => {
         );
         const missedSessions = Math.max(0, 5 - (activeDaysRes.rows[0]?.count || 0));
 
-        const finalPrompt = `
-            Act as an elite AI Personal Trainer and Strength Coach from Apple Health.
-            User Profiles:
-            - Goal: ${profile.fitness_goal}
-            - Current Weight: ${profile.weight} kg
-            - Target Weight: ${profile.target_weight} kg
-            - Level: ${profile.activity_level}
-            
-            Recent Workout splits history:
-            ${recentSummary}
-            
-            Consistency / Rest alerts:
-            - Missed active workout days (last 5 days): ${missedSessions} days.
-            
-            Suggest tomorrow's exact workout plan, dynamically adjusting the muscle targets and intensity level based on user goals, recent performance trends, and consistency. Include 3 specific exercises with recommended sets, reps, and weights, followed by coach reasoning.
-            Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
+        const isFeatureEnabled = await getSystemSetting('ENABLE_WORKOUT_COACH', 'true');
+        if (isFeatureEnabled === 'false') {
+            return res.json({
+                summary: "AI Workout recommendations are currently disabled by the administrator.",
+                workout_plan: "Standard Strength & Mobility",
+                exercises: ["Push-ups (3 sets x 12)", "Squats (3 sets x 15)", "Plank (3 sets x 45s)"],
+                trainer_advice: "Re-enable the Workout Trainer suite anytime inside the System Governance control panel.",
+                intensity_level: "Medium"
+            });
+        }
+
+        const defaultPrompt = `
+            Act as an expert AI personal trainer.
+            User Goal: {{GOAL}}
+            Recent Workouts Count: {{COUNT}}
+
+            Please provide a highly personalized, beginner-friendly workout recommendation and some recovery advice for tomorrow.
+            Format the response as a valid JSON object with the following structure (no markdown, pure JSON):
             {
               "summary": "Short 1-sentence workout suggestion preview.",
               "workout_plan": "Name of tomorrow's workout plan (e.g. Chest Hypertrophy)",
@@ -331,6 +336,11 @@ exports.getWorkoutCoach = async (req, res) => {
               "intensity_level": "Low / Medium / High"
             }
         `;
+
+        const configuredPrompt = await getSystemSetting('PROMPT_WORKOUT_SUGGESTION', defaultPrompt);
+        const finalPrompt = configuredPrompt
+            .replace('{{GOAL}}', profile.fitness_goal)
+            .replace('{{COUNT}}', missedSessions);
 
         let workoutPlan;
         try {
@@ -395,12 +405,26 @@ exports.getCalendarCoach = async (req, res) => {
 
         const streak = await calculateHabitStreak(userId);
 
-        const finalPrompt = `
+        const isFeatureEnabled = await getSystemSetting('ENABLE_CALENDAR_COACH', 'true');
+        if (isFeatureEnabled === 'false') {
+            return res.json({
+                summary: "Calendar Intelligence is currently disabled by the administrator.",
+                expanded_narrative: "You can re-enable this journey split analysis suite anytime inside the System Governance control panel.",
+                consistency_score: "N/A",
+                streak_analysis: "Streaks logs calculations paused.",
+                workout_predictions: "Rest day logs forecasted.",
+                best_time_suggestion: "Activity hours metrics paused.",
+                overtraining_alerts: "Fatigue indicators disabled.",
+                milestones: ["Analytics system paused"]
+            });
+        }
+
+        const defaultPrompt = `
             Act as an elite AI Fitness Journey Analyst from Apple and Google Fit.
             Analyze the user's last 14 days logs:
-            ${logsSummary}
+            {{LOGS}}
             
-            Current active habit streak: ${streak} days.
+            Current active habit streak: {{STREAK}} days.
             
             Provide workout split consistency assessments, rest warnings, logical tomorrow workout forecasts, best time suggestions based on log trends, and compiled milestones achievements.
             Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
@@ -415,6 +439,11 @@ exports.getCalendarCoach = async (req, res) => {
               "milestones": ["Completed multiple splits this week!", "Consistent habit logger."]
             }
         `;
+
+        const configuredPrompt = await getSystemSetting('PROMPT_CALENDAR_COACH', defaultPrompt);
+        const finalPrompt = configuredPrompt
+            .replace('{{LOGS}}', logsSummary)
+            .replace('{{STREAK}}', streak);
 
         let calendarAnalysis;
         try {
@@ -481,21 +510,22 @@ exports.getProfileCoach = async (req, res) => {
         );
         const totalCals = mealsCountRes.rows[0]?.total || 0;
 
-        const finalPrompt = `
-            Act as an elite AI Body Transformation Specialist from Apple Fitness.
-            User Profile:
-            - Height: ${profile.height} cm
-            - Age: ${profile.age} years
-            - Gender: ${profile.gender}
-            - Current Weight: ${profile.weight} kg
-            - Target Weight: ${profile.target_weight} kg
-            - Goal: ${profile.fitness_goal}
-            
-            User Life-to-date Logging Volume:
-            - Workouts Logged: ${totalWorkouts} sessions
-            - Calories Logged: ${totalCals} kcal
-            
-            Calculate a progression score (out of 100). Highlight core profile strengths, weaknesses, goal target achievement predictions, and adaptive weight adjustments.
+        const isFeatureEnabled = await getSystemSetting('ENABLE_PROFILE_COACH', 'true');
+        if (isFeatureEnabled === 'false') {
+            return res.json({
+                summary: "Profile Progression Coach is currently disabled by the administrator.",
+                fitness_score: 100,
+                strengths: "All feature metrics tracking active.",
+                weaknesses: "AI scoring logs disabled by admin.",
+                body_predictions: "Transformation predictions are currently paused.",
+                adaptive_suggestions: "Re-enable the Journey Analytics suite in System Governance.",
+                motivational_summary: "Keep up your consistent logging schedule every single day!"
+            });
+        }
+
+        const defaultPrompt = `
+            Act as an expert AI Progress & Body Metrics Analyst.
+            Analyze user profile weights, height, target weights, gender, age: {{PROFILE}}. Provide adaptive progress timelines, body predictions, adaptive suggestions, and a dynamic fitness score.
             Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
             {
               "summary": "Brief progression summary preview.",
@@ -507,6 +537,14 @@ exports.getProfileCoach = async (req, res) => {
               "motivational_summary": "Coaching motivation summary."
             }
         `;
+
+        const profileData = `
+          Height: ${profile.height} cm, Age: ${profile.age} years, Gender: ${profile.gender}, Current Weight: ${profile.weight} kg, Target Weight: ${profile.target_weight} kg, Goal: ${profile.fitness_goal}.
+          Logging History: Workouts Logged: ${totalWorkouts} sessions, Calories Logged: ${totalCals} kcal.
+        `;
+
+        const configuredPrompt = await getSystemSetting('PROMPT_PROFILE_COACH', defaultPrompt);
+        const finalPrompt = configuredPrompt.replace('{{PROFILE}}', profileData);
 
         let profileAnalysis;
         try {

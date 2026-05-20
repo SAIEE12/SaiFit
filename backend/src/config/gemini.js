@@ -38,10 +38,63 @@ const getSystemSetting = async (key, defaultValue = null) => {
 };
 
 /**
- * Helper to get the configured model name or default
+ * Helper to get the configured model name and sanitize it
  */
 const getModelName = async () => {
-    return await getSystemSetting('GEMINI_MODEL_NAME', 'gemini-3-pro');
+    const rawModel = await getSystemSetting('GEMINI_MODEL_NAME', 'gemini-1.5-flash');
+    
+    // Map admin friendly selection names to correct, stable official Google model names
+    const mapping = {
+        'gemini-3-pro': 'gemini-1.5-pro',
+        'gemini-2.5-flash-lite': 'gemini-1.5-flash',
+        'gemini-2.0-flash': 'gemini-1.5-flash',
+        'gemini-1.5-pro': 'gemini-1.5-pro',
+        'gemini-1.5-flash': 'gemini-1.5-flash'
+    };
+    
+    return mapping[rawModel] || rawModel || 'gemini-1.5-flash';
 };
 
-module.exports = { getAIInstance, getModelName, getSystemSetting };
+/**
+ * Self-healing generative content execution tool with automated retries and fallbacks
+ */
+const safeGenerateContent = async (prompt, imageBuffer = null, mimeType = null) => {
+    const ai = await getAIInstance();
+    const modelName = await getModelName();
+    
+    // Models to attempt sequentially upon downstream error catches
+    const modelsToTry = [modelName, 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    
+    let lastError = null;
+    for (const modelId of modelsToTry) {
+        try {
+            console.log(`[Resilient AI Engine] Attempting generative content execution via: ${modelId}`);
+            const model = ai.getGenerativeModel({ model: modelId });
+            
+            let result;
+            if (imageBuffer && mimeType) {
+                result = await model.generateContent([
+                    prompt,
+                    {
+                        inlineData: {
+                            data: imageBuffer.toString("base64"),
+                            mimeType: mimeType
+                        }
+                    }
+                ]);
+            } else {
+                result = await model.generateContent(prompt);
+            }
+            
+            const responseText = (await result.response).text();
+            return responseText;
+        } catch (err) {
+            console.warn(`[Resilient AI Engine] Model ${modelId} execution failed: ${err.message}. Retrying fallback...`);
+            lastError = err;
+        }
+    }
+    
+    throw lastError || new Error("All loaded generative fallback models failed to complete content execution.");
+};
+
+module.exports = { getAIInstance, getModelName, getSystemSetting, safeGenerateContent };

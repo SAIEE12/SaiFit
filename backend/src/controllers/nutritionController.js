@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const { getAIInstance, getModelName, getSystemSetting } = require('../config/gemini');
+const { getAIInstance, getModelName, getSystemSetting, safeGenerateContent } = require('../config/gemini');
 const fs = require('fs');
 const crypto = require('crypto');
 
@@ -41,9 +41,22 @@ exports.analyzeFoodImage = async (req, res) => {
         });
     }
 
-    const ai = await getAIInstance();
-    const modelName = await getModelName();
-    const model = ai.getGenerativeModel({ model: modelName });
+    const isFeatureEnabled = await getSystemSetting('ENABLE_MEAL_SCAN', 'true');
+    if (isFeatureEnabled === 'false') {
+        const fallbackMeal = {
+            food_name: "Logged Food Image (AI Scanning Offline)",
+            calories: 420,
+            protein: 24,
+            carbs: 48,
+            fats: 14
+        };
+        return res.json({
+            ...fallbackMeal,
+            image_url: '/uploads/' + req.file.filename,
+            cached: false,
+            message: "AI Scan is currently disabled in system governance."
+        });
+    }
 
     const defaultPrompt = `Analyze this food image. Return a JSON object exactly like this (no markdown, pure JSON):
     {
@@ -55,24 +68,14 @@ exports.analyzeFoodImage = async (req, res) => {
     }`;
     const prompt = await getSystemSetting('PROMPT_MEAL_ANALYSIS', defaultPrompt);
 
-    let result;
+    let responseText;
     try {
-        result = await model.generateContent([
-            prompt,
-            {
-                inlineData: {
-                    data: Buffer.from(fs.readFileSync(req.file.path)).toString("base64"),
-                    mimeType: req.file.mimetype
-                }
-            }
-        ]);
+        responseText = await safeGenerateContent(prompt, fs.readFileSync(req.file.path), req.file.mimetype);
     } catch (aiError) {
         console.error('Gemini Image Analysis Error:', aiError.message);
         return res.status(503).json({ error: 'AI analysis service is temporarily unavailable. Please try again later.' });
     }
     
-    const response = await result.response;
-    const responseText = response.text();
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
         throw new Error('AI response did not contain valid JSON: ' + responseText);
@@ -84,7 +87,8 @@ exports.analyzeFoodImage = async (req, res) => {
 
     res.json({
         ...nutritionInfo,
-        image_url: '/uploads/' + req.file.filename
+        image_url: '/uploads/' + req.file.filename,
+        cached: false
     });
   } catch (error) {
     console.error('Image analysis error:', error);
@@ -105,9 +109,21 @@ exports.analyzeFoodText = async (req, res) => {
         return res.json({ ...cached, cached: true });
     }
 
-    const ai = await getAIInstance();
-    const modelName = await getModelName();
-    const model = ai.getGenerativeModel({ model: modelName });
+    const isFeatureEnabled = await getSystemSetting('ENABLE_MEAL_SCAN', 'true');
+    if (isFeatureEnabled === 'false') {
+        const fallbackMeal = {
+            food_name: text || "Logged Food (AI Scanning Offline)",
+            calories: 340,
+            protein: 18,
+            carbs: 42,
+            fats: 10
+        };
+        return res.json({
+            ...fallbackMeal,
+            cached: false,
+            message: "AI Scan is currently disabled in system governance."
+        });
+    }
 
     const defaultPrompt = `Analyze this food description: "${text}". Return a JSON object exactly like this (no markdown, pure JSON):
     {
@@ -120,16 +136,14 @@ exports.analyzeFoodText = async (req, res) => {
     const prompt = await getSystemSetting('PROMPT_MEAL_ANALYSIS', defaultPrompt);
     const finalPrompt = prompt.replace('{{TEXT}}', text).replace('{{text}}', text);
 
-    let result;
+    let responseText;
     try {
-        result = await model.generateContent(finalPrompt);
+        responseText = await safeGenerateContent(finalPrompt);
     } catch (aiError) {
         console.error('Gemini Text Analysis Error:', aiError.message);
         return res.status(503).json({ error: 'AI analysis service is temporarily unavailable. Please try again later.' });
     }
 
-    const response = await result.response;
-    const responseText = response.text();
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
         throw new Error('AI response did not contain valid JSON: ' + responseText);
@@ -139,7 +153,10 @@ exports.analyzeFoodText = async (req, res) => {
     // 2. Save to Cache
     await setCachedResult(textKey, nutritionInfo);
 
-    res.json(nutritionInfo);
+    res.json({
+        ...nutritionInfo,
+        cached: false
+    });
   } catch (error) {
     console.error('Text analysis error:', error);
     res.status(500).json({ error: 'Failed to analyze text: ' + error.message });
@@ -241,11 +258,7 @@ exports.smartSearch = async (req, res) => {
     const remainingCarb = Math.max(0, (goal.target_carbs || 200) - totalCarb);
     const remainingFat = Math.max(0, (goal.target_fats || 65) - totalFat);
 
-    const ai = await getAIInstance();
-    const modelName = await getModelName();
-    const model = ai.getGenerativeModel({ model: modelName });
-
-    const finalPrompt = `Act as an elite AI nutrition coach and personal trainer. The user is asking a conceptual query: "${query}".
+    const defaultPrompt = `Act as an elite AI nutrition coach and personal trainer. The user is asking a conceptual query: "{{QUERY}}".
     Today's Date: ${targetDate}.
     Current User Nutrition Status Today:
     - Logged so far: ${totalCals} kcal (P: ${totalProt}g, C: ${totalCarb}g, F: ${totalFat}g)
@@ -267,16 +280,19 @@ exports.smartSearch = async (req, res) => {
       "advice": "Context-aware explanation of why this fits their exact query and nutritional balance (under 25 words)"
     }`;
 
-    let result;
+    const prompt = await getSystemSetting('PROMPT_SMART_SEARCH', defaultPrompt);
+    const finalPrompt = prompt
+        .replace('{{QUERY}}', query)
+        .replace('{{query}}', query);
+
+    let responseText;
     try {
-        result = await model.generateContent(finalPrompt);
+        responseText = await safeGenerateContent(finalPrompt);
     } catch (aiError) {
         console.error('Gemini Smart Search Error:', aiError.message);
         return res.status(503).json({ error: 'AI search service is temporarily unavailable.' });
     }
 
-    const response = await result.response;
-    const responseText = response.text();
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
         throw new Error('AI response did not contain valid JSON: ' + responseText);

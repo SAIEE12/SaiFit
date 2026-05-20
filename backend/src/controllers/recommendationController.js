@@ -1,4 +1,4 @@
-const { getAIInstance, getModelName, getSystemSetting } = require('../config/gemini');
+const { getAIInstance, getModelName, getSystemSetting, safeGenerateContent } = require('../config/gemini');
 const db = require('../config/db');
 
 // Streak Calculation Helper
@@ -92,25 +92,32 @@ exports.getRecommendations = async (req, res) => {
         .replace('{{GOAL}}', goalContext.goal_type)
         .replace('{{COUNT}}', recentWorkouts.rows.length);
 
-    let recommendation;
-    try {
-        const model = ai.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(finalPrompt);
-        const response = await result.response;
-        const responseText = response.text();
-        
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            throw new Error('AI response did not contain valid JSON: ' + responseText);
-        }
-        recommendation = JSON.parse(jsonMatch[0]);
-    } catch (aiError) {
-        console.error('Gemini API Error, using fallback:', aiError.message);
+    const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
+    const isFeatureEnabled = await getSystemSetting('ENABLE_WORKOUT_COACH', 'true');
+    if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
         recommendation = {
-            workout_plan: "Active Recovery Day",
+            workout_plan: "Active Recovery Day (AI Disabled)",
             exercises: ["30 min light walking", "15 min full body stretching"],
-            recovery_advice: "Your AI coach is taking a short break. Focus on mobility and recovery!"
+            recovery_advice: "Your AI workout coach is currently offline. Focus on standard recovery!"
         };
+    } else {
+        let recommendation;
+        try {
+            const responseText = await safeGenerateContent(finalPrompt);
+            
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('AI response did not contain valid JSON: ' + responseText);
+            }
+            recommendation = JSON.parse(jsonMatch[0]);
+        } catch (aiError) {
+            console.error('Gemini API Error, using fallback:', aiError.message);
+            recommendation = {
+                workout_plan: "Active Recovery Day",
+                exercises: ["30 min light walking", "15 min full body stretching"],
+                recovery_advice: "Your AI coach is taking a short break. Focus on mobility and recovery!"
+            };
+        }
     }
 
     try {
@@ -203,8 +210,9 @@ exports.getInsight = async (req, res) => {
         );
         const recentDays = recentDaysRes.rows[0]?.count || 0;
 
+        const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
         const isFeatureEnabled = await getSystemSetting('ENABLE_GLOBAL_INSIGHT', 'true');
-        if (isFeatureEnabled === 'false') {
+        if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
             return res.json({
                 summary: "AI Daily Insights are currently disabled by the administrator.",
                 analysis: "You can re-enable this dashboard intelligence engine anytime via the System Governance panel.",
@@ -237,10 +245,7 @@ exports.getInsight = async (req, res) => {
 
         let insight;
         try {
-            const ai = await getAIInstance();
-            const model = ai.getGenerativeModel({ model: modelName });
-            const result = await model.generateContent(finalPrompt);
-            const responseText = (await result.response).text();
+            const responseText = await safeGenerateContent(finalPrompt);
             
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('Invalid JSON structure');
@@ -310,8 +315,9 @@ exports.getWorkoutCoach = async (req, res) => {
         );
         const missedSessions = Math.max(0, 5 - (activeDaysRes.rows[0]?.count || 0));
 
+        const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
         const isFeatureEnabled = await getSystemSetting('ENABLE_WORKOUT_COACH', 'true');
-        if (isFeatureEnabled === 'false') {
+        if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
             return res.json({
                 summary: "AI Workout recommendations are currently disabled by the administrator.",
                 workout_plan: "Standard Strength & Mobility",
@@ -344,9 +350,7 @@ exports.getWorkoutCoach = async (req, res) => {
 
         let workoutPlan;
         try {
-            const model = ai.getGenerativeModel({ model: modelName });
-            const result = await model.generateContent(finalPrompt);
-            const responseText = (await result.response).text();
+            const responseText = await safeGenerateContent(finalPrompt);
             
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('Invalid JSON');
@@ -405,8 +409,9 @@ exports.getCalendarCoach = async (req, res) => {
 
         const streak = await calculateHabitStreak(userId);
 
+        const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
         const isFeatureEnabled = await getSystemSetting('ENABLE_CALENDAR_COACH', 'true');
-        if (isFeatureEnabled === 'false') {
+        if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
             return res.json({
                 summary: "Calendar Intelligence is currently disabled by the administrator.",
                 expanded_narrative: "You can re-enable this journey split analysis suite anytime inside the System Governance control panel.",
@@ -447,9 +452,7 @@ exports.getCalendarCoach = async (req, res) => {
 
         let calendarAnalysis;
         try {
-            const model = ai.getGenerativeModel({ model: modelName });
-            const result = await model.generateContent(finalPrompt);
-            const responseText = (await result.response).text();
+            const responseText = await safeGenerateContent(finalPrompt);
             
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('Invalid JSON');
@@ -510,8 +513,9 @@ exports.getProfileCoach = async (req, res) => {
         );
         const totalCals = mealsCountRes.rows[0]?.total || 0;
 
+        const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
         const isFeatureEnabled = await getSystemSetting('ENABLE_PROFILE_COACH', 'true');
-        if (isFeatureEnabled === 'false') {
+        if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
             return res.json({
                 summary: "Profile Progression Coach is currently disabled by the administrator.",
                 fitness_score: 100,
@@ -548,9 +552,7 @@ exports.getProfileCoach = async (req, res) => {
 
         let profileAnalysis;
         try {
-            const model = ai.getGenerativeModel({ model: modelName });
-            const result = await model.generateContent(finalPrompt);
-            const responseText = (await result.response).text();
+            const responseText = await safeGenerateContent(finalPrompt);
             
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('Invalid JSON');

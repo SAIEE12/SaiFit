@@ -513,7 +513,7 @@ export default function MySpaceScreen({ navigation }) {
                   <View style={styles.notificationContent}>
                     <View style={styles.notificationHeaderRow}>
                       <View style={styles.categoryBadgeRow}>
-                        {item.isPinned && <Feather name="pin" size={10} color="#FF9500" style={{ marginRight: 4 }} />}
+                        {item.isPinned && <MaterialCommunityIcons name="pin" size={10} color="#FF9500" style={{ marginRight: 4 }} />}
                         {item.isMuted && <Feather name="bell-off" size={10} color="#8E8E93" style={{ marginRight: 4 }} />}
                         <Text style={[styles.notificationCategory, { color: item.color }]}>{item.category}</Text>
                       </View>
@@ -618,7 +618,7 @@ export default function MySpaceScreen({ navigation }) {
                 {/* Action 2: Star & Pin to Top */}
                 <TouchableOpacity style={styles.sheetActionRow} onPress={() => togglePinStatus(selectedNotification.id)}>
                   <View style={styles.actionIconWrap}>
-                    <Feather name="pin" size={18} color={selectedNotification.isPinned ? '#FF2D55' : '#1C1C1E'} />
+                    <MaterialCommunityIcons name="pin" size={18} color={selectedNotification.isPinned ? '#FF2D55' : '#1C1C1E'} />
                   </View>
                   <Text style={styles.actionRowText}>
                     {selectedNotification.isPinned ? 'Unpin from Top' : 'Pin to Top'}

@@ -210,9 +210,14 @@ export default function CalendarScreen({ navigation }) {
                                     </View>
                                     <Text style={styles.aiCoachTitle}>AI JOURNEY INTELLIGENCE</Text>
                                 </View>
-                                <View style={styles.badgeRow}>
-                                    <Text style={styles.scoreBadge}>{calendarCoach.consistency_score} Consistency</Text>
-                                    <Feather name="chevron-up" size={16} color={theme.colors.textSecondary} />
+                                <Feather name="chevron-up" size={18} color={theme.colors.textSecondary} />
+                            </View>
+
+                            {/* Dedicated Highlighted Score Bar */}
+                            <View style={styles.scoreHighlightBar}>
+                                <Text style={styles.scoreHighlightLabel}>CONSISTENCY INDEX</Text>
+                                <View style={styles.scoreHighlightBadge}>
+                                    <Text style={styles.scoreHighlightValue}>{calendarCoach.consistency_score}</Text>
                                 </View>
                             </View>
 
@@ -272,9 +277,11 @@ export default function CalendarScreen({ navigation }) {
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity activeOpacity={0.8} style={styles.minimalCoachTrigger} onPress={toggleCoach}>
-                            <Ionicons name="sparkles" size={14} color="#FFF" style={{marginRight: 6}} />
-                            <Text style={styles.minimalCoachTriggerText}>✨ Journey Analyst</Text>
-                            <Feather name="chevron-down" size={14} color="#FFF" style={{marginLeft: 6}} />
+                            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                <Ionicons name="sparkles" size={15} color={theme.colors.primary} style={{marginRight: 8}} />
+                                <Text style={styles.minimalCoachTriggerText}>AI Journey Analyst</Text>
+                            </View>
+                            <Feather name="chevron-down" size={16} color={theme.colors.primary} />
                         </TouchableOpacity>
                     )
                 )}
@@ -525,26 +532,55 @@ const styles = StyleSheet.create({
     minimalCoachTrigger: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#1C1C1E',
-        borderRadius: 24,
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        alignSelf: 'center',
-        marginTop: 10,
-        marginBottom: 16,
-        borderWidth: 1.5,
-        borderColor: 'rgba(255, 45, 85, 0.3)',
+        justifyContent: 'space-between',
+        backgroundColor: '#FFFFFF',
+        borderRadius: theme.borderRadius.xxl,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        marginHorizontal: theme.spacing.xxl,
+        marginTop: 4,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 45, 85, 0.12)',
         shadowColor: '#FF2D55',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
+        elevation: 2,
     },
     minimalCoachTriggerText: {
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: '800',
-        color: '#FFF',
-        letterSpacing: 0.5,
+        color: theme.colors.primary,
+        letterSpacing: 0.2,
+    },
+    scoreHighlightBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: theme.colors.accentPinkLight,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderRadius: theme.borderRadius.lg,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 45, 85, 0.08)',
+    },
+    scoreHighlightLabel: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: theme.colors.primary,
+        letterSpacing: 1,
+    },
+    scoreHighlightBadge: {
+        backgroundColor: theme.colors.primary,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 20,
+    },
+    scoreHighlightValue: {
+        fontSize: 11,
+        fontWeight: '900',
+        color: '#FFFFFF',
     },
 });

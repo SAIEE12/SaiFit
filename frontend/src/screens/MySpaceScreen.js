@@ -405,9 +405,11 @@ export default function MySpaceScreen({ navigation }) {
                   style={styles.minimalCoachTrigger} 
                   onPress={() => setInsightExpanded(true)}
                 >
-                  <Ionicons name="sparkles" size={14} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.minimalCoachTriggerText}>✨ Coach Insights</Text>
-                  <Feather name="chevron-down" size={14} color="#FFF" style={{ marginLeft: 6 }} />
+                  <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                    <Ionicons name="sparkles" size={15} color="#FF2D55" style={{ marginRight: 8 }} />
+                    <Text style={styles.minimalCoachTriggerText}>AI Coach Insights</Text>
+                  </View>
+                  <Feather name="chevron-down" size={16} color="#FF2D55" />
                 </TouchableOpacity>
               )
             )}
@@ -1247,26 +1249,26 @@ const styles = StyleSheet.create({
   minimalCoachTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1C1C1E',
-    borderRadius: 24,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 45, 85, 0.3)',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: theme.borderRadius.xxl,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginHorizontal: theme.spacing.xxl,
+    marginTop: 4,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 45, 85, 0.12)',
     shadowColor: '#FF2D55',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   minimalCoachTriggerText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
-    color: '#FFF',
-    letterSpacing: 0.5,
+    color: '#FF2D55',
+    letterSpacing: 0.2,
   },
 });

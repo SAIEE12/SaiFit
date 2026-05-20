@@ -540,3 +540,53 @@ exports.getProfileCoach = async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 };
+
+exports.getAchievements = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // Query workouts count by date
+        const workoutRows = await db.query(
+            'SELECT date, COUNT(*) as count FROM workout_logs WHERE user_id = ? GROUP BY date',
+            [userId]
+        );
+
+        // Query hydration sum by date
+        const hydrationRows = await db.query(
+            'SELECT date, SUM(amount_ml) as amount FROM hydration_logs WHERE user_id = ? GROUP BY date',
+            [userId]
+        );
+
+        // Query meals calories and macros sum by date
+        const mealRows = await db.query(
+            'SELECT date, SUM(total_calories) as calories, SUM(total_protein) as protein FROM meals WHERE user_id = ? GROUP BY date',
+            [userId]
+        );
+
+        // Combine achievements by date
+        const achievementsMap = {};
+
+        workoutRows.rows.forEach(r => {
+            const d = r.date;
+            if (!achievementsMap[d]) achievementsMap[d] = { workouts: 0, hydration: 0, calories: 0, protein: 0 };
+            achievementsMap[d].workouts = r.count;
+        });
+
+        hydrationRows.rows.forEach(r => {
+            const d = r.date;
+            if (!achievementsMap[d]) achievementsMap[d] = { workouts: 0, hydration: 0, calories: 0, protein: 0 };
+            achievementsMap[d].hydration = r.amount;
+        });
+
+        mealRows.rows.forEach(r => {
+            const d = r.date;
+            if (!achievementsMap[d]) achievementsMap[d] = { workouts: 0, hydration: 0, calories: 0, protein: 0 };
+            achievementsMap[d].calories = r.calories;
+            achievementsMap[d].protein = r.protein;
+        });
+
+        res.json(achievementsMap);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};

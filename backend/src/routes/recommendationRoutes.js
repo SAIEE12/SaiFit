@@ -10,5 +10,6 @@ router.get('/insight', recommendationController.getInsight);
 router.get('/workout-coach', recommendationController.getWorkoutCoach);
 router.get('/calendar-coach', recommendationController.getCalendarCoach);
 router.get('/profile-coach', recommendationController.getProfileCoach);
+router.get('/achievements', recommendationController.getAchievements);
 
 module.exports = router;

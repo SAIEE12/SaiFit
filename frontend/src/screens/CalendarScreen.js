@@ -35,6 +35,7 @@ export default function CalendarScreen({ navigation }) {
     const [loadingCoach, setLoadingCoach] = useState(false);
     const [coachExpanded, setCoachExpanded] = useState(false);
     const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
+    const [achievements, setAchievements] = useState({});
 
     useEffect(() => {
         fetchDayDetails(selectedDate);
@@ -43,6 +44,7 @@ export default function CalendarScreen({ navigation }) {
     useEffect(() => {
         fetchCalendarCoach();
         checkSmartSearchStatus();
+        fetchAchievements();
     }, []);
 
     const fetchDayDetails = async (date) => {
@@ -69,6 +71,9 @@ export default function CalendarScreen({ navigation }) {
                 hydration: hydrationRes.data?.amount_ml || 0,
                 totals
             });
+            
+            // Refresh achievements when modifying logs
+            fetchAchievements();
         } catch (e) {
             console.error("Error fetching day details:", e);
         } finally {
@@ -97,6 +102,15 @@ export default function CalendarScreen({ navigation }) {
         }
     };
 
+    const fetchAchievements = async () => {
+        try {
+            const res = await apiClient.get('/recommendations/achievements');
+            setAchievements(res.data || {});
+        } catch (e) {
+            console.error("Failed to fetch achievements:", e);
+        }
+    };
+
     const toggleCoach = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setCoachExpanded(!coachExpanded);
@@ -113,18 +127,49 @@ export default function CalendarScreen({ navigation }) {
         const days = [];
         for (let i = 0; i < firstDay; i++) days.push(<View key={`empty-${i}`} style={styles.dayCell} />);
         
+        const todayStr = getLocalDateString(new Date());
+
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(year, month, day);
+            const dateStr = getLocalDateString(date);
             const isSelected = date.toDateString() === selectedDate.toDateString();
             const isToday = date.toDateString() === new Date().toDateString();
+            
+            // Render indicators only for today and past days
+            const showIndicators = dateStr <= todayStr;
+
+            const stats = achievements[dateStr] || { workouts: 0, hydration: 0, calories: 0 };
+            const hasWorkout = stats.workouts > 0;
+            const hasWater = stats.hydration >= 3000;
+            const hasMacros = stats.calories >= 1200;
+            const achievedAll = hasWorkout && hasWater && hasMacros;
+
             days.push(
                 <TouchableOpacity 
                     key={day} 
-                    style={[styles.dayCell, isSelected && styles.selectedDayCell]}
+                    style={[
+                        styles.dayCell, 
+                        isSelected && styles.selectedDayCell,
+                        isToday && !isSelected && styles.todayDayCell
+                    ]}
                     onPress={() => setSelectedDate(date)}
                 >
-                    <Text style={[styles.dayText, isSelected && styles.selectedDayText, isToday && !isSelected && styles.todayText]}>{day}</Text>
-                    {isToday && !isSelected && <View style={styles.todayDot} />}
+                    <Text style={[
+                        styles.dayText, 
+                        isSelected && styles.selectedDayText, 
+                        isToday && !isSelected && styles.todayText
+                    ]}>{day}</Text>
+                    {showIndicators && (
+                        achievedAll ? (
+                            <View style={[styles.achievementBadge, styles.achievementFilled]}>
+                                <Feather name="check" size={8} color="#FFF" />
+                            </View>
+                        ) : (
+                            <View style={[styles.achievementBadge, styles.achievementIncomplete]}>
+                                <Feather name="x" size={8} color={theme.colors.textSecondary} />
+                            </View>
+                        )
+                    )}
                 </TouchableOpacity>
             );
         }
@@ -238,32 +283,10 @@ export default function CalendarScreen({ navigation }) {
 
                 {/* Day Details */}
                 <View style={styles.detailsContainer}>
-                    <Text style={styles.dateDisplay}>{selectedDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
-                    
                     {loading ? (
                         <ActivityIndicator color={theme.colors.primary} size="large" style={{marginTop: 30}} />
                     ) : (
                         <View style={styles.content}>
-                            {/* Summary Snapshot Card */}
-                            <View style={styles.summaryCard}>
-                                <View style={styles.summaryRow}>
-                                    <View style={styles.summaryItem}>
-                                        <Text style={styles.summaryVal}>{dayData.totals.calories}</Text>
-                                        <Text style={styles.summaryLab}>Calories</Text>
-                                    </View>
-                                    <View style={styles.divider} />
-                                    <View style={styles.summaryItem}>
-                                        <Text style={styles.summaryVal}>{dayData.totals.protein}g</Text>
-                                        <Text style={styles.summaryLab}>Protein</Text>
-                                    </View>
-                                    <View style={styles.divider} />
-                                    <View style={styles.summaryItem}>
-                                        <Text style={styles.summaryVal}>{dayData.hydration}ml</Text>
-                                        <Text style={styles.summaryLab}>Water</Text>
-                                    </View>
-                                </View>
-                            </View>
-
                             <Text style={styles.sectionTitle}>ACTIVITIES</Text>
                             
                             {/* Workout Logs */}
@@ -306,7 +329,7 @@ export default function CalendarScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.xxl, paddingTop: theme.spacing.lg, marginBottom: 10 },
-    backBtn: { marginRight: 15 },
+    backBtn: { padding: 5, marginRight: 10 },
     headerTitle: { fontSize: 28, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: -0.5 },
     calendarContainer: {
         backgroundColor: theme.colors.card, 
@@ -318,27 +341,26 @@ const styles = StyleSheet.create({
         ...theme.shadows.soft,
         marginBottom: 16,
     },
-    monthHeader: { flexDirection: 'row', justifynContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+    monthHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     monthTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary },
     navBtns: { flexDirection: 'row' },
     navBtn: { padding: 5, marginLeft: 10 },
     weekDays: { flexDirection: 'row', marginBottom: 10 },
     weekDayText: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 0.5 },
     daysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-    dayCell: { width: '14.28%', height: 40, justifyContent: 'center', alignItems: 'center' },
+    dayCell: { 
+        width: '14.28%', 
+        height: 54, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
     dayText: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
-    selectedDayCell: { backgroundColor: theme.colors.primary, borderRadius: theme.borderRadius.md, shadowColor: theme.colors.primary, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 },
-    selectedDayText: { color: '#FFF', fontWeight: '800' },
+    selectedDayCell: { backgroundColor: theme.colors.border, borderRadius: theme.borderRadius.md },
+    selectedDayText: { color: theme.colors.textPrimary, fontWeight: '800' },
+    todayDayCell: { borderBottomWidth: 2, borderBottomColor: theme.colors.primary },
     todayText: { color: theme.colors.primary, fontWeight: '800' },
-    todayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: theme.colors.primary, marginTop: 2 },
     detailsContainer: { paddingHorizontal: theme.spacing.xxl, paddingTop: 10 },
-    dateDisplay: { fontSize: 20, fontWeight: '800', color: theme.colors.textPrimary, marginBottom: 20 },
-    summaryCard: { backgroundColor: theme.colors.card, padding: 20, borderRadius: theme.borderRadius.xxl, marginBottom: 25, borderWidth: 1, borderColor: theme.colors.border, ...theme.shadows.soft },
-    summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    summaryItem: { flex: 1, alignItems: 'center' },
-    summaryVal: { fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary },
-    summaryLab: { fontSize: 11, fontWeight: '600', color: theme.colors.textSecondary, marginTop: 2 },
-    divider: { width: 1, height: 30, backgroundColor: theme.colors.border },
     sectionTitle: { fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 1.5, marginBottom: 14 },
     logCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.card, padding: 16, borderRadius: theme.borderRadius.xxl, marginBottom: 12, borderWidth: 1, borderColor: theme.colors.border, ...theme.shadows.soft },
     logIcon: { width: 44, height: 44, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
@@ -485,5 +507,21 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '700',
         color: theme.colors.primary,
+    },
+    achievementBadge: {
+        width: 13,
+        height: 13,
+        borderRadius: 6.5,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    achievementFilled: {
+        backgroundColor: '#10B981', // Solid Emerald Green for perfect completed goals
+    },
+    achievementIncomplete: {
+        backgroundColor: 'rgba(28, 28, 30, 0.06)', // Translucent outline circle
+        borderWidth: 0.5,
+        borderColor: 'rgba(28, 28, 30, 0.15)',
     },
 });

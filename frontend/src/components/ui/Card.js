@@ -1,29 +1,36 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../../theme';
 
 /**
  * Card — base surface container
  * Props: children, style, variant ('default' | 'elevated' | 'ai')
- *        padding (override inner padding), noPadding
+ *        padding (override inner padding), noPadding, onPress
  */
 export default function Card({
   children,
   style,
   variant = 'default',
   noPadding = false,
+  onPress,
+  ...props
 }) {
+  const Container = onPress ? TouchableOpacity : View;
+
   return (
-    <View
+    <Container
+      onPress={onPress}
+      activeOpacity={onPress ? 0.8 : undefined}
       style={[
         styles.base,
         styles[`variant_${variant}`],
         noPadding && styles.noPadding,
         style,
       ]}
+      {...props}
     >
       {children}
-    </View>
+    </Container>
   );
 }
 

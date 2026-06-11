@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 import CalendarStrip from '../components/CalendarStrip';
 import { theme } from '../theme';
+import ScreenContainer from '../components/ui/ScreenContainer';
+import { Header, SectionHeader } from '../components/ui/Header';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import AICoachCard from '../components/ui/AICoachCard';
+import { LoadingState, EmptyState } from '../components/ui/StateViews';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -85,74 +91,82 @@ export default function DashboardScreen({ navigation }) {
     }));
   };
 
+  // Map suggested actions to visual segment/checkbox list
+  const renderActions = () => {
+    if (!insight || !insight.next_actions || insight.next_actions.length === 0) return null;
+    return (
+      <View style={styles.actionsBlock}>
+        <Text style={styles.actionsHeading}>TRAINER SUGGESTED ACTIONS</Text>
+        {insight.next_actions.map((act, idx) => {
+          const isDone = !!completedActions[idx];
+          return (
+            <TouchableOpacity key={idx} style={styles.actionRowItem} onPress={() => toggleAction(idx)}>
+              <View style={[styles.checkBoxCircle, isDone && styles.checkBoxCircleDone]}>
+                {isDone && <Feather name="check" size={10} color="#FFF" />}
+              </View>
+              <Text style={[styles.actionRowText, isDone && styles.actionRowTextDone]}>{act}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Your Fitness Hub 🚀</Text>
-          <Text style={styles.subtitle}>Track your complete journey in one place.</Text>
-        </View>
+      
+      <Header
+        title="Your Fitness Hub 🚀"
+        subtitle="Track your complete journey in one place."
+      />
 
-        <CalendarStrip selectedDate={selectedDate} onDateSelected={setSelectedDate} />
+      <CalendarStrip selectedDate={selectedDate} onDateSelected={setSelectedDate} />
 
+      <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
         {loading ? (
-          <ActivityIndicator size="large" color={theme.colors.primary} style={{marginTop: 50}} />
+          <LoadingState message="Calculating daily metrics..." />
         ) : (
           <>
             {/* Context-Aware AI Personal Trainer Panel */}
             {insight && (
-              <TouchableOpacity activeOpacity={0.9} style={styles.aiCoachCard} onPress={toggleInsight}>
-                <View style={styles.aiCoachHeader}>
-                  <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                    <View style={styles.sparkleBg}>
-                      <Ionicons name="sparkles" size={14} color="#FFF" />
+              <AICoachCard
+                title="AI PERSONAL TRAINER"
+                scoreLabel="Recovery Status"
+                scoreValue="Optimal Recovery"
+                narrative={insight.summary}
+                expanded={insightExpanded}
+                onToggle={toggleInsight}
+                segments={
+                  insightExpanded
+                    ? [
+                        {
+                          icon: 'trending-up',
+                          title: 'Daily Analysis',
+                          text: insight.analysis,
+                          color: theme.colors.primary,
+                        },
+                      ]
+                    : []
+                }
+                actions={
+                  insightExpanded ? (
+                    <View>
+                      {insight.motivational_quote && (
+                        <View style={styles.quoteBlock}>
+                          <Feather name="info" size={16} color={theme.colors.primary} style={{ marginRight: 8, marginTop: 2 }} />
+                          <Text style={styles.quoteText}>"{insight.motivational_quote}"</Text>
+                        </View>
+                      )}
+                      {renderActions()}
                     </View>
-                    <Text style={styles.aiCoachTitle}>AI PERSONAL TRAINER</Text>
-                  </View>
-                  <Feather name={insightExpanded ? "chevron-up" : "chevron-down"} size={18} color={theme.colors.textSecondary} />
-                </View>
-
-                <Text style={styles.aiCoachSummary}>{insight.summary}</Text>
-
-                {insightExpanded ? (
-                  <View style={styles.expandedAiContent}>
-                    <Text style={styles.aiCoachAnalysis}>{insight.analysis}</Text>
-                    
-                    {insight.motivational_quote && (
-                      <View style={styles.quoteBlock}>
-                        <Feather name="info" size={16} color={theme.colors.primary} style={{marginRight: 8, marginTop: 2}} />
-                        <Text style={styles.quoteText}>"{insight.motivational_quote}"</Text>
-                      </View>
-                    )}
-
-                    {insight.next_actions && insight.next_actions.length > 0 && (
-                      <View style={styles.actionsBlock}>
-                        <Text style={styles.actionsHeading}>TRAINER SUGGESTED ACTIONS</Text>
-                        {insight.next_actions.map((act, idx) => {
-                          const isDone = !!completedActions[idx];
-                          return (
-                            <TouchableOpacity key={idx} style={styles.actionRowItem} onPress={() => toggleAction(idx)}>
-                              <View style={[styles.checkBoxCircle, isDone && styles.checkBoxCircleDone]}>
-                                {isDone && <Feather name="check" size={10} color="#FFF" />}
-                              </View>
-                              <Text style={[styles.actionRowText, isDone && styles.actionRowTextDone]}>{act}</Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    )}
-                  </View>
-                ) : (
-                  <View style={styles.tapPrompt}>
-                    <Text style={styles.tapPromptText}>Tap to reveal full trainer analysis & goals</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                  ) : null
+                }
+              />
             )}
 
             {/* Unified Stats Card */}
-            <View style={styles.card}>
+            <Card variant="elevated" style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>Daily Snapshot</Text>
                 <Text style={styles.dateLabel}>{selectedDate === getLocalDateString() ? 'Today' : selectedDate}</Text>
@@ -164,11 +178,11 @@ export default function DashboardScreen({ navigation }) {
                     <Text style={styles.statLabel}>kcal</Text>
                 </View>
                 <View style={styles.statBox}>
-                    <Text style={[styles.statValue, {color: theme.colors.secondary}]}>{hydration}ml</Text>
+                    <Text style={[styles.statValue, { color: theme.colors.info }]}>{hydration}ml</Text>
                     <Text style={styles.statLabel}>Water</Text>
                 </View>
                 <View style={styles.statBox}>
-                    <Text style={[styles.statValue, {color: theme.colors.green}]}>{dailyWorkouts.length}</Text>
+                    <Text style={[styles.statValue, { color: theme.colors.success }]}>{dailyWorkouts.length}</Text>
                     <Text style={styles.statLabel}>Workouts</Text>
                 </View>
               </View>
@@ -178,56 +192,53 @@ export default function DashboardScreen({ navigation }) {
                 <View style={styles.macroItem}><Text style={styles.macroLabel}>C: {nutritionSummary.carbs}g</Text></View>
                 <View style={styles.macroItem}><Text style={styles.macroLabel}>F: {nutritionSummary.fats}g</Text></View>
               </View>
-            </View>
+            </Card>
 
             {/* Hydration Quick Log */}
-            <View style={styles.hydrationCard}>
-               <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
-                  <FontAwesome5 name="tint" size={20} color={theme.colors.secondary} />
-                  <View style={{marginLeft: 15}}>
+            <Card style={styles.hydrationCard}>
+               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <FontAwesome5 name="tint" size={20} color={theme.colors.info} />
+                  <View style={{ marginLeft: 15 }}>
                      <Text style={styles.hydrationTitle}>Hydration</Text>
                      <Text style={styles.hydrationSub}>{hydration} / 3000ml goal</Text>
                   </View>
                </View>
-               <View style={{flexDirection: 'row'}}>
-                  <TouchableOpacity style={styles.waterBtn} onPress={() => updateHydration(250)}>
-                     <Text style={styles.waterBtnText}>+250ml</Text>
-                  </TouchableOpacity>
-               </View>
-            </View>
+               <Button variant="outline" size="sm" onPress={() => updateHydration(250)} textStyle={{ color: theme.colors.info }} style={{ borderColor: theme.colors.info }}>
+                  +250ml
+               </Button>
+            </Card>
 
             {/* Daily Timeline */}
-            <View style={styles.sectionHeader}>
-               <Text style={styles.sectionTitle}>Activity Feed</Text>
-            </View>
+            <SectionHeader title="Activity Feed" />
 
             {dailyMeals.length === 0 && dailyWorkouts.length === 0 ? (
-                <View style={styles.emptyFeed}>
-                    <Feather name="activity" size={40} color={theme.colors.textTertiary} />
-                    <Text style={styles.emptyFeedText}>No activity tracked for this day.</Text>
-                </View>
+              <EmptyState
+                icon="activity"
+                title="No activity tracked"
+                description="Use meals or workouts tab to add data for today."
+              />
             ) : (
                 <View style={styles.timeline}>
                     {/* Render Workouts */}
                     {dailyWorkouts.map((workout, idx) => (
                         <View key={`w-${idx}`} style={styles.timelineItem}>
-                            <View style={[styles.timelineIcon, {backgroundColor: theme.colors.primary}]}>
+                            <View style={[styles.timelineIcon, { backgroundColor: theme.colors.primary }]}>
                                 <FontAwesome5 name="dumbbell" size={14} color="#FFF" />
                             </View>
-                            <View style={styles.timelineContent}>
+                            <Card style={styles.timelineContent}>
                                 <Text style={styles.timelineTitle}>{workout.notes || 'Workout Session'}</Text>
                                 <Text style={styles.timelineDesc}>{workout.duration_minutes} mins • Physical Activity</Text>
-                            </View>
+                            </Card>
                         </View>
                     ))}
 
                     {/* Render Meals */}
                     {dailyMeals.map((meal, idx) => (
                         <View key={`m-${idx}`} style={styles.timelineItem}>
-                            <View style={[styles.timelineIcon, {backgroundColor: theme.colors.green}]}>
+                            <View style={[styles.timelineIcon, { backgroundColor: theme.colors.success }]}>
                                 <FontAwesome5 name="utensils" size={14} color="#FFF" />
                             </View>
-                            <View style={styles.timelineContent}>
+                            <Card style={styles.timelineContent}>
                                 <Text style={styles.timelineTitle}>{meal.meal_type.toUpperCase()}</Text>
                                 <Text style={styles.timelineDesc}>{meal.total_calories} kcal • {meal.logs?.length || 0} items</Text>
                                 <View style={styles.timelineMacros}>
@@ -235,16 +246,14 @@ export default function DashboardScreen({ navigation }) {
                                     <Text style={styles.miniMacro}>C: {meal.total_carbs}g</Text>
                                     <Text style={styles.miniMacro}>F: {meal.total_fats}g</Text>
                                 </View>
-                            </View>
+                            </Card>
                         </View>
                     ))}
                 </View>
             )}
           </>
         )}
-        
-        <View style={{height: 40}} />
-      </ScrollView>
+      </ScreenContainer>
     </View>
   );
 }
@@ -254,31 +263,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    paddingHorizontal: theme.spacing.xxl,
-    paddingTop: theme.spacing.lg,
-    marginBottom: 10,
-  },
-  greeting: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: theme.colors.textPrimary,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginTop: 4,
-    fontWeight: '500',
-  },
   card: {
-    backgroundColor: theme.colors.card,
     marginHorizontal: theme.spacing.xxl,
     marginVertical: 10,
-    padding: 20,
-    borderRadius: theme.borderRadius.xxl,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadows.soft,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -287,8 +274,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    ...theme.typography.h4,
     color: theme.colors.textPrimary,
   },
   statsGrid: {
@@ -300,20 +286,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: '800',
+    ...theme.typography.h3,
     color: theme.colors.primary,
   },
   statLabel: {
-    fontSize: 11,
+    ...theme.typography.labelSmall,
     color: theme.colors.textSecondary,
-    fontWeight: '600',
     marginTop: 4,
-    textTransform: 'uppercase',
   },
   dateLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    ...theme.typography.captionStrong,
     color: theme.colors.textSecondary,
   },
   macrosRow: {
@@ -327,53 +309,23 @@ const styles = StyleSheet.create({
     marginHorizontal: 15,
   },
   macroLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    ...theme.typography.captionStrong,
     color: theme.colors.textSecondary,
   },
   hydrationCard: {
-    backgroundColor: theme.colors.card,
     marginHorizontal: theme.spacing.xxl,
-    padding: 16,
-    borderRadius: theme.borderRadius.xxl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadows.soft,
   },
   hydrationTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    ...theme.typography.h5,
     color: theme.colors.textPrimary,
   },
   hydrationSub: {
-    fontSize: 12,
+    ...theme.typography.caption,
     color: theme.colors.textSecondary,
-    fontWeight: '600',
-  },
-  waterBtn: {
-    backgroundColor: theme.colors.accentBlueLight,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  waterBtnText: {
-    color: theme.colors.secondary,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  emptyFeed: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyFeedText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: theme.colors.textTertiary,
-    fontWeight: '500',
   },
   timeline: {
     marginHorizontal: theme.spacing.xxl,
@@ -394,20 +346,16 @@ const styles = StyleSheet.create({
   },
   timelineContent: {
     flex: 1,
-    backgroundColor: theme.colors.card,
     padding: 15,
-    borderRadius: theme.borderRadius.xl,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    ...theme.shadows.soft,
   },
   timelineTitle: {
-    fontSize: 15,
-    fontWeight: '800',
+    ...theme.typography.h5,
     color: theme.colors.textPrimary,
   },
   timelineDesc: {
-    fontSize: 12,
+    ...theme.typography.caption,
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
@@ -419,101 +367,23 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border,
   },
   miniMacro: {
-    fontSize: 10,
-    fontWeight: '700',
+    ...theme.typography.labelSmall,
     color: theme.colors.textSecondary,
     marginRight: 10,
-  },
-  sectionHeader: {
-    paddingHorizontal: theme.spacing.xxl,
-    marginBottom: 15,
-    marginTop: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: theme.colors.textPrimary,
-  },
-
-  // Premium Context-Aware AI Coach Card styles
-  aiCoachCard: {
-    backgroundColor: theme.colors.card,
-    marginHorizontal: theme.spacing.xxl,
-    padding: 20,
-    borderRadius: theme.borderRadius.xxl,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 45, 85, 0.15)',
-    ...theme.shadows.premium,
-    marginBottom: 16,
-    marginTop: 5,
-  },
-  aiCoachHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sparkleBg: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  aiCoachTitle: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: theme.colors.primary,
-    letterSpacing: 1.5,
-  },
-  aiCoachSummary: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    lineHeight: 22,
-  },
-  tapPrompt: {
-    marginTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingTop: 10,
-    alignItems: 'center',
-  },
-  tapPromptText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: theme.colors.primary,
-    letterSpacing: 0.5,
-  },
-  expandedAiContent: {
-    marginTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingTop: 14,
-  },
-  aiCoachAnalysis: {
-    fontSize: 13,
-    color: '#444',
-    lineHeight: 20,
-    fontWeight: '500',
-    marginBottom: 14,
   },
   quoteBlock: {
     flexDirection: 'row',
     backgroundColor: theme.colors.accentPinkLight,
     padding: 14,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.radii.lg,
     borderWidth: 1,
     borderColor: 'rgba(255, 45, 85, 0.1)',
     marginBottom: 16,
   },
   quoteText: {
     flex: 1,
-    fontSize: 12,
+    ...theme.typography.captionStrong,
     color: theme.colors.primary,
-    fontWeight: '700',
     fontStyle: 'italic',
     lineHeight: 18,
   },
@@ -521,8 +391,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   actionsHeading: {
-    fontSize: 10,
-    fontWeight: '800',
+    ...theme.typography.labelSmall,
     color: theme.colors.textSecondary,
     letterSpacing: 1.5,
     marginBottom: 10,
@@ -532,7 +401,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.background,
     padding: 12,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.radii.lg,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -548,12 +417,11 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   checkBoxCircleDone: {
-    backgroundColor: theme.colors.green,
-    borderColor: theme.colors.green,
+    backgroundColor: theme.colors.success,
+    borderColor: theme.colors.success,
   },
   actionRowText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...theme.typography.bodySmall,
     color: theme.colors.textPrimary,
   },
   actionRowTextDone: {

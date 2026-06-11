@@ -1,10 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../api/client';
 import { theme } from '../theme';
+import ScreenContainer from '../components/ui/ScreenContainer';
+import { Header, SectionHeader } from '../components/ui/Header';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import AICoachCard from '../components/ui/AICoachCard';
+import Badge from '../components/ui/Badge';
+import { LoadingState, EmptyState } from '../components/ui/StateViews';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -23,8 +29,6 @@ export default function MySpaceScreen({ navigation }) {
   const [insightExpanded, setInsightExpanded] = useState(false);
   const [username, setUsername] = useState('Fitness Fan');
   const [showNotifications, setShowNotifications] = useState(false);
-
-
 
   // AI Tone System State
   const [coachTone, setCoachTone] = useState('Supportive'); // Supportive | Direct | Challenger
@@ -51,8 +55,8 @@ export default function MySpaceScreen({ navigation }) {
       isMuted: false,
       icon: 'sparkles',
       iconType: 'ionicons',
-      color: '#FF2D55',
-      bgColor: 'rgba(255, 45, 85, 0.08)'
+      color: theme.colors.primary,
+      bgColor: theme.colors.primaryLight
     },
     {
       id: 2,
@@ -65,8 +69,8 @@ export default function MySpaceScreen({ navigation }) {
       isMuted: false,
       icon: 'water',
       iconType: 'material',
-      color: '#007AFF',
-      bgColor: 'rgba(0, 122, 255, 0.08)'
+      color: theme.colors.info,
+      bgColor: theme.colors.infoLight
     },
     {
       id: 3,
@@ -79,8 +83,8 @@ export default function MySpaceScreen({ navigation }) {
       isMuted: false,
       icon: 'food-apple',
       iconType: 'material',
-      color: '#10B981',
-      bgColor: 'rgba(16, 185, 129, 0.08)'
+      color: theme.colors.success,
+      bgColor: theme.colors.successLight
     },
     {
       id: 4,
@@ -93,8 +97,8 @@ export default function MySpaceScreen({ navigation }) {
       isMuted: false,
       icon: 'award',
       iconType: 'feather',
-      color: '#F59E0B',
-      bgColor: 'rgba(245, 158, 11, 0.08)'
+      color: theme.colors.warning,
+      bgColor: theme.colors.warningLight
     }
   ]);
 
@@ -184,8 +188,6 @@ export default function MySpaceScreen({ navigation }) {
       if (undoTimeoutId) clearTimeout(undoTimeoutId);
     }
   };
-
-
 
   // Context Menu Actions
   const openContextMenu = (notif) => {
@@ -297,250 +299,199 @@ export default function MySpaceScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.dateLabel}>{selectedDate === getLocalDateString() ? 'TODAY' : selectedDate.toUpperCase()}</Text>
-            <Text style={styles.greeting}>Hi, {username}! 👋</Text>
-          </View>
+    <ScreenContainer scrollable keyboardAvoiding={false}>
+      {/* Header */}
+      <Header
+        title={`Hi, ${username}! 👋`}
+        subtitle={selectedDate === getLocalDateString() ? 'TODAY' : selectedDate.toUpperCase()}
+        rightElement={
           <TouchableOpacity style={styles.iconBtn} onPress={() => setShowNotifications(true)}>
-            <Feather name="bell" size={22} color="#1C1C1E" />
+            <Feather name="bell" size={22} color={theme.colors.textPrimary} />
             {hasUnread && <View style={styles.notificationDot} />}
           </TouchableOpacity>
-        </View>
+        }
+      />
 
-        {loading ? (
-          <ActivityIndicator size="large" color="#FF2D55" style={{ marginTop: 50 }} />
-        ) : (
-          <>
-
-
-            {/* Daily Calorie Target Card */}
-            <View style={styles.calorieCard}>
-              <View style={styles.calorieHeader}>
-                <View>
-                  <Text style={styles.cardSectionLabel}>CALORIES CONSUMED</Text>
-                  <Text style={styles.calorieValue}>
-                    {nutritionSummary.calories} <Text style={styles.calorieTarget}>/ 2,200 kcal</Text>
-                  </Text>
-                </View>
-                <View style={styles.caloriePill}>
-                  <Text style={styles.caloriePillText}>
-                    {Math.max(0, 2200 - nutritionSummary.calories)} left
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.calorieProgressBg}>
-                <View 
-                  style={[
-                    styles.calorieProgressFill, 
-                    { width: `${Math.min(100, (nutritionSummary.calories / 2200) * 100)}%` }
-                  ]} 
-                />
-              </View>
-            </View>
-
-            {/* Macro Balance */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>MACRO TRACKER</Text>
-            </View>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll} contentContainerStyle={styles.horizontalScrollContent}>
-              {/* Protein Card */}
-              <View style={[styles.macroCard, { borderLeftColor: '#FF2D55' }]}>
-                <Text style={styles.macroTitle}>Protein</Text>
-                <Text style={styles.macroValue}>
-                  {nutritionSummary.protein}g <Text style={styles.macroTarget}>/ 140g</Text>
+      {loading ? (
+        <LoadingState message="Loading daily targets..." />
+      ) : (
+        <>
+          {/* Daily Calorie Target Card */}
+          <Card variant="elevated" style={styles.calorieCard}>
+            <View style={styles.calorieHeader}>
+              <View>
+                <Text style={styles.cardSectionLabel}>CALORIES CONSUMED</Text>
+                <Text style={styles.calorieValue}>
+                  {nutritionSummary.calories} <Text style={styles.calorieTarget}>/ 2,200 kcal</Text>
                 </Text>
-                <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { width: `${Math.min(100, (nutritionSummary.protein / 140) * 100)}%`, backgroundColor: '#FF2D55' }]} />
-                </View>
               </View>
-              
-              {/* Carbs Card */}
-              <View style={[styles.macroCard, { borderLeftColor: '#10B981' }]}>
-                <Text style={styles.macroTitle}>Carbs</Text>
-                <Text style={styles.macroValue}>
-                  {nutritionSummary.carbs}g <Text style={styles.macroTarget}>/ 200g</Text>
-                </Text>
-                <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { width: `${Math.min(100, (nutritionSummary.carbs / 200) * 100)}%`, backgroundColor: '#10B981' }]} />
-                </View>
-              </View>
-
-              {/* Fats Card */}
-              <View style={[styles.macroCard, { borderLeftColor: '#F59E0B' }]}>
-                <Text style={styles.macroTitle}>Fats</Text>
-                <Text style={styles.macroValue}>
-                  {nutritionSummary.fats}g <Text style={styles.macroTarget}>/ 65g</Text>
-                </Text>
-                <View style={styles.progressBarBg}>
-                  <View style={[styles.progressBarFill, { width: `${Math.min(100, (nutritionSummary.fats / 65) * 100)}%`, backgroundColor: '#F59E0B' }]} />
-                </View>
-              </View>
-            </ScrollView>
-
-            {/* AI Insight */}
-            {recommendation && !recommendation.disabled && (
-              insightExpanded ? (
-                <TouchableOpacity 
-                  activeOpacity={0.9} 
-                  style={styles.insightCard} 
-                  onPress={() => setInsightExpanded(false)}
-                >
-                  <View style={styles.insightHeader}>
-                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                      <View style={styles.insightIconWrap}>
-                        <Ionicons name="sparkles" size={14} color="#FFF" />
-                      </View>
-                      <Text style={styles.insightTitle}>COACH'S DAILY INSIGHT</Text>
-                    </View>
-                    <Feather name="chevron-up" size={18} color="#8E8E93" style={{ marginLeft: 'auto' }} />
-                  </View>
-
-                  {/* Dedicated Highlighted Score Bar */}
-                  <View style={styles.scoreHighlightBar}>
-                    <Text style={styles.scoreHighlightLabel}>RECOVERY STATUS</Text>
-                    <View style={styles.scoreHighlightBadge}>
-                      <Text style={styles.scoreHighlightValue}>Optimal Recovery</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.expandedAiContent}>
-                    <View style={styles.simpleSummaryBlock}>
-                      <Text style={styles.simpleSummaryText}>{recommendation.recovery_advice}</Text>
-                    </View>
-
-                    {recommendation.workout_plan && (
-                      <View style={styles.insightSegment}>
-                        <View style={styles.segmentHeader}>
-                          <Feather name="trending-up" size={14} color="#FF2D55" style={{ marginRight: 6 }} />
-                          <Text style={styles.segmentTitle}>Workout Focus</Text>
-                        </View>
-                        <Text style={styles.segmentText}>{recommendation.workout_plan}</Text>
-                      </View>
-                    )}
-
-                    {recommendation.exercises && recommendation.exercises.length > 0 && (
-                      <View style={styles.milestonesBlock}>
-                        <Text style={styles.actionsHeading}>RECOMMENDED EXERCISES</Text>
-                        <View style={styles.milestoneGrid}>
-                          {recommendation.exercises.map((ex, idx) => (
-                            <View key={idx} style={styles.milestonePill}>
-                              <Ionicons name="fitness-outline" size={12} color="#FF2D55" style={{ marginRight: 6 }} />
-                              <Text style={styles.milestoneText}>{ex}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity 
-                  activeOpacity={0.8} 
-                  style={styles.minimalCoachTrigger} 
-                  onPress={() => setInsightExpanded(true)}
-                >
-                  <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                    <Ionicons name="sparkles" size={15} color="#FF2D55" style={{ marginRight: 8 }} />
-                    <Text style={styles.minimalCoachTriggerText}>AI Coach Insights</Text>
-                  </View>
-                  <Feather name="chevron-down" size={16} color="#FF2D55" />
-                </TouchableOpacity>
-              )
-            )}
-
-            {/* Health Tracking Section */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>HEALTH METRICS</Text>
+              <Badge
+                variant="primary"
+                label={`${Math.max(0, 2200 - nutritionSummary.calories)} left`}
+                style={styles.caloriePill}
+              />
             </View>
+            <View style={styles.calorieProgressBg}>
+              <View 
+                style={[
+                  styles.calorieProgressFill, 
+                  { width: `${Math.min(100, (nutritionSummary.calories / 2200) * 100)}%` }
+                ]} 
+              />
+            </View>
+          </Card>
 
-            {/* Hydration Card */}
-            <View style={styles.metricCard}>
-              <View style={styles.metricRow}>
-                <View style={[styles.metricIconWrap, { backgroundColor: '#E3F2FD' }]}>
-                  <MaterialCommunityIcons name="water" size={22} color="#2196F3" />
-                </View>
-                <View>
-                  <Text style={styles.metricLabel}>Water Intake</Text>
-                  <Text style={styles.metricValue}>{hydration} / 3000 ml</Text>
-                </View>
+          {/* Macro Balance */}
+          <SectionHeader title="MACRO TRACKER" />
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll} contentContainerStyle={styles.horizontalScrollContent}>
+            {/* Protein Card */}
+            <Card style={[styles.macroCard, { borderLeftColor: theme.colors.primary, borderLeftWidth: 4 }]}>
+              <Text style={styles.macroTitle}>Protein</Text>
+              <Text style={styles.macroValue}>
+                {nutritionSummary.protein}g <Text style={styles.macroTarget}>/ 140g</Text>
+              </Text>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${Math.min(100, (nutritionSummary.protein / 140) * 100)}%`, backgroundColor: theme.colors.primary }]} />
               </View>
-              <View style={styles.hydrationActionRow}>
-                {/* Decrement (-) Button */}
-                <TouchableOpacity 
-                  style={[styles.actionButton, styles.minusBtn]}
-                  onPress={async () => {
-                    const dec = Math.min(250, hydration);
-                    if (dec <= 0) return;
-                    try {
-                      await apiClient.post('/hydration/log', { amount_ml: -dec, date: selectedDate });
-                      setHydration(prev => Math.max(0, prev - dec));
-                    } catch(e) { console.error(e); }
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="minus" size={16} color="#2196F3" />
-                </TouchableOpacity>
+            </Card>
+            
+            {/* Carbs Card */}
+            <Card style={[styles.macroCard, { borderLeftColor: theme.colors.success, borderLeftWidth: 4 }]}>
+              <Text style={styles.macroTitle}>Carbs</Text>
+              <Text style={styles.macroValue}>
+                {nutritionSummary.carbs}g <Text style={styles.macroTarget}>/ 200g</Text>
+              </Text>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${Math.min(100, (nutritionSummary.carbs / 200) * 100)}%`, backgroundColor: theme.colors.success }]} />
+              </View>
+            </Card>
 
-                {/* Increment (+) Button */}
-                <TouchableOpacity 
-                  style={[styles.actionButton, styles.plusBtn]}
-                  onPress={async () => {
-                    try {
-                      await apiClient.post('/hydration/log', { amount_ml: 250, date: selectedDate });
-                      setHydration(prev => prev + 250);
-                    } catch(e) { console.error(e); }
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="plus" size={16} color="#FFF" />
-                </TouchableOpacity>
+            {/* Fats Card */}
+            <Card style={[styles.macroCard, { borderLeftColor: theme.colors.warning, borderLeftWidth: 4 }]}>
+              <Text style={styles.macroTitle}>Fats</Text>
+              <Text style={styles.macroValue}>
+                {nutritionSummary.fats}g <Text style={styles.macroTarget}>/ 65g</Text>
+              </Text>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${Math.min(100, (nutritionSummary.fats / 65) * 100)}%`, backgroundColor: theme.colors.warning }]} />
+              </View>
+            </Card>
+          </ScrollView>
+
+          {/* AI Insight */}
+          {recommendation && !recommendation.disabled && (
+            <AICoachCard
+              title="COACH'S DAILY INSIGHT"
+              scoreLabel="RECOVERY STATUS"
+              scoreValue="Optimal Recovery"
+              narrative={recommendation.recovery_advice}
+              expanded={insightExpanded}
+              onToggle={() => setInsightExpanded(!insightExpanded)}
+              segments={
+                insightExpanded && recommendation.workout_plan
+                  ? [
+                      {
+                        icon: 'trending-up',
+                        title: 'Workout Focus',
+                        text: recommendation.workout_plan,
+                        color: theme.colors.primary,
+                      },
+                    ]
+                  : []
+              }
+              milestones={
+                insightExpanded && recommendation.exercises && recommendation.exercises.length > 0
+                  ? recommendation.exercises
+                  : []
+              }
+            />
+          )}
+
+          {/* Health Tracking Section */}
+          <SectionHeader title="HEALTH METRICS" />
+
+          {/* Hydration Card */}
+          <Card style={styles.metricCard}>
+            <View style={styles.metricRow}>
+              <View style={[styles.metricIconWrap, { backgroundColor: theme.colors.infoLight }]}>
+                <MaterialCommunityIcons name="water" size={22} color={theme.colors.info} />
+              </View>
+              <View>
+                <Text style={styles.metricLabel}>Water Intake</Text>
+                <Text style={styles.metricValue}>{hydration} / 3000 ml</Text>
               </View>
             </View>
-
-            {/* Workouts Target Card */}
-            <View style={styles.metricCard}>
-              <View style={styles.metricRow}>
-                <View style={[styles.metricIconWrap, { backgroundColor: '#FCE4EC' }]}>
-                  <MaterialCommunityIcons name="run" size={22} color="#FF2D55" />
-                </View>
-                <View>
-                  <Text style={styles.metricLabel}>Daily Workouts</Text>
-                  <Text style={styles.metricValue}>{dailyWorkouts.length} logged today</Text>
-                </View>
-              </View>
+            <View style={styles.hydrationActionRow}>
+              {/* Decrement (-) Button */}
               <TouchableOpacity 
-                style={[styles.addBtn, { backgroundColor: '#1C1C1E' }]}
-                onPress={() => navigation.navigate('Workouts')}
+                style={[styles.actionButton, styles.minusBtn]}
+                onPress={async () => {
+                  const dec = Math.min(250, hydration);
+                  if (dec <= 0) return;
+                  try {
+                    await apiClient.post('/hydration/log', { amount_ml: -dec, date: selectedDate });
+                    setHydration(prev => Math.max(0, prev - dec));
+                  } catch(e) { console.error(e); }
+                }}
+                activeOpacity={0.8}
               >
-                <Feather name="arrow-right" size={18} color="#FFF" />
+                <Feather name="minus" size={16} color={theme.colors.info} />
+              </TouchableOpacity>
+
+              {/* Increment (+) Button */}
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.plusBtn]}
+                onPress={async () => {
+                  try {
+                    await apiClient.post('/hydration/log', { amount_ml: 250, date: selectedDate });
+                    setHydration(prev => prev + 250);
+                  } catch(e) { console.error(e); }
+                }}
+                activeOpacity={0.8}
+              >
+                <Feather name="plus" size={16} color="#FFF" />
               </TouchableOpacity>
             </View>
-          </>
-        )}
+          </Card>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          {/* Workouts Target Card */}
+          <Card style={styles.metricCard}>
+            <View style={styles.metricRow}>
+              <View style={[styles.metricIconWrap, { backgroundColor: theme.colors.primaryLight }]}>
+                <MaterialCommunityIcons name="run" size={22} color={theme.colors.primary} />
+              </View>
+              <View>
+                <Text style={styles.metricLabel}>Daily Workouts</Text>
+                <Text style={styles.metricValue}>{dailyWorkouts.length} logged today</Text>
+              </View>
+            </View>
+            <Button
+              variant="secondary"
+              size="sm"
+              style={{ width: 36, height: 36, paddingHorizontal: 0, borderRadius: 18 }}
+              onPress={() => navigation.navigate('Workouts')}
+            >
+              <Feather name="arrow-right" size={18} color="#FFF" />
+            </Button>
+          </Card>
+        </>
+      )}
 
-      {/* Notifications PageSheet/Modal (Editorial Redesign) */}
+      {/* Notifications PageSheet/Modal */}
       <Modal visible={showNotifications} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowNotifications(false)}>
         <View style={styles.modalContainer}>
-          {/* Minimalist Apple-like Modal Header */}
+          {/* Modal Header */}
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Notifications</Text>
             <TouchableOpacity onPress={() => setShowNotifications(false)} style={styles.closeHeaderBtn}>
-              <Feather name="chevron-down" size={20} color="#1C1C1E" />
+              <Feather name="chevron-down" size={20} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
           {/* Modal Body Scroll Container */}
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-            {/* Premium Notification Tools Bar */}
+            {/* Notification Tools Bar */}
             <View style={styles.notificationToolsBar}>
               <Text style={styles.notificationCountText}>
                 {notifications.filter(n => !n.isRead).length} unread
@@ -548,7 +499,7 @@ export default function MySpaceScreen({ navigation }) {
               <View style={styles.toolsActions}>
                 {hasUnread && (
                   <TouchableOpacity onPress={markAllAsRead} style={styles.toolActionBtn}>
-                    <Feather name="check-square" size={13} color="#FF2D55" style={{ marginRight: 4 }} />
+                    <Feather name="check-square" size={13} color={theme.colors.primary} style={{ marginRight: 4 }} />
                     <Text style={styles.toolActionText}>Mark Read</Text>
                   </TouchableOpacity>
                 )}
@@ -556,15 +507,15 @@ export default function MySpaceScreen({ navigation }) {
                   <>
                     {hasUnread && <View style={styles.toolSeparator} />}
                     <TouchableOpacity onPress={clearAllNotifications} style={styles.toolActionBtn}>
-                      <Feather name="trash-2" size={13} color="#8E8E93" style={{ marginRight: 4 }} />
-                      <Text style={[styles.toolActionText, { color: '#8E8E93' }]}>Clear All</Text>
+                      <Feather name="trash-2" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
+                      <Text style={[styles.toolActionText, { color: theme.colors.textSecondary }]}>Clear All</Text>
                     </TouchableOpacity>
                   </>
                 )}
               </View>
             </View>
 
-            {/* Tone Selector Settings (Premium Soft Translucent Pill Bar) */}
+            {/* Tone Selector Settings */}
             <View style={styles.toneSelectorContainer}>
               <TouchableOpacity onPress={() => setCoachTone('Supportive')} style={[styles.toneBtn, coachTone === 'Supportive' && styles.toneBtnActive]}>
                 <Text style={[styles.toneBtnText, coachTone === 'Supportive' && styles.toneBtnTextActive]}>Supportive</Text>
@@ -593,17 +544,15 @@ export default function MySpaceScreen({ navigation }) {
                     item.isPinned && styles.notificationCardPinned
                   ]}
                 >
-                  {/* Soft Circular Icon badge on left */}
                   <View style={[styles.notificationIconWrap, { backgroundColor: item.bgColor }]}>
                     {renderNotificationIcon(item)}
                   </View>
 
-                  {/* Notification Content Block on right */}
                   <View style={styles.notificationContent}>
                     <View style={styles.notificationHeaderRow}>
                       <View style={styles.categoryBadgeRow}>
-                        {item.isPinned && <MaterialCommunityIcons name="pin" size={10} color="#FF9500" style={{ marginRight: 4 }} />}
-                        {item.isMuted && <Feather name="bell-off" size={10} color="#8E8E93" style={{ marginRight: 4 }} />}
+                        {item.isPinned && <MaterialCommunityIcons name="pin" size={10} color={theme.colors.warning} style={{ marginRight: 4 }} />}
+                        {item.isMuted && <Feather name="bell-off" size={10} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />}
                         <Text style={[styles.notificationCategory, { color: item.color }]}>{item.category}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -617,7 +566,7 @@ export default function MySpaceScreen({ navigation }) {
                     </Text>
                     <Text style={styles.notificationDesc}>{content.desc}</Text>
 
-                    {/* Premium Translucent Quick Actions */}
+                    {/* Quick Actions */}
                     {!item.isRead && item.id === 2 && (
                       <TouchableOpacity 
                         style={styles.quickActionBtn}
@@ -629,22 +578,22 @@ export default function MySpaceScreen({ navigation }) {
                           } catch(e) { console.error(e); }
                         }}
                       >
-                        <MaterialCommunityIcons name="water-plus" size={14} color="#007AFF" style={{ marginRight: 4 }} />
-                        <Text style={[styles.quickActionText, { color: '#007AFF' }]}>+ 250ml</Text>
+                        <MaterialCommunityIcons name="water-plus" size={14} color={theme.colors.info} style={{ marginRight: 4 }} />
+                        <Text style={[styles.quickActionText, { color: theme.colors.info }]}>+ 250ml</Text>
                       </TouchableOpacity>
                     )}
 
                     {!item.isRead && item.id === 1 && (
                       <TouchableOpacity 
-                        style={[styles.quickActionBtn, { backgroundColor: 'rgba(28, 28, 30, 0.06)' }]}
+                        style={[styles.quickActionBtn, { backgroundColor: theme.colors.border }]}
                         onPress={() => {
                           markAsRead(item.id);
                           setShowNotifications(false);
                           navigation.navigate('Workouts');
                         }}
                       >
-                        <Feather name="play" size={12} color="#1C1C1E" style={{ marginRight: 4 }} />
-                        <Text style={[styles.quickActionText, { color: '#1C1C1E' }]}>Start Workout</Text>
+                        <Feather name="play" size={12} color={theme.colors.textPrimary} style={{ marginRight: 4 }} />
+                        <Text style={[styles.quickActionText, { color: theme.colors.textPrimary }]}>Start Workout</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -652,21 +601,19 @@ export default function MySpaceScreen({ navigation }) {
               );
             })}
 
-            {/* Premium Empty State */}
+            {/* Empty State notifications */}
             {notifications.length === 0 && (
-              <View style={styles.emptyActivity}>
-                <View style={styles.emptyIconCircle}>
-                  <Ionicons name="sparkles-outline" size={28} color="#FF2D55" />
-                </View>
-                <Text style={styles.emptyTitleText}>All Clean!</Text>
-                <Text style={styles.emptyDescText}>Your custom coach feed is fully up to date.</Text>
-              </View>
+              <EmptyState
+                icon="bell"
+                title="All Clean!"
+                description="Your custom coach feed is fully up to date."
+              />
             )}
 
             <View style={{ height: 60 }} />
           </ScrollView>
 
-          {/* Elite Undo Floating Snackbar */}
+          {/* Undo Floating Snackbar */}
           {showUndo && (
             <View style={styles.undoSnackbar}>
               <Text style={styles.undoText}>Cleared successfully</Text>
@@ -682,7 +629,6 @@ export default function MySpaceScreen({ navigation }) {
       <Modal visible={showContextMenu} transparent={true} animationType="fade" onRequestClose={() => setShowContextMenu(false)}>
         <TouchableOpacity activeOpacity={1} onPress={() => setShowContextMenu(false)} style={styles.sheetOverlay}>
           <View style={styles.sheetContent}>
-            {/* Sheet Handle */}
             <View style={styles.sheetHandle} />
             
             {selectedNotification && (
@@ -694,42 +640,38 @@ export default function MySpaceScreen({ navigation }) {
 
             {selectedNotification && (
               <View style={styles.sheetActionsList}>
-                {/* Action 1: Toggle Read/Unread Status */}
                 <TouchableOpacity style={styles.sheetActionRow} onPress={() => toggleReadStatus(selectedNotification.id)}>
                   <View style={styles.actionIconWrap}>
-                    <Feather name={selectedNotification.isRead ? "mail" : "eye"} size={18} color="#1C1C1E" />
+                    <Feather name={selectedNotification.isRead ? "mail" : "eye"} size={18} color={theme.colors.textPrimary} />
                   </View>
                   <Text style={styles.actionRowText}>
                     {selectedNotification.isRead ? 'Mark as Unread' : 'Mark as Read'}
                   </Text>
                 </TouchableOpacity>
 
-                {/* Action 2: Star & Pin to Top */}
                 <TouchableOpacity style={styles.sheetActionRow} onPress={() => togglePinStatus(selectedNotification.id)}>
                   <View style={styles.actionIconWrap}>
-                    <MaterialCommunityIcons name="pin" size={18} color={selectedNotification.isPinned ? '#FF2D55' : '#1C1C1E'} />
+                    <MaterialCommunityIcons name="pin" size={18} color={selectedNotification.isPinned ? theme.colors.primary : theme.colors.textPrimary} />
                   </View>
                   <Text style={styles.actionRowText}>
                     {selectedNotification.isPinned ? 'Unpin from Top' : 'Pin to Top'}
                   </Text>
                 </TouchableOpacity>
 
-                {/* Action 3: Mute Category Alerts */}
                 <TouchableOpacity style={styles.sheetActionRow} onPress={() => toggleMuteStatus(selectedNotification.id)}>
                   <View style={styles.actionIconWrap}>
-                    <Feather name={selectedNotification.isMuted ? "bell" : "bell-off"} size={18} color="#1C1C1E" />
+                    <Feather name={selectedNotification.isMuted ? "bell" : "bell-off"} size={18} color={theme.colors.textPrimary} />
                   </View>
                   <Text style={styles.actionRowText}>
                     {selectedNotification.isMuted ? 'Unmute Alerts' : 'Mute Category Alerts'}
                   </Text>
                 </TouchableOpacity>
 
-                {/* Action 4: Delete Notification */}
                 <TouchableOpacity style={[styles.sheetActionRow, styles.deleteActionRow]} onPress={() => handleDeleteFromMenu(selectedNotification.id)}>
-                  <View style={[styles.actionIconWrap, { backgroundColor: '#FFF0F3' }]}>
-                    <Feather name="trash-2" size={18} color="#FF2D55" />
+                  <View style={[styles.actionIconWrap, { backgroundColor: theme.colors.dangerLight }]}>
+                    <Feather name="trash-2" size={18} color={theme.colors.danger} />
                   </View>
-                  <Text style={[styles.actionRowText, { color: '#FF2D55', fontWeight: '700' }]}>
+                  <Text style={[styles.actionRowText, { color: theme.colors.danger, fontWeight: '700' }]}>
                     Delete Notification
                   </Text>
                 </TouchableOpacity>
@@ -738,44 +680,16 @@ export default function MySpaceScreen({ navigation }) {
           </View>
         </TouchableOpacity>
       </Modal>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFBFC',
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  dateLabel: {
-    color: '#8E8E93',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  greeting: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1C1C1E',
-    letterSpacing: -0.5,
-  },
   iconBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F2F3F5',
+    backgroundColor: theme.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -787,26 +701,13 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FF2D55',
+    backgroundColor: theme.colors.primary,
     borderWidth: 1.5,
-    borderColor: '#F2F3F5',
+    borderColor: theme.colors.border,
   },
-  
-
-
   calorieCard: {
-    backgroundColor: '#FFF',
-    marginHorizontal: 24,
-    padding: 24,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
-    shadowColor: '#000',
-    shadowOpacity: 0.02,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-    marginBottom: 28,
+    marginHorizontal: theme.spacing.xxl,
+    marginBottom: theme.spacing.xl,
   },
   calorieHeader: {
     flexDirection: 'row',
@@ -815,95 +716,60 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cardSectionLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#8E8E93',
-    letterSpacing: 1.5,
+    ...theme.typography.labelSmall,
+    color: theme.colors.textSecondary,
     marginBottom: 6,
   },
   calorieValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#1C1C1E',
+    ...theme.typography.metricSmall,
+    color: theme.colors.textPrimary,
   },
   calorieTarget: {
-    fontSize: 14,
-    color: '#8E8E93',
-    fontWeight: '500',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textSecondary,
   },
   caloriePill: {
-    backgroundColor: '#FFF0F3',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  caloriePillText: {
-    color: '#FF2D55',
-    fontSize: 12,
-    fontWeight: '700',
+    alignSelf: 'center',
   },
   calorieProgressBg: {
     height: 8,
-    backgroundColor: '#F2F3F5',
+    backgroundColor: theme.colors.border,
     borderRadius: 4,
     overflow: 'hidden',
   },
   calorieProgressFill: {
     height: '100%',
-    backgroundColor: '#FF2D55',
+    backgroundColor: theme.colors.primary,
     borderRadius: 4,
   },
-  sectionHeader: {
-    paddingHorizontal: 24,
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#8E8E93',
-    letterSpacing: 1.5,
-  },
   horizontalScroll: {
-    marginBottom: 28,
+    marginBottom: theme.spacing.xl,
   },
   horizontalScrollContent: {
-    paddingLeft: 24,
-    paddingRight: 8,
+    paddingLeft: theme.spacing.xxl,
+    paddingRight: theme.spacing.sm,
   },
   macroCard: {
     width: 140,
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 20,
-    marginRight: 16,
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.02,
-    shadowRadius: 10,
-    elevation: 2,
+    marginRight: theme.spacing.lg,
   },
   macroTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1C1C1E',
+    ...theme.typography.h5,
+    color: theme.colors.textPrimary,
     marginBottom: 6,
   },
   macroValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1C1C1E',
+    ...theme.typography.h4,
+    color: theme.colors.textPrimary,
     marginBottom: 10,
   },
   macroTarget: {
-    fontSize: 12,
-    color: '#8E8E93',
-    fontWeight: '500',
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
   },
   progressBarBg: {
     height: 5,
-    backgroundColor: '#F2F3F5',
+    backgroundColor: theme.colors.border,
     borderRadius: 2.5,
     overflow: 'hidden',
   },
@@ -911,60 +777,12 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 2.5,
   },
-  insightCard: {
-    backgroundColor: '#FFF',
-    marginHorizontal: 24,
-    padding: 20,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
-    marginBottom: 28,
-    shadowColor: '#000',
-    shadowOpacity: 0.02,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  insightHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  insightIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#FF2D55',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  insightTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#FF2D55',
-    letterSpacing: 1.5,
-  },
-  insightText: {
-    fontSize: 14,
-    color: '#48484A',
-    lineHeight: 22,
-    fontWeight: '500',
-  },
   metricCard: {
-    backgroundColor: '#FFF',
-    marginHorizontal: 24,
-    padding: 18,
-    borderRadius: 24,
+    marginHorizontal: theme.spacing.xxl,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
-    shadowColor: '#000',
-    shadowOpacity: 0.02,
-    shadowRadius: 12,
-    elevation: 2,
+    marginBottom: theme.spacing.md,
   },
   metricRow: {
     flexDirection: 'row',
@@ -973,88 +791,56 @@ const styles = StyleSheet.create({
   metricIconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 16,
+    borderRadius: theme.radii.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: theme.spacing.lg,
   },
   metricLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1C1C1E',
+    ...theme.typography.h5,
+    color: theme.colors.textPrimary,
     marginBottom: 2,
   },
   metricValue: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8E8E93',
-  },
-  addBtn: {
-    backgroundColor: '#FF2D55',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#FF2D55',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
   },
   
-  // Refactored Apple-Style Notifications modal
+  // Refactored Notifications modal
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FAFBFC', // Clean Apple Slate Light background
+    backgroundColor: theme.colors.background,
     position: 'relative',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
-    backgroundColor: '#FAFBFC',
+    paddingHorizontal: theme.spacing.xxl,
+    paddingTop: theme.spacing.xxl,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
   },
   modalTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1C1C1E',
-    letterSpacing: -0.5,
-  },
-  modalActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerActionLink: {
-    fontSize: 14,
-    color: '#FF2D55',
-    fontWeight: '700',
-  },
-  actionSeparator: {
-    width: 1,
-    height: 12,
-    backgroundColor: '#E5E5EA',
-    marginHorizontal: 10,
+    ...theme.typography.h2,
+    color: theme.colors.textPrimary,
   },
   closeHeaderBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    backgroundColor: theme.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 12,
   },
   modalBody: {
-    paddingHorizontal: 20,
+    paddingHorizontal: theme.spacing.xl,
   },
   toneSelectorContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-    borderRadius: 14,
+    backgroundColor: theme.colors.border,
+    borderRadius: theme.radii.lg,
     padding: 3,
     marginBottom: 20,
   },
@@ -1062,47 +848,37 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
-    borderRadius: 11,
+    borderRadius: theme.radii.md,
   },
   toneBtnActive: {
     backgroundColor: '#FFF',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    ...theme.shadows.soft,
   },
   toneBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8E8E93',
+    ...theme.typography.captionStrong,
+    color: theme.colors.textSecondary,
   },
   toneBtnTextActive: {
-    color: '#1C1C1E',
-    fontWeight: '700',
+    color: theme.colors.textPrimary,
   },
 
-  // Apple & Instagram Clean Notification Card Refactor
   notificationCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.02,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radii.xl,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.soft,
     borderWidth: 1,
-    borderColor: '#F2F3F5',
+    borderColor: theme.colors.border,
   },
   notificationCardUnread: {
-    borderColor: 'rgba(0, 122, 255, 0.1)', // Very faint sapphire halo
+    borderColor: theme.colors.infoLight,
   },
   notificationCardPinned: {
-    borderColor: 'rgba(255, 149, 0, 0.2)',
+    borderColor: theme.colors.warningLight,
     borderLeftWidth: 3,
-    borderLeftColor: '#FF9500',
+    borderLeftColor: theme.colors.warning,
   },
   notificationIconWrap: {
     width: 38,
@@ -1110,7 +886,7 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: theme.spacing.lg,
     alignSelf: 'flex-start',
   },
   notificationContent: {
@@ -1127,40 +903,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   notificationCategory: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
+    ...theme.typography.labelSmall,
   },
   unreadIndicatorDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#007AFF', // High-end Sapphire Blue indicator
+    backgroundColor: theme.colors.info,
   },
   notificationTime: {
-    fontSize: 10,
-    color: '#8E8E93',
-    fontWeight: '600',
+    ...theme.typography.labelSmall,
+    color: theme.colors.textSecondary,
+    letterSpacing: 0,
   },
   notificationTextTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#8E8E93',
-    lineHeight: 18,
+    ...theme.typography.h5,
+    color: theme.colors.textSecondary,
     marginBottom: 3,
   },
   notificationTextTitleUnread: {
-    color: '#1C1C1E',
-    fontWeight: '800',
+    color: theme.colors.textPrimary,
   },
   notificationDesc: {
-    fontSize: 12,
-    color: '#8E8E93',
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
     lineHeight: 17,
-    fontWeight: '500',
   },
   quickActionBtn: {
-    backgroundColor: 'rgba(0, 122, 255, 0.06)',
+    backgroundColor: theme.colors.infoLight,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -1170,38 +940,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   quickActionText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-
-  // Premium Empty State Redesign
-  emptyActivity: {
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 45, 85, 0.06)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitleText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1C1C1E',
-    marginBottom: 6,
-  },
-  emptyDescText: {
-    fontSize: 13,
-    color: '#8E8E93',
-    fontWeight: '500',
-    textAlign: 'center',
-    lineHeight: 18,
+    ...theme.typography.captionStrong,
   },
   
   // High-End Undo Floating Snackbar styles
@@ -1210,35 +949,30 @@ const styles = StyleSheet.create({
     bottom: 30,
     left: 20,
     right: 20,
-    backgroundColor: '#1C1C1E',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    backgroundColor: theme.colors.textPrimary,
+    borderRadius: theme.radii.lg,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    ...theme.shadows.premium,
     zIndex: 2000,
   },
   undoText: {
     color: '#FFF',
-    fontSize: 14,
+    ...theme.typography.bodySmall,
     fontWeight: '600',
   },
   undoBtn: {
-    backgroundColor: 'rgba(255, 45, 85, 0.15)',
+    backgroundColor: theme.colors.primaryLight,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: theme.radii.md,
   },
   undoBtnText: {
-    color: '#FF2D55',
-    fontSize: 13,
-    fontWeight: '800',
+    color: theme.colors.primary,
+    ...theme.typography.captionStrong,
     letterSpacing: 0.5,
   },
 
@@ -1250,20 +984,17 @@ const styles = StyleSheet.create({
   },
   sheetContent: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 24,
+    borderTopLeftRadius: theme.radii.huge,
+    borderTopRightRadius: theme.radii.huge,
+    paddingHorizontal: theme.spacing.xxl,
     paddingBottom: 40,
     paddingTop: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 10,
+    ...theme.shadows.premium,
   },
   sheetHandle: {
     width: 36,
     height: 5,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: theme.colors.border,
     borderRadius: 2.5,
     alignSelf: 'center',
     marginBottom: 20,
@@ -1272,18 +1003,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F3F5',
+    borderBottomColor: theme.colors.border,
   },
   sheetCategory: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.5,
+    ...theme.typography.labelSmall,
     marginBottom: 4,
   },
   sheetTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1C1C1E',
+    ...theme.typography.h5,
+    color: theme.colors.textPrimary,
   },
   sheetActionsList: {
     gap: 8,
@@ -1291,155 +1019,28 @@ const styles = StyleSheet.create({
   sheetActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAFBFC',
+    backgroundColor: theme.colors.background,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: theme.radii.lg,
     borderWidth: 1,
-    borderColor: '#EFEFEF',
+    borderColor: theme.colors.border,
   },
   deleteActionRow: {
-    borderColor: '#FFE3E8',
-    backgroundColor: '#FFF0F3',
+    borderColor: theme.colors.dangerLight,
+    backgroundColor: theme.colors.dangerLight,
   },
   actionIconWrap: {
     width: 32,
     height: 32,
-    borderRadius: 10,
+    borderRadius: theme.radii.sm,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
   actionRowText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1C1C1E',
-  },
-  minimalCoachTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: theme.borderRadius.xxl,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    marginHorizontal: theme.spacing.xxl,
-    marginTop: 4,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 45, 85, 0.12)',
-    shadowColor: '#FF2D55',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  minimalCoachTriggerText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FF2D55',
-    letterSpacing: 0.2,
-  },
-  scoreHighlightBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 45, 85, 0.08)',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 45, 85, 0.08)',
-  },
-  scoreHighlightLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FF2D55',
-    letterSpacing: 1,
-  },
-  scoreHighlightBadge: {
-    backgroundColor: '#FF2D55',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  scoreHighlightValue: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#FFFFFF',
-  },
-  expandedAiContent: {
-    marginTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#F2F3F5',
-    paddingTop: 14,
-    gap: 12,
-  },
-  simpleSummaryBlock: {
-    backgroundColor: 'rgba(255, 45, 85, 0.08)',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 45, 85, 0.1)',
-    marginBottom: 4,
-  },
-  simpleSummaryText: {
-    fontSize: 13,
-    color: '#FF2D55',
-    fontWeight: '600',
-    lineHeight: 20,
-  },
-  insightSegment: {
-    backgroundColor: '#FAFBFC',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
-  },
-  segmentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  segmentTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#1C1C1E',
-  },
-  segmentText: {
-    fontSize: 12,
-    color: '#8E8E93',
-    lineHeight: 18,
-    fontWeight: '500',
-  },
-  milestonesBlock: {
-    marginTop: 8,
-  },
-  actionsHeading: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#8E8E93',
-    letterSpacing: 1.5,
-    marginBottom: 8,
-  },
-  milestoneGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  milestonePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 45, 85, 0.08)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  milestoneText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FF2D55',
+    ...theme.typography.bodySmall,
+    color: theme.colors.textPrimary,
   },
   hydrationActionRow: {
     flexDirection: 'row',
@@ -1452,37 +1053,31 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    ...theme.shadows.soft,
   },
   minusBtn: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: theme.colors.infoLight,
     borderWidth: 1,
-    borderColor: 'rgba(33, 150, 243, 0.15)',
-    shadowColor: '#2196F3',
+    borderColor: 'rgba(0, 122, 255, 0.15)',
   },
   plusBtn: {
-    backgroundColor: '#2196F3',
-    shadowColor: '#2196F3',
+    backgroundColor: theme.colors.info,
   },
   notificationToolsBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: theme.radii.lg,
     borderWidth: 1,
-    borderColor: '#F2F3F5',
+    borderColor: theme.colors.border,
     marginBottom: 16,
   },
   notificationCountText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#8E8E93',
+    ...theme.typography.captionStrong,
+    color: theme.colors.textSecondary,
   },
   toolsActions: {
     flexDirection: 'row',
@@ -1495,14 +1090,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   toolActionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FF2D55',
+    ...theme.typography.captionStrong,
+    color: theme.colors.primary,
   },
   toolSeparator: {
     width: 1,
     height: 10,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: theme.colors.border,
     marginHorizontal: 8,
   },
 });

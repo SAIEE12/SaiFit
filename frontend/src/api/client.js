@@ -1,9 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Ensure to replace with your local backend IP if testing on physical device
-// For example: http://192.168.1.167:5000/api
-const BASE_URL = 'http://192.168.1.167:5000/api';
+// Read API URL from environment variables, fallback to local development IP if undefined
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.167:5000/api';
 
 const apiClient = axios.create({
   baseURL: BASE_URL,

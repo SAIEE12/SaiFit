@@ -2,6 +2,8 @@ const db = require('../config/db');
 const { getAIInstance, getModelName, getSystemSetting, safeGenerateContent } = require('../config/gemini');
 const fs = require('fs');
 const crypto = require('crypto');
+const { logAiUsage } = require('../middlewares/usageMiddleware');
+
 
 // Helper to get MD5 hash of a file
 const getFileHash = (filePath) => {
@@ -84,6 +86,7 @@ exports.analyzeFoodImage = async (req, res) => {
 
     // 2. Save to Cache
     await setCachedResult(fileHash, nutritionInfo);
+    await logAiUsage(req.user.id, 'meal_scan');
 
     res.json({
         ...nutritionInfo,
@@ -152,6 +155,7 @@ exports.analyzeFoodText = async (req, res) => {
 
     // 2. Save to Cache
     await setCachedResult(textKey, nutritionInfo);
+    await logAiUsage(req.user.id, 'meal_scan');
 
     res.json({
         ...nutritionInfo,
@@ -298,6 +302,7 @@ exports.smartSearch = async (req, res) => {
         throw new Error('AI response did not contain valid JSON: ' + responseText);
     }
     const searchResult = JSON.parse(jsonMatch[0]);
+    await logAiUsage(userId, 'smart_search');
 
     res.json(searchResult);
   } catch (error) {

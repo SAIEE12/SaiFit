@@ -1,5 +1,7 @@
 const { getAIInstance, getModelName, getSystemSetting, safeGenerateContent } = require('../config/gemini');
 const db = require('../config/db');
+const { logAiUsage } = require('../middlewares/usageMiddleware');
+
 
 // Streak Calculation Helper
 const calculateHabitStreak = async (userId) => {
@@ -94,6 +96,7 @@ exports.getRecommendations = async (req, res) => {
 
     const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
     const isFeatureEnabled = await getSystemSetting('ENABLE_WORKOUT_COACH', 'true');
+    let recommendation;
     if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
         recommendation = {
             workout_plan: "Active Recovery Day (AI Disabled)",
@@ -101,7 +104,6 @@ exports.getRecommendations = async (req, res) => {
             recovery_advice: "Your AI workout coach is currently offline. Focus on standard recovery!"
         };
     } else {
-        let recommendation;
         try {
             const responseText = await safeGenerateContent(finalPrompt);
             
@@ -110,6 +112,7 @@ exports.getRecommendations = async (req, res) => {
                 throw new Error('AI response did not contain valid JSON: ' + responseText);
             }
             recommendation = JSON.parse(jsonMatch[0]);
+            await logAiUsage(user_id, 'workout');
         } catch (aiError) {
             console.error('Gemini API Error, using fallback:', aiError.message);
             recommendation = {
@@ -250,6 +253,7 @@ exports.getInsight = async (req, res) => {
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('Invalid JSON structure');
             insight = JSON.parse(jsonMatch[0]);
+            await logAiUsage(userId, 'insight');
         } catch (aiErr) {
             console.error("Gemini insights failed, using fallback:", aiErr.message);
             insight = {
@@ -355,6 +359,7 @@ exports.getWorkoutCoach = async (req, res) => {
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('Invalid JSON');
             workoutPlan = JSON.parse(jsonMatch[0]);
+            await logAiUsage(userId, 'workout_coach');
         } catch (err) {
             console.error("getWorkoutCoach failed, using fallback:", err.message);
             workoutPlan = {
@@ -457,6 +462,7 @@ exports.getCalendarCoach = async (req, res) => {
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('Invalid JSON');
             calendarAnalysis = JSON.parse(jsonMatch[0]);
+            await logAiUsage(userId, 'calendar_coach');
         } catch (err) {
             calendarAnalysis = {
                 summary: "Excellent calendar activity recorded over the last two weeks.",
@@ -557,6 +563,7 @@ exports.getProfileCoach = async (req, res) => {
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('Invalid JSON');
             profileAnalysis = JSON.parse(jsonMatch[0]);
+            await logAiUsage(userId, 'profile_coach');
         } catch (err) {
             profileAnalysis = {
                 summary: "Your personalized Fitness Score is 75/100. Tap to expand body predictions.",

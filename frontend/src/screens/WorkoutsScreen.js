@@ -208,14 +208,16 @@ export default function WorkoutsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header
-        title="Workouts"
-        rightElement={
-          <Button variant="primary" size="sm" onPress={() => setShowModal(true)} icon={<Feather name="plus" size={14} color="#FFF" />}>
-            Log Session
-          </Button>
-        }
-      />
+      <SafeAreaView edges={['top']} style={styles.safeHeader}>
+        <Header
+          title="Workouts"
+          rightElement={
+            <Button variant="primary" size="sm" onPress={() => setShowModal(true)} icon={<Feather name="plus" size={14} color="#FFF" />}>
+              Log Session
+            </Button>
+          }
+        />
+      </SafeAreaView>
 
       <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
         {/* Categories ribbon */}
@@ -457,6 +459,9 @@ export default function WorkoutsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  safeHeader: {
     backgroundColor: theme.colors.background,
   },
   categoriesWrapper: {

@@ -4,6 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/client';
 import { theme } from '../theme';
+import ScreenContainer from '../components/ui/ScreenContainer';
+import { Header, SectionHeader } from '../components/ui/Header';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import AICoachCard from '../components/ui/AICoachCard';
+import Badge from '../components/ui/Badge';
+import { LoadingState, EmptyState } from '../components/ui/StateViews';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -177,17 +184,19 @@ export default function CalendarScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Feather name="chevron-left" size={24} color={theme.colors.textPrimary} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Daily Logs</Text>
-            </View>
+        <View style={styles.container}>
+            <Header
+                title="Daily Logs"
+                leftElement={
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <Feather name="chevron-left" size={24} color={theme.colors.textPrimary} />
+                    </TouchableOpacity>
+                }
+            />
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
                 {/* Calendar Card */}
-                <View style={styles.calendarContainer}>
+                <Card style={styles.calendarContainer}>
                     <View style={styles.monthHeader}>
                         <Text style={styles.monthTitle}>{MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}</Text>
                         <View style={styles.navBtns}>
@@ -197,161 +206,114 @@ export default function CalendarScreen({ navigation }) {
                     </View>
                     <View style={styles.weekDays}>{DAYS.map(day => <Text key={day} style={styles.weekDayText}>{day.toUpperCase()}</Text>)}</View>
                     <View style={styles.daysGrid}>{renderCalendar()}</View>
-                </View>
+                </Card>
 
                 {/* AI Calendar Journey Intelligence */}
                 {isSmartSearchEnabled && calendarCoach && !calendarCoach.disabled && (
-                    coachExpanded ? (
-                        <TouchableOpacity activeOpacity={0.9} style={styles.aiCoachCard} onPress={toggleCoach}>
-                            <View style={styles.aiCoachHeader}>
-                                <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                                    <View style={styles.sparkleBg}>
-                                        <Ionicons name="sparkles" size={14} color="#FFF" />
-                                    </View>
-                                    <Text style={styles.aiCoachTitle}>AI JOURNEY INTELLIGENCE</Text>
-                                </View>
-                                <Feather name="chevron-up" size={18} color={theme.colors.textSecondary} />
-                            </View>
-
-                            {/* Dedicated Highlighted Score Bar */}
-                            <View style={styles.scoreHighlightBar}>
-                                <Text style={styles.scoreHighlightLabel}>CONSISTENCY INDEX</Text>
-                                <View style={styles.scoreHighlightBadge}>
-                                    <Text style={styles.scoreHighlightValue}>{calendarCoach.consistency_score}</Text>
-                                </View>
-                            </View>
-
-                            <View style={styles.expandedAiContent}>
-                                <View style={styles.simpleSummaryBlock}>
-                                    <Text style={styles.simpleSummaryText}>
-                                        {calendarCoach.expanded_narrative}
-                                    </Text>
-                                </View>
-
-                                <View style={styles.insightSegment}>
-                                    <View style={styles.segmentHeader}>
-                                        <Feather name="trending-up" size={14} color={theme.colors.primary} style={{marginRight: 6}} />
-                                        <Text style={styles.segmentTitle}>Streak Analysis</Text>
-                                    </View>
-                                    <Text style={styles.segmentText}>{calendarCoach.streak_analysis}</Text>
-                                </View>
-
-                                <View style={styles.insightSegment}>
-                                    <View style={styles.segmentHeader}>
-                                        <Feather name="clock" size={14} color={theme.colors.secondary} style={{marginRight: 6}} />
-                                        <Text style={styles.segmentTitle}>Best Workout Time</Text>
-                                    </View>
-                                    <Text style={styles.segmentText}>{calendarCoach.best_time_suggestion}</Text>
-                                </View>
-
-                                <View style={styles.insightSegment}>
-                                    <View style={styles.segmentHeader}>
-                                        <Feather name="compass" size={14} color={theme.colors.green} style={{marginRight: 6}} />
-                                        <Text style={styles.segmentTitle}>Split Predictions</Text>
-                                    </View>
-                                    <Text style={styles.segmentText}>{calendarCoach.workout_predictions}</Text>
-                                </View>
-
-                                <View style={styles.insightSegment}>
-                                    <View style={styles.segmentHeader}>
-                                        <Feather name="heart" size={14} color={theme.colors.orange} style={{marginRight: 6}} />
-                                        <Text style={styles.segmentTitle}>Overtraining Status</Text>
-                                    </View>
-                                    <Text style={styles.segmentText}>{calendarCoach.overtraining_alerts}</Text>
-                                </View>
-
-                                {calendarCoach.milestones && calendarCoach.milestones.length > 0 && (
-                                    <View style={styles.milestonesBlock}>
-                                        <Text style={styles.actionsHeading}>JOURNEY MILESTONES</Text>
-                                        <View style={styles.milestoneGrid}>
-                                            {calendarCoach.milestones.map((mil, idx) => (
-                                                <View key={idx} style={styles.milestonePill}>
-                                                    <Ionicons name="trophy-outline" size={12} color={theme.colors.primary} style={{marginRight: 6}} />
-                                                    <Text style={styles.milestoneText}>{mil}</Text>
-                                                </View>
-                                            ))}
-                                        </View>
-                                    </View>
-                                )}
-                            </View>
-                        </TouchableOpacity>
-                    ) : (
-                        <TouchableOpacity activeOpacity={0.8} style={styles.minimalCoachTrigger} onPress={toggleCoach}>
-                            <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                                <Ionicons name="sparkles" size={15} color={theme.colors.primary} style={{marginRight: 8}} />
-                                <Text style={styles.minimalCoachTriggerText}>AI Journey Analyst</Text>
-                            </View>
-                            <Feather name="chevron-down" size={16} color={theme.colors.primary} />
-                        </TouchableOpacity>
-                    )
+                    <AICoachCard
+                        title="AI JOURNEY INTELLIGENCE"
+                        scoreLabel="CONSISTENCY INDEX"
+                        scoreValue={calendarCoach.consistency_score}
+                        narrative={calendarCoach.expanded_narrative}
+                        expanded={coachExpanded}
+                        onToggle={toggleCoach}
+                        segments={
+                            coachExpanded
+                                ? [
+                                    {
+                                        icon: 'trending-up',
+                                        title: 'Streak Analysis',
+                                        text: calendarCoach.streak_analysis,
+                                        color: theme.colors.primary,
+                                    },
+                                    {
+                                        icon: 'clock',
+                                        title: 'Best Workout Time',
+                                        text: calendarCoach.best_time_suggestion,
+                                        color: theme.colors.secondary,
+                                    },
+                                    {
+                                        icon: 'compass',
+                                        title: 'Split Predictions',
+                                        text: calendarCoach.workout_predictions,
+                                        color: theme.colors.success,
+                                    },
+                                    {
+                                        icon: 'heart',
+                                        title: 'Overtraining Status',
+                                        text: calendarCoach.overtraining_alerts,
+                                        color: theme.colors.warning,
+                                    },
+                                ]
+                                : []
+                        }
+                        milestones={
+                            coachExpanded && calendarCoach.milestones && calendarCoach.milestones.length > 0
+                                ? calendarCoach.milestones
+                                : []
+                        }
+                    />
                 )}
 
                 {/* Day Details */}
                 <View style={styles.detailsContainer}>
                     {loading ? (
-                        <ActivityIndicator color={theme.colors.primary} size="large" style={{marginTop: 30}} />
+                        <LoadingState message="Fetching daily details..." />
                     ) : (
                         <View style={styles.content}>
-                            <Text style={styles.sectionTitle}>ACTIVITIES</Text>
+                            <SectionHeader title="ACTIVITIES" />
                             
                             {/* Workout Logs */}
                             {dayData.workouts.length > 0 ? dayData.workouts.map((w, i) => (
-                                <View key={i} style={styles.logCard}>
-                                    <View style={[styles.logIcon, {backgroundColor: theme.colors.accentPinkLight}]}><FontAwesome5 name="running" size={16} color={theme.colors.primary} /></View>
+                                <Card key={i} style={styles.logCard}>
+                                    <View style={[styles.logIcon, {backgroundColor: theme.colors.primaryLight}]}><FontAwesome5 name="running" size={16} color={theme.colors.primary} /></View>
                                     <View style={styles.logInfo}>
                                         <Text style={styles.logTitle}>{w.notes || 'Workout Session'}</Text>
                                         <Text style={styles.logSubtitle}>{w.duration_minutes} mins • {new Date(w.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
                                     </View>
-                                </View>
+                                </Card>
                             )) : null}
 
                             {/* Meal Logs */}
                             {dayData.meals.length > 0 ? dayData.meals.map((m, i) => (
-                                <View key={i} style={styles.logCard}>
-                                    <View style={[styles.logIcon, {backgroundColor: theme.colors.accentGreenLight}]}><MaterialCommunityIcons name="food" size={18} color={theme.colors.green} /></View>
+                                <Card key={i} style={styles.logCard}>
+                                    <View style={[styles.logIcon, {backgroundColor: theme.colors.successLight}]}><MaterialCommunityIcons name="food" size={18} color={theme.colors.success} /></View>
                                     <View style={styles.logInfo}>
                                         <Text style={styles.logTitle}>{m.meal_type.toUpperCase()}</Text>
                                         <Text style={styles.logSubtitle}>{m.total_calories} kcal • {m.total_protein}g Protein</Text>
                                     </View>
-                                </View>
+                                </Card>
                             )) : null}
 
                             {dayData.workouts.length === 0 && dayData.meals.length === 0 && (
-                                <View style={styles.emptyActivity}>
-                                    <Feather name="activity" size={32} color={theme.colors.textTertiary} />
-                                    <Text style={styles.emptyText}>No activities logged on this date.</Text>
-                                </View>
+                                <EmptyState
+                                    icon="activity"
+                                    title="No activities"
+                                    description="No activities logged on this date."
+                                />
                             )}
                         </View>
                     )}
                 </View>
                 <View style={{height: 100}} />
-            </ScrollView>
-        </SafeAreaView>
+            </ScreenContainer>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.xxl, paddingTop: theme.spacing.lg, marginBottom: 10 },
     backBtn: { padding: 5, marginRight: 10 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: -0.5 },
     calendarContainer: {
-        backgroundColor: theme.colors.card, 
         marginHorizontal: theme.spacing.xxl, 
-        padding: 20, 
-        borderRadius: theme.borderRadius.xxl,
-        borderWidth: 1, 
-        borderColor: theme.colors.border,
-        ...theme.shadows.soft,
         marginBottom: 16,
     },
     monthHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-    monthTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary },
+    monthTitle: { ...theme.typography.h4, color: theme.colors.textPrimary },
     navBtns: { flexDirection: 'row' },
     navBtn: { padding: 5, marginLeft: 10 },
     weekDays: { flexDirection: 'row', marginBottom: 10 },
-    weekDayText: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 0.5 },
+    weekDayText: { flex: 1, textAlign: 'center', ...theme.typography.labelSmall, color: theme.colors.textSecondary },
     daysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
     dayCell: { 
         width: '14.28%', 
@@ -361,158 +323,16 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
     },
     dayText: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
-    selectedDayCell: { backgroundColor: theme.colors.border, borderRadius: theme.borderRadius.md },
+    selectedDayCell: { backgroundColor: theme.colors.border, borderRadius: theme.radii.md },
     selectedDayText: { color: theme.colors.textPrimary, fontWeight: '800' },
     todayDayCell: { borderBottomWidth: 2, borderBottomColor: theme.colors.primary },
     todayText: { color: theme.colors.primary, fontWeight: '800' },
     detailsContainer: { paddingHorizontal: theme.spacing.xxl, paddingTop: 10 },
-    sectionTitle: { fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 1.5, marginBottom: 14 },
-    logCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.card, padding: 16, borderRadius: theme.borderRadius.xxl, marginBottom: 12, borderWidth: 1, borderColor: theme.colors.border, ...theme.shadows.soft },
+    logCard: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
     logIcon: { width: 44, height: 44, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
     logInfo: { flex: 1 },
-    logTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.textPrimary },
-    logSubtitle: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 },
-    emptyActivity: { padding: 24, backgroundColor: theme.colors.card, borderRadius: theme.borderRadius.xxl, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', gap: 10 },
-    emptyText: { fontSize: 13, color: theme.colors.textSecondary, fontWeight: '600' },
-
-    // Premium Collapsible AI Coach Card styles
-    aiCoachCard: {
-        backgroundColor: theme.colors.card,
-        marginHorizontal: theme.spacing.xxl,
-        padding: 20,
-        borderRadius: theme.borderRadius.xxl,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 45, 85, 0.12)',
-        ...theme.shadows.premium,
-        marginBottom: 20,
-    },
-    aiCoachHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    sparkleBg: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: theme.colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
-    },
-    aiCoachTitle: {
-        fontSize: 10,
-        fontWeight: '900',
-        color: theme.colors.primary,
-        letterSpacing: 1.5,
-    },
-    badgeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    scoreBadge: {
-        fontSize: 10,
-        fontWeight: '800',
-        backgroundColor: theme.colors.accentPinkLight,
-        color: theme.colors.primary,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 8,
-        marginRight: 8,
-        overflow: 'hidden',
-    },
-    aiCoachSummary: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: theme.colors.textPrimary,
-        lineHeight: 22,
-    },
-    tapPrompt: {
-        marginTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.border,
-        paddingTop: 10,
-        alignItems: 'center',
-    },
-    tapPromptText: {
-        fontSize: 11,
-        fontWeight: '800',
-        color: theme.colors.primary,
-        letterSpacing: 0.5,
-    },
-    expandedAiContent: {
-        marginTop: 14,
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.border,
-        paddingTop: 14,
-        gap: 12,
-    },
-    simpleSummaryBlock: {
-        backgroundColor: theme.colors.accentPinkLight,
-        borderRadius: theme.borderRadius.lg,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 45, 85, 0.1)',
-        marginBottom: 4,
-    },
-    simpleSummaryText: {
-        fontSize: 13,
-        color: theme.colors.primary,
-        fontWeight: '600',
-        lineHeight: 20,
-    },
-    insightSegment: {
-        backgroundColor: theme.colors.background,
-        borderRadius: theme.borderRadius.lg,
-        padding: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-    },
-    segmentHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    segmentTitle: {
-        fontSize: 12,
-        fontWeight: '800',
-        color: theme.colors.textPrimary,
-    },
-    segmentText: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-        lineHeight: 18,
-        fontWeight: '500',
-    },
-    milestonesBlock: {
-        marginTop: 8,
-    },
-    actionsHeading: {
-        fontSize: 9,
-        fontWeight: '800',
-        color: theme.colors.textSecondary,
-        letterSpacing: 1.5,
-        marginBottom: 8,
-    },
-    milestoneGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    milestonePill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: theme.colors.accentPinkLight,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    milestoneText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: theme.colors.primary,
-    },
+    logTitle: { ...theme.typography.h5, color: theme.colors.textPrimary },
+    logSubtitle: { ...theme.typography.caption, color: theme.colors.textSecondary, marginTop: 2 },
     achievementBadge: {
         width: 13,
         height: 13,
@@ -528,59 +348,5 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(28, 28, 30, 0.06)', // Translucent outline circle
         borderWidth: 0.5,
         borderColor: 'rgba(28, 28, 30, 0.15)',
-    },
-    minimalCoachTrigger: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#FFFFFF',
-        borderRadius: theme.borderRadius.xxl,
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        marginHorizontal: theme.spacing.xxl,
-        marginTop: 4,
-        marginBottom: 24,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 45, 85, 0.12)',
-        shadowColor: '#FF2D55',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.04,
-        shadowRadius: 10,
-        elevation: 2,
-    },
-    minimalCoachTriggerText: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: theme.colors.primary,
-        letterSpacing: 0.2,
-    },
-    scoreHighlightBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: theme.colors.accentPinkLight,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: theme.borderRadius.lg,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 45, 85, 0.08)',
-    },
-    scoreHighlightLabel: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: theme.colors.primary,
-        letterSpacing: 1,
-    },
-    scoreHighlightBadge: {
-        backgroundColor: theme.colors.primary,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 20,
-    },
-    scoreHighlightValue: {
-        fontSize: 11,
-        fontWeight: '900',
-        color: '#FFFFFF',
     },
 });

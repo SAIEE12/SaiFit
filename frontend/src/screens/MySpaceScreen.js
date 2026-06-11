@@ -427,11 +427,10 @@ export default function MySpaceScreen({ navigation }) {
               <TouchableOpacity 
                 style={[styles.actionButton, styles.minusBtn]}
                 onPress={async () => {
-                  const dec = Math.min(250, hydration);
-                  if (dec <= 0) return;
+                  if (hydration <= 0) return;
                   try {
-                    await apiClient.post('/hydration/log', { amount_ml: -dec, date: selectedDate });
-                    setHydration(prev => Math.max(0, prev - dec));
+                    await apiClient.post('/hydration/log', { amount_ml: -250, date: selectedDate });
+                    setHydration(prev => Math.max(0, prev - 250));
                   } catch(e) { console.error(e); }
                 }}
                 activeOpacity={0.8}

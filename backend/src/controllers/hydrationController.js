@@ -10,9 +10,11 @@ exports.logHydration = async (req, res) => {
         const existing = await db.query('SELECT * FROM hydration_logs WHERE user_id = ? AND date = ?', [userId, targetDate]);
 
         if (existing.rows.length > 0) {
-            await db.query('UPDATE hydration_logs SET amount_ml = amount_ml + ?, created_at = CURRENT_TIMESTAMP WHERE id = ?', [amount_ml, existing.rows[0].id]);
+            const newAmount = Math.max(0, existing.rows[0].amount_ml + amount_ml);
+            await db.query('UPDATE hydration_logs SET amount_ml = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?', [newAmount, existing.rows[0].id]);
         } else {
-            await db.query('INSERT INTO hydration_logs (user_id, amount_ml, date) VALUES (?, ?, ?)', [userId, amount_ml, targetDate]);
+            const initialAmount = Math.max(0, amount_ml);
+            await db.query('INSERT INTO hydration_logs (user_id, amount_ml, date) VALUES (?, ?, ?)', [userId, initialAmount, targetDate]);
         }
 
         res.json({ message: 'Hydration updated' });

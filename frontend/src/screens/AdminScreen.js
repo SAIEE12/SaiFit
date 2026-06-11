@@ -6,6 +6,11 @@ import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/v
 import apiClient from '../api/client';
 import CustomDialog from '../components/CustomDialog';
 import { theme } from '../theme';
+import ScreenContainer from '../components/ui/ScreenContainer';
+import { Header, SectionHeader } from '../components/ui/Header';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -263,24 +268,23 @@ export default function AdminScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            {/* Header with Back Navigation */}
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-                    <Feather name="chevron-left" size={20} color={theme.colors.primary} />
-                    <Text style={styles.backBtnText}>Back to Profile</Text>
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Governance Portal</Text>
-                <Text style={styles.headerSubtitle}>Configure AI cores, system settings, and security keys</Text>
-            </View>
+        <View style={styles.container}>
+            <Header
+                title="Governance Portal"
+                subtitle="Configure AI cores, system settings, and security keys"
+                leftElement={
+                    <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+                        <Feather name="chevron-left" size={24} color={theme.colors.textPrimary} />
+                    </TouchableOpacity>
+                }
+            />
 
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollStyle}>
-                
+            <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
                 {/* ⚙️ ACCORDION SECTION 1: AI Engine & Master Feature Suites */}
-                <TouchableOpacity style={styles.accordionHeaderCard} activeOpacity={0.8} onPress={() => toggleSection('aiCore')}>
+                <Card style={styles.accordionHeaderCard} onPress={() => toggleSection('aiCore')}>
                     <View style={styles.accordionHeaderRow}>
                         <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                            <View style={[styles.accordionIconBg, {backgroundColor: theme.colors.accentPinkLight}]}>
+                            <View style={[styles.accordionIconBg, {backgroundColor: theme.colors.primaryLight}]}>
                                 <Ionicons name="sparkles" size={16} color={theme.colors.primary} />
                             </View>
                             <View style={{marginLeft: 12}}>
@@ -290,12 +294,12 @@ export default function AdminScreen({ navigation }) {
                         </View>
                         <Feather name={expandedSections.aiCore ? "chevron-up" : "chevron-down"} size={18} color={theme.colors.textSecondary} />
                     </View>
-                </TouchableOpacity>
+                </Card>
 
                 {expandedSections.aiCore && (
                     <View style={styles.accordionContent}>
                         {/* Global Feature Access Switch Card */}
-                        <View style={styles.globalCard}>
+                        <Card style={styles.globalCard}>
                             <View style={styles.toggleRow}>
                                 <View style={{flex: 1, paddingRight: 10}}>
                                     <Text style={styles.globalToggleLabel}>Master AI Integration</Text>
@@ -307,7 +311,7 @@ export default function AdminScreen({ navigation }) {
                                     trackColor={{ false: "#D1D1D6", true: theme.colors.primary }}
                                 />
                             </View>
-                        </View>
+                        </Card>
 
                         {/* Model Configuration Params */}
                         <View style={styles.formRow}>
@@ -362,7 +366,7 @@ export default function AdminScreen({ navigation }) {
                         <Text style={styles.sectionHeadingText}>SUITE MASTER ACCESS CARDS</Text>
 
                         {/* Suite 1: AI Companion Core */}
-                        <View style={styles.suiteCard}>
+                        <Card style={styles.suiteCard}>
                             <View style={styles.suiteHeader}>
                                 <Ionicons name="sparkles" size={16} color={theme.colors.primary} />
                                 <Text style={styles.suiteTitle}>AI Companion Core</Text>
@@ -389,13 +393,13 @@ export default function AdminScreen({ navigation }) {
                                     trackColor={{ false: "#E5E5EA", true: theme.colors.primary }}
                                 />
                             </View>
-                        </View>
+                        </Card>
 
                         {/* Suite 2: Nutrition Smart Suite */}
-                        <View style={styles.suiteCard}>
+                        <Card style={styles.suiteCard}>
                             <View style={styles.suiteHeader}>
-                                <MaterialCommunityIcons name="food-apple" size={16} color={theme.colors.green} />
-                                <Text style={[styles.suiteTitle, {color: theme.colors.green}]}>Nutrition Smart Suite</Text>
+                                <MaterialCommunityIcons name="food-apple" size={16} color={theme.colors.success} />
+                                <Text style={[styles.suiteTitle, {color: theme.colors.success}]}>Nutrition Smart Suite</Text>
                             </View>
                             <View style={styles.suiteRow}>
                                 <View style={{flex: 1}}>
@@ -405,7 +409,7 @@ export default function AdminScreen({ navigation }) {
                                 <Switch 
                                     value={settings.ENABLE_MEAL_SCAN === 'true'}
                                     onValueChange={(val) => updateSetting('ENABLE_MEAL_SCAN', val)}
-                                    trackColor={{ false: "#E5E5EA", true: theme.colors.green }}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.success }}
                                 />
                             </View>
                             <View style={[styles.suiteRow, styles.topDivider]}>
@@ -416,13 +420,13 @@ export default function AdminScreen({ navigation }) {
                                 <Switch 
                                     value={settings.ENABLE_SMART_SEARCH === 'true'}
                                     onValueChange={(val) => updateSetting('ENABLE_SMART_SEARCH', val)}
-                                    trackColor={{ false: "#E5E5EA", true: theme.colors.green }}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.success }}
                                 />
                             </View>
-                        </View>
+                        </Card>
 
                         {/* Suite 3: Active Trainer Suite */}
-                        <View style={styles.suiteCard}>
+                        <Card style={styles.suiteCard}>
                             <View style={styles.suiteHeader}>
                                 <FontAwesome5 name="running" size={14} color={theme.colors.secondary} />
                                 <Text style={[styles.suiteTitle, {color: theme.colors.secondary}]}>Active Trainer Suite</Text>
@@ -449,13 +453,13 @@ export default function AdminScreen({ navigation }) {
                                     trackColor={{ false: "#E5E5EA", true: theme.colors.secondary }}
                                 />
                             </View>
-                        </View>
+                        </Card>
 
                         {/* Suite 4: Journey Analytics Suite */}
-                        <View style={styles.suiteCard}>
+                        <Card style={styles.suiteCard}>
                             <View style={styles.suiteHeader}>
-                                <Feather name="trending-up" size={15} color={theme.colors.orange} />
-                                <Text style={[styles.suiteTitle, {color: theme.colors.orange}]}>Journey Analytics Suite</Text>
+                                <Feather name="trending-up" size={15} color={theme.colors.warning} />
+                                <Text style={[styles.suiteTitle, {color: theme.colors.warning}]}>Journey Analytics Suite</Text>
                             </View>
                             <View style={styles.suiteRow}>
                                 <View style={{flex: 1}}>
@@ -465,7 +469,7 @@ export default function AdminScreen({ navigation }) {
                                 <Switch 
                                     value={settings.ENABLE_CALENDAR_COACH === 'true'}
                                     onValueChange={(val) => updateSetting('ENABLE_CALENDAR_COACH', val)}
-                                    trackColor={{ false: "#E5E5EA", true: theme.colors.orange }}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.warning }}
                                 />
                             </View>
                             <View style={[styles.suiteRow, styles.topDivider]}>
@@ -476,13 +480,13 @@ export default function AdminScreen({ navigation }) {
                                 <Switch 
                                     value={settings.ENABLE_PROFILE_COACH === 'true'}
                                     onValueChange={(val) => updateSetting('ENABLE_PROFILE_COACH', val)}
-                                    trackColor={{ false: "#E5E5EA", true: theme.colors.orange }}
+                                    trackColor={{ false: "#E5E5EA", true: theme.colors.warning }}
                                 />
                             </View>
-                        </View>
+                        </Card>
 
                         {/* Suite 5: Smart Notification Core */}
-                        <View style={styles.suiteCard}>
+                        <Card style={styles.suiteCard}>
                             <View style={styles.suiteHeader}>
                                 <Ionicons name="notifications-outline" size={16} color={theme.colors.primary} />
                                 <Text style={styles.suiteTitle}>Alert Action Engine</Text>
@@ -498,15 +502,15 @@ export default function AdminScreen({ navigation }) {
                                     trackColor={{ false: "#E5E5EA", true: theme.colors.primary }}
                                 />
                             </View>
-                        </View>
+                        </Card>
                     </View>
                 )}
 
                 {/* ✍️ ACCORDION SECTION 2: System Prompts tuner */}
-                <TouchableOpacity style={[styles.accordionHeaderCard, {marginTop: 12}]} activeOpacity={0.8} onPress={() => toggleSection('prompts')}>
+                <Card style={[styles.accordionHeaderCard, {marginTop: 12}]} onPress={() => toggleSection('prompts')}>
                     <View style={styles.accordionHeaderRow}>
                         <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                            <View style={[styles.accordionIconBg, {backgroundColor: theme.colors.accentBlueLight}]}>
+                            <View style={[styles.accordionIconBg, {backgroundColor: theme.colors.secondaryLight}]}>
                                 <Ionicons name="create-outline" size={16} color={theme.colors.secondary} />
                             </View>
                             <View style={{marginLeft: 12}}>
@@ -516,7 +520,7 @@ export default function AdminScreen({ navigation }) {
                         </View>
                         <Feather name={expandedSections.prompts ? "chevron-up" : "chevron-down"} size={18} color={theme.colors.textSecondary} />
                     </View>
-                </TouchableOpacity>
+                </Card>
 
                 {expandedSections.prompts && (
                     <View style={styles.accordionContent}>
@@ -536,7 +540,7 @@ export default function AdminScreen({ navigation }) {
                         </ScrollView>
 
                         {/* Interactive Editor panel for selected prompt */}
-                        <View style={styles.promptCard}>
+                        <Card style={styles.promptCard}>
                             <View style={styles.promptHeader}>
                                 <Text style={styles.promptLabel}>{PROMPT_LABELS[selectedPromptKey]}</Text>
                                 <TouchableOpacity onPress={() => handleResetPrompt(selectedPromptKey)}>
@@ -559,16 +563,16 @@ export default function AdminScreen({ navigation }) {
                             <View style={styles.previewBox}>
                                 <Text style={styles.previewText}>{DEFAULT_PROMPTS[selectedPromptKey]}</Text>
                             </View>
-                        </View>
+                        </Card>
                     </View>
                 )}
 
                 {/* 🔑 ACCORDION SECTION 3: Invites & Security keys */}
-                <TouchableOpacity style={[styles.accordionHeaderCard, {marginTop: 12}]} activeOpacity={0.8} onPress={() => toggleSection('tokens')}>
+                <Card style={[styles.accordionHeaderCard, {marginTop: 12}]} onPress={() => toggleSection('tokens')}>
                     <View style={styles.accordionHeaderRow}>
                         <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                            <View style={[styles.accordionIconBg, {backgroundColor: theme.colors.accentGreenLight}]}>
-                                <Ionicons name="key-outline" size={16} color={theme.colors.green} />
+                            <View style={[styles.accordionIconBg, {backgroundColor: theme.colors.successLight}]}>
+                                <Ionicons name="key-outline" size={16} color={theme.colors.success} />
                             </View>
                             <View style={{marginLeft: 12}}>
                                 <Text style={styles.accordionTitle}>Token Key Governance</Text>
@@ -577,12 +581,12 @@ export default function AdminScreen({ navigation }) {
                         </View>
                         <Feather name={expandedSections.tokens ? "chevron-up" : "chevron-down"} size={18} color={theme.colors.textSecondary} />
                     </View>
-                </TouchableOpacity>
+                </Card>
 
                 {expandedSections.tokens && (
                     <View style={styles.accordionContent}>
                         {/* Invite Code Generator Card */}
-                        <View style={styles.card}>
+                        <Card style={styles.card}>
                             <Text style={styles.toggleLabel}>Create Invite Access Token</Text>
                             <Text style={styles.toggleDesc}>Set a daily usage query quota limit for the invite token.</Text>
                             <View style={styles.inviteInputRow}>
@@ -594,19 +598,19 @@ export default function AdminScreen({ navigation }) {
                                     placeholder="Requests Limit (e.g. 10)"
                                     placeholderTextColor={theme.colors.textTertiary}
                                 />
-                                <TouchableOpacity style={styles.inviteBtn} onPress={generateInvite}>
-                                    <Text style={styles.inviteBtnText}>Generate</Text>
-                                </TouchableOpacity>
+                                <Button variant="primary" size="md" onPress={generateInvite} style={{ borderRadius: theme.radii.lg }}>
+                                    Generate
+                                </Button>
                             </View>
-                        </View>
+                        </Card>
 
                         {/* Invites list */}
-                        <Text style={styles.subHeaderTitle}>ACCESS TOKENS ({invites.length})</Text>
+                        <SectionHeader title={`ACCESS TOKENS (${invites.length})`} />
                         <View style={styles.listContainer}>
                             {invites.map((inv) => (
-                                <View key={inv.id} style={styles.listItem}>
+                                <Card key={inv.id} style={styles.listItem}>
                                     <View style={styles.listItemLeft}>
-                                        <View style={[styles.listIconWrap, {backgroundColor: inv.is_used ? theme.colors.accentPinkLight : theme.colors.accentBlueLight}]}>
+                                        <View style={[styles.listIconWrap, {backgroundColor: inv.is_used ? theme.colors.primaryLight : theme.colors.secondaryLight}]}>
                                             <Feather name="key" size={16} color={inv.is_used ? theme.colors.primary : theme.colors.secondary} />
                                         </View>
                                         <View style={{flex: 1}}>
@@ -621,10 +625,10 @@ export default function AdminScreen({ navigation }) {
                                     </View>
                                     {!inv.is_used && (
                                         <TouchableOpacity onPress={() => deleteInvite(inv.id)} style={styles.deleteAction}>
-                                            <Feather name="trash-2" size={18} color="#FF3B30" />
+                                            <Feather name="trash-2" size={18} color={theme.colors.danger} />
                                         </TouchableOpacity>
                                     )}
-                                </View>
+                                </Card>
                             ))}
                             {invites.length === 0 && (
                                 <Text style={styles.emptyListText}>No invite codes generated yet.</Text>
@@ -634,10 +638,10 @@ export default function AdminScreen({ navigation }) {
                 )}
 
                 {/* 👥 ACCORDION SECTION 4: Registered User Accounts */}
-                <TouchableOpacity style={[styles.accordionHeaderCard, {marginTop: 12, marginBottom: 20}]} activeOpacity={0.8} onPress={() => toggleSection('users')}>
+                <Card style={[styles.accordionHeaderCard, {marginTop: 12, marginBottom: 20}]} onPress={() => toggleSection('users')}>
                     <View style={styles.accordionHeaderRow}>
                         <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                            <View style={[styles.accordionIconBg, {backgroundColor: 'rgba(28,28,30,0.08)'}]}>
+                            <View style={[styles.accordionIconBg, {backgroundColor: theme.colors.border}]}>
                                 <Feather name="users" size={15} color={theme.colors.textPrimary} />
                             </View>
                             <View style={{marginLeft: 12}}>
@@ -647,16 +651,16 @@ export default function AdminScreen({ navigation }) {
                         </View>
                         <Feather name={expandedSections.users ? "chevron-up" : "chevron-down"} size={18} color={theme.colors.textSecondary} />
                     </View>
-                </TouchableOpacity>
+                </Card>
 
                 {expandedSections.users && (
                     <View style={styles.accordionContent}>
                         <View style={styles.listContainer}>
                             {users.map((usr) => (
-                                <View key={usr.id} style={styles.listItem}>
+                                <Card key={usr.id} style={styles.listItem}>
                                     <View style={styles.listItemLeft}>
-                                        <View style={[styles.listIconWrap, {backgroundColor: usr.role === 'admin' ? theme.colors.accentPinkLight : theme.colors.accentGreenLight}]}>
-                                            <Feather name="user" size={16} color={usr.role === 'admin' ? theme.colors.primary : theme.colors.green} />
+                                        <View style={[styles.listIconWrap, {backgroundColor: usr.role === 'admin' ? theme.colors.primaryLight : theme.colors.successLight}]}>
+                                            <Feather name="user" size={16} color={usr.role === 'admin' ? theme.colors.primary : theme.colors.success} />
                                         </View>
                                         <View style={{flex: 1}}>
                                             <Text style={styles.itemUsername}>{usr.username} <Text style={styles.itemRole}>({usr.role.toUpperCase()})</Text></Text>
@@ -666,10 +670,10 @@ export default function AdminScreen({ navigation }) {
                                     </View>
                                     {usr.role !== 'admin' && (
                                         <TouchableOpacity onPress={() => deleteUser(usr.id)} style={styles.deleteAction}>
-                                            <Feather name="user-x" size={18} color="#FF3B30" />
+                                            <Feather name="user-x" size={18} color={theme.colors.danger} />
                                         </TouchableOpacity>
                                     )}
-                                </View>
+                                </Card>
                             ))}
                             {users.length === 0 && (
                                 <Text style={styles.emptyListText}>No user accounts configured.</Text>
@@ -685,7 +689,7 @@ export default function AdminScreen({ navigation }) {
                 )}
 
                 <View style={{height: 100}} />
-            </ScrollView>
+            </ScreenContainer>
 
             {/* Custom Dialog Alert Portal */}
             <CustomDialog 
@@ -698,27 +702,17 @@ export default function AdminScreen({ navigation }) {
                 onConfirm={dialog.onConfirm}
                 onCancel={dialog.onCancel}
             />
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
-    header: { paddingHorizontal: theme.spacing.xxl, paddingVertical: 18, backgroundColor: theme.colors.card, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-    backBtn: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, marginLeft: -5 },
-    backBtnText: { color: theme.colors.primary, fontSize: 14, fontWeight: '700', marginLeft: 2 },
-    headerTitle: { fontSize: 24, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: -0.5 },
-    headerSubtitle: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 4, fontWeight: '600' },
-    scrollStyle: { paddingHorizontal: theme.spacing.xxl, paddingTop: 15 },
+    backBtn: { padding: 5, marginRight: 10 },
     
     // Collapsible Accordion Header card
     accordionHeaderCard: {
-        backgroundColor: theme.colors.card,
-        padding: 16,
-        borderRadius: theme.borderRadius.xxl,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        ...theme.shadows.soft,
+        marginHorizontal: theme.spacing.xxl,
     },
     accordionHeaderRow: {
         flexDirection: 'row',
@@ -733,69 +727,55 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     accordionTitle: {
-        fontSize: 15,
-        fontWeight: '800',
+        ...theme.typography.h5,
         color: theme.colors.textPrimary,
     },
     accordionSubtitle: {
-        fontSize: 11,
+        ...theme.typography.caption,
         color: theme.colors.textSecondary,
-        fontWeight: '600',
         marginTop: 2,
     },
     accordionContent: {
         marginTop: 10,
-        paddingHorizontal: 4,
+        paddingHorizontal: theme.spacing.xxl,
         gap: 12,
     },
 
     globalCard: {
-        backgroundColor: theme.colors.card,
-        padding: 16,
-        borderRadius: theme.borderRadius.xxl,
-        borderWidth: 1,
         borderColor: 'rgba(255, 45, 85, 0.15)',
-        ...theme.shadows.soft,
         marginBottom: 4,
+        padding: 16,
     },
     globalToggleLabel: {
-        fontSize: 15,
-        fontWeight: '800',
+        ...theme.typography.h5,
         color: theme.colors.primary,
     },
     toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    toggleLabel: { fontSize: 15, fontWeight: '800', color: theme.colors.textPrimary },
-    toggleDesc: { fontSize: 11, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 15, fontWeight: '500' },
+    toggleLabel: { ...theme.typography.h5, color: theme.colors.textPrimary },
+    toggleDesc: { ...theme.typography.caption, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 15 },
     
     formRow: { flexDirection: 'row', gap: 12 },
-    fieldLabel: { fontSize: 12, fontWeight: '800', color: theme.colors.textPrimary, marginBottom: 6 },
-    pickerWrap: { backgroundColor: theme.colors.card, borderRadius: theme.borderRadius.lg, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' },
+    fieldLabel: { ...theme.typography.labelSmall, color: theme.colors.textPrimary, marginBottom: 6 },
+    pickerWrap: { backgroundColor: theme.colors.card, borderRadius: theme.radii.lg, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' },
     picker: { height: 50, width: '100%', backgroundColor: 'transparent' },
     
     inputContainer: { 
         flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.card, 
-        borderRadius: theme.borderRadius.lg, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 12 
+        borderRadius: theme.radii.lg, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: 12 
     },
     apiKeyInput: { flex: 1, height: 48, fontSize: 13, color: theme.colors.textPrimary, fontWeight: '500' },
-    helperText: { fontSize: 10, color: theme.colors.textSecondary, marginTop: 6, fontStyle: 'italic', fontWeight: '500' },
+    helperText: { ...theme.typography.caption, color: theme.colors.textSecondary, marginTop: 6, fontStyle: 'italic' },
     
     sectionHeadingText: {
-        fontSize: 9,
-        fontWeight: '800',
+        ...theme.typography.labelSmall,
         color: theme.colors.textSecondary,
-        letterSpacing: 1.5,
         marginTop: 16,
         marginBottom: 4,
     },
 
     // Grouped Suite Cards
     suiteCard: {
-        backgroundColor: theme.colors.card,
-        borderRadius: theme.borderRadius.xxl,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
         padding: 16,
-        ...theme.shadows.soft,
     },
     suiteHeader: {
         flexDirection: 'row',
@@ -804,10 +784,8 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     suiteTitle: {
-        fontSize: 12,
-        fontWeight: '800',
+        ...theme.typography.captionStrong,
         color: theme.colors.primary,
-        letterSpacing: 0.5,
     },
     suiteRow: {
         flexDirection: 'row',
@@ -816,15 +794,14 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
     },
     suiteFeatureName: {
-        fontSize: 14,
-        fontWeight: '700',
+        ...theme.typography.bodySmall,
         color: theme.colors.textPrimary,
+        fontWeight: '700',
     },
     suiteFeatureDesc: {
-        fontSize: 11,
+        ...theme.typography.caption,
         color: theme.colors.textSecondary,
         marginTop: 2,
-        fontWeight: '500',
     },
     topDivider: {
         borderTopWidth: 1,
@@ -853,8 +830,7 @@ const styles = StyleSheet.create({
         borderColor: theme.colors.primary,
     },
     pillText: {
-        fontSize: 12,
-        fontWeight: '700',
+        ...theme.typography.captionStrong,
         color: theme.colors.textSecondary,
     },
     activePillText: {
@@ -863,19 +839,14 @@ const styles = StyleSheet.create({
 
     // Interactive Prompt tuner editor
     promptCard: { 
-        backgroundColor: theme.colors.card, 
-        borderRadius: theme.borderRadius.xxl, 
-        borderWidth: 1, 
-        borderColor: theme.colors.border, 
         padding: 16,
-        ...theme.shadows.soft,
     },
     promptHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' },
-    promptLabel: { fontSize: 14, fontWeight: '800', color: theme.colors.textPrimary },
-    resetText: { fontSize: 11, color: theme.colors.primary, fontWeight: '800' },
+    promptLabel: { ...theme.typography.bodySmall, color: theme.colors.textPrimary, fontWeight: '800' },
+    resetText: { ...theme.typography.captionStrong, color: theme.colors.primary },
     textArea: { 
         backgroundColor: theme.colors.background, 
-        borderRadius: theme.borderRadius.lg, 
+        borderRadius: theme.radii.lg, 
         padding: 12, 
         fontSize: 13, 
         color: theme.colors.textPrimary, 
@@ -887,41 +858,34 @@ const styles = StyleSheet.create({
         borderColor: theme.colors.border,
     },
     previewHeading: {
-        fontSize: 9,
-        fontWeight: '800',
+        ...theme.typography.labelSmall,
         color: theme.colors.textSecondary,
-        letterSpacing: 1,
         marginTop: 16,
         marginBottom: 6,
     },
     previewBox: {
         backgroundColor: 'rgba(28, 28, 30, 0.04)',
-        borderRadius: theme.borderRadius.lg,
+        borderRadius: theme.radii.lg,
         padding: 12,
         borderWidth: 1,
         borderColor: theme.colors.border,
     },
     previewText: {
-        fontSize: 11,
+        ...theme.typography.caption,
         color: theme.colors.textSecondary,
         lineHeight: 16,
         fontStyle: 'italic',
-        fontWeight: '500',
     },
 
     // Token Key styles
     card: { 
-        backgroundColor: theme.colors.card, padding: 16, borderRadius: theme.borderRadius.xxl, borderWidth: 1, borderColor: theme.colors.border,
-        ...theme.shadows.soft
+        padding: 16,
     },
-    inviteInputRow: { flexDirection: 'row', marginTop: 12 },
+    inviteInputRow: { flexDirection: 'row', marginTop: 12, gap: 8 },
     inviteInput: { 
-        flex: 1, backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.lg, borderWidth: 1, 
-        borderColor: theme.colors.border, paddingHorizontal: 12, height: 46, marginRight: 8, fontSize: 13, color: theme.colors.textPrimary, fontWeight: '500'
+        flex: 1, backgroundColor: theme.colors.background, borderRadius: theme.radii.lg, borderWidth: 1, 
+        borderColor: theme.colors.border, paddingHorizontal: 12, height: 46, fontSize: 13, color: theme.colors.textPrimary, fontWeight: '500'
     },
-    inviteBtn: { backgroundColor: theme.colors.darkBase, paddingHorizontal: 16, borderRadius: theme.borderRadius.lg, justifyContent: 'center' },
-    inviteBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
-    subHeaderTitle: { fontSize: 10, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 1.5, marginTop: 18, marginBottom: 6 },
     
     // Dynamic lists styling
     listContainer: {
@@ -931,13 +895,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: theme.colors.card,
-        padding: 12,
-        borderRadius: theme.borderRadius.xxl,
         marginBottom: 8,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        ...theme.shadows.soft,
+        padding: 12,
     },
     listItemLeft: {
         flexDirection: 'row',
@@ -954,47 +913,39 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
     itemCode: {
-        fontSize: 15,
-        fontWeight: '800',
+        ...theme.typography.h5,
         color: theme.colors.textPrimary,
     },
     itemUsername: {
-        fontSize: 14,
-        fontWeight: '800',
+        ...theme.typography.h5,
         color: theme.colors.textPrimary,
     },
     itemRole: {
-        fontSize: 9,
-        fontWeight: '800',
+        ...theme.typography.labelSmall,
         color: theme.colors.textSecondary,
     },
     itemSub: {
-        fontSize: 11,
+        ...theme.typography.caption,
         color: theme.colors.textSecondary,
-        fontWeight: '500',
         marginTop: 2,
     },
     itemDate: {
-        fontSize: 10,
-        color: '#BBB',
-        fontWeight: '600',
+        ...theme.typography.caption,
+        color: theme.colors.textTertiary,
         marginTop: 2,
     },
     itemStatus: {
-        fontSize: 10,
-        fontWeight: '800',
+        ...theme.typography.captionStrong,
         marginTop: 2,
     },
     deleteAction: {
         padding: 4,
     },
     emptyListText: {
-        fontSize: 12,
+        ...theme.typography.captionStrong,
         color: theme.colors.textSecondary,
         textAlign: 'center',
         paddingVertical: 18,
-        fontStyle: 'italic',
-        fontWeight: '600',
     },
     absoluteLoader: {
         position: 'absolute',

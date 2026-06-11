@@ -126,14 +126,16 @@ export default function ProfileScreen({ navigation, onLogout }) {
 
   return (
     <View style={styles.container}>
-      <Header
-        title="Profile"
-        rightElement={
-          <TouchableOpacity style={styles.iconBtn} onPress={() => setIsEditing(true)}>
-            <Feather name="edit-2" size={20} color={theme.colors.textPrimary} />
-          </TouchableOpacity>
-        }
-      />
+      <SafeAreaView edges={['top']} style={styles.safeHeader}>
+        <Header
+          title="Profile"
+          rightElement={
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setIsEditing(true)}>
+              <Feather name="edit-2" size={20} color={theme.colors.textPrimary} />
+            </TouchableOpacity>
+          }
+        />
+      </SafeAreaView>
 
       <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
         {/* Profile Info */}
@@ -439,6 +441,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
+  safeHeader: { backgroundColor: theme.colors.background },
   iconBtn: { 
     width: 44,
     height: 44,

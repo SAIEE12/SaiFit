@@ -302,7 +302,9 @@ export default function MealsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Nutrition" />
+      <SafeAreaView edges={['top']} style={styles.safeHeader}>
+        <Header title="Nutrition" />
+      </SafeAreaView>
 
       <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
         {/* Macros Dashboard Card */}
@@ -509,6 +511,7 @@ export default function MealsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
+  safeHeader: { backgroundColor: theme.colors.background },
   dashboard: {
     marginHorizontal: theme.spacing.xxl, 
     flexDirection: 'row', 

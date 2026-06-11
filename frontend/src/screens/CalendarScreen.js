@@ -185,14 +185,16 @@ export default function CalendarScreen({ navigation }) {
 
     return (
         <View style={styles.container}>
-            <Header
-                title="Daily Logs"
-                leftElement={
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <Feather name="chevron-left" size={24} color={theme.colors.textPrimary} />
-                    </TouchableOpacity>
-                }
-            />
+            <SafeAreaView edges={['top']} style={styles.safeHeader}>
+                <Header
+                    title="Daily Logs"
+                    leftElement={
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                            <Feather name="chevron-left" size={24} color={theme.colors.textPrimary} />
+                        </TouchableOpacity>
+                    }
+                />
+            </SafeAreaView>
 
             <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
                 {/* Calendar Card */}
@@ -303,6 +305,7 @@ export default function CalendarScreen({ navigation }) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
+    safeHeader: { backgroundColor: theme.colors.background },
     backBtn: { padding: 5, marginRight: 10 },
     calendarContainer: {
         marginHorizontal: theme.spacing.xxl, 

@@ -57,23 +57,21 @@ const CalendarStrip = ({ selectedDate, onDateSelected }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 15,
+    paddingVertical: theme.spacing.md,
     backgroundColor: 'transparent',
   },
   scrollContent: {
-    paddingHorizontal: 15,
+    paddingHorizontal: theme.spacing.md,
   },
   dateCard: {
     width: 55,
     alignItems: 'center',
-    marginHorizontal: 8,
+    marginHorizontal: theme.spacing.sm,
   },
   dayText: {
-    fontSize: 10,
+    ...theme.typography.labelSmall,
     color: theme.colors.textSecondary,
-    fontWeight: '800',
-    marginBottom: 8,
-    letterSpacing: 1,
+    marginBottom: theme.spacing.sm,
   },
   circle: {
     width: 44,
@@ -81,25 +79,21 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.card,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
   selectedCircle: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
-    shadowColor: theme.colors.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    ...theme.shadows.primaryGlow,
   },
   todayCircle: {
     borderColor: theme.colors.primary,
     borderWidth: 1.5,
   },
   dateText: {
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '800',
     color: theme.colors.textPrimary,
   },

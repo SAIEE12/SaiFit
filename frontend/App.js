@@ -14,6 +14,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import apiClient, { loadAuthToken, setAuthToken } from './src/api/client';
+import { theme } from './src/theme';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -44,8 +45,8 @@ function MainTabs({ onLogout, userRole }) {
             
             return <Feather name={iconName} size={22} color={color} />;
           },
-          tabBarActiveTintColor: '#FF2D55',
-          tabBarInactiveTintColor: '#8E8E93',
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
           tabBarStyle: {
             borderTopWidth: 0,
             elevation: 20,
@@ -53,7 +54,7 @@ function MainTabs({ onLogout, userRole }) {
             shadowOpacity: 0.1,
             shadowRadius: 15,
             shadowOffset: { width: 0, height: -5 },
-            backgroundColor: '#ffffff',
+            backgroundColor: theme.colors.card,
             height: 80,
             paddingBottom: 25,
             paddingTop: 10,
@@ -111,8 +112,8 @@ export default function App() {
 
   if (loading) {
       return (
-          <View style={{flex:1, justifyContent:'center', alignItems:'center', backgroundColor:'#FAFBFC'}}>
-              <ActivityIndicator size="large" color="#FF2D55" />
+          <View style={{flex:1, justifyContent:'center', alignItems:'center', backgroundColor: theme.colors.background}}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
           </View>
       );
   }

@@ -20,11 +20,11 @@ export default function CustomDialog({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <Feather name="check-circle" size={32} color={theme.colors.green} />;
+        return <Feather name="check-circle" size={32} color={theme.colors.success} />;
       case 'error':
-        return <Feather name="x-circle" size={32} color="#FF3B30" />;
+        return <Feather name="x-circle" size={32} color={theme.colors.danger} />;
       case 'warning':
-        return <Feather name="alert-triangle" size={32} color={theme.colors.orange} />;
+        return <Feather name="alert-triangle" size={32} color={theme.colors.warning} />;
       case 'confirm':
         return <Feather name="help-circle" size={32} color={theme.colors.secondary} />;
       case 'info':
@@ -35,12 +35,12 @@ export default function CustomDialog({
 
   const getHeaderBg = () => {
     switch (type) {
-      case 'success': return theme.colors.accentGreenLight;
-      case 'error': return '#FFEBEE';
-      case 'warning': return '#FFF8E1';
-      case 'confirm': return theme.colors.accentBlueLight;
+      case 'success': return theme.colors.successLight;
+      case 'error': return theme.colors.dangerLight;
+      case 'warning': return theme.colors.warningLight;
+      case 'confirm': return theme.colors.secondaryLight;
       case 'info':
-      default: return theme.colors.accentPinkLight;
+      default: return theme.colors.primaryLight;
     }
   };
 
@@ -77,8 +77,8 @@ export default function CustomDialog({
               style={[
                 styles.btn, 
                 onCancel ? styles.confirmHalfBtn : styles.confirmFullBtn,
-                type === 'error' && { backgroundColor: '#FF3B30' },
-                type === 'warning' && { backgroundColor: theme.colors.orange }
+                type === 'error' && { backgroundColor: theme.colors.danger },
+                type === 'warning' && { backgroundColor: theme.colors.warning }
               ]} 
               onPress={onConfirm}
             >
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.card,
     width: '100%',
     maxWidth: 320,
-    borderRadius: theme.borderRadius.xxl,
+    borderRadius: theme.radii.xxl,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
@@ -123,15 +123,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '800',
+    ...theme.typography.h4,
     color: theme.colors.textPrimary,
     textAlign: 'center',
     marginBottom: 10,
   },
   description: {
-    fontSize: 13,
-    fontWeight: '500',
+    ...theme.typography.caption,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
@@ -144,7 +142,7 @@ const styles = StyleSheet.create({
   },
   btn: {
     paddingVertical: 12,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.radii.lg,
     justifyContent: 'center',
     alignItems: 'center',
     flex: 1,
@@ -155,8 +153,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   cancelBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...theme.typography.captionStrong,
     color: theme.colors.textSecondary,
   },
   confirmHalfBtn: {
@@ -166,8 +163,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   confirmBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
+    ...theme.typography.captionStrong,
     color: '#FFF',
   },
 });

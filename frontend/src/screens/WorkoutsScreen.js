@@ -26,6 +26,8 @@ const getLocalDateString = (date = new Date()) => {
 export default function WorkoutsScreen() {
   const [selectedDate, setSelectedDate] = useState(getLocalDateString());
   const [workouts, setWorkouts] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [tracks, setTracks] = useState([]);
   const [exercisesList, setExercisesList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -40,6 +42,15 @@ export default function WorkoutsScreen() {
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState('');
   const [addedExercises, setAddedExercises] = useState([]);
+
+  // Log Activity Form State
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [activityName, setActivityName] = useState('');
+  const [activityCategory, setActivityCategory] = useState('yoga');
+  const [activityDuration, setActivityDuration] = useState('');
+  const [activityIntensity, setActivityIntensity] = useState('medium');
+  const [activityNotes, setActivityNotes] = useState('');
+  const [activityTrackId, setActivityTrackId] = useState('');
 
   // Reusable Dialog State
   const [dialog, setDialog] = useState({
@@ -93,17 +104,111 @@ export default function WorkoutsScreen() {
 
   useEffect(() => {
     fetchExercisesList();
+    fetchTracks();
   }, []);
+
+  const fetchTracks = async () => {
+    try {
+      const res = await apiClient.get('/lifestyle/tracks');
+      setTracks(res.data || []);
+    } catch (e) {
+      console.error("Failed to fetch tracks", e);
+    }
+  };
 
   const fetchWorkouts = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get(`/workouts?date=${selectedDate}`);
-      setWorkouts(res.data);
+      const [workoutsRes, activitiesRes] = await Promise.all([
+          apiClient.get(`/workouts?date=${selectedDate}`),
+          apiClient.get(`/activities?date=${selectedDate}`)
+      ]);
+      setWorkouts(workoutsRes.data || []);
+      setActivities(activitiesRes.data || []);
     } catch (e) {
-      console.error("Failed to fetch workouts", e);
+      console.error("Failed to fetch workouts/activities", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getActivityIcon = (category) => {
+    switch (category) {
+      case 'yoga': return 'spa';
+      case 'meditation': return 'brain';
+      case 'dance': return 'music';
+      case 'strength': return 'dumbbell';
+      case 'cardio': return 'running';
+      default: return 'walking';
+    }
+  };
+
+  const getActivityColor = (category) => {
+    switch (category) {
+      case 'yoga': return theme.colors.success;
+      case 'meditation': return theme.colors.primary;
+      case 'dance': return theme.colors.orange;
+      case 'strength': return theme.colors.danger;
+      case 'cardio': return theme.colors.info;
+      default: return theme.colors.textSecondary;
+    }
+  };
+
+  const handleDeleteActivity = async (id) => {
+    showDialog(
+      "Delete Log", 
+      "Are you sure you want to delete this activity log?", 
+      "danger", 
+      async () => {
+        try {
+          await apiClient.delete(`/activities/${id}`);
+          fetchWorkouts();
+        } catch (e) {
+          showDialog("Failed", "Could not delete activity log.", "error");
+        }
+      },
+      () => {},
+      "Delete"
+    );
+  };
+
+  const handleSaveActivity = async () => {
+    if (!activityName.trim()) {
+      showDialog("Required Field", "Please enter an activity name.", "warning");
+      return;
+    }
+    if (!activityDuration || isNaN(activityDuration)) {
+      showDialog("Invalid Input", "Please enter a valid duration in minutes.", "warning");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const payload = {
+        track_id: activityTrackId ? parseInt(activityTrackId) : null,
+        activity_name: activityName.trim(),
+        category: activityCategory,
+        date: selectedDate,
+        duration_minutes: parseInt(activityDuration),
+        intensity: activityIntensity,
+        notes: activityNotes.trim()
+      };
+
+      await apiClient.post('/activities/log', payload);
+      showDialog("Logged! 🎉", "Your activity has been recorded successfully.", "success", () => {
+        setActivityName('');
+        setActivityDuration('');
+        setActivityNotes('');
+        setActivityTrackId('');
+        setActivityCategory('yoga');
+        setActivityIntensity('medium');
+        setShowActivityModal(false);
+        fetchWorkouts();
+      });
+    } catch (e) {
+      showDialog("Logging Failed", e.response?.data?.error || e.message, "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -212,9 +317,25 @@ export default function WorkoutsScreen() {
         <Header
           title="Workouts"
           rightElement={
-            <Button variant="primary" size="sm" onPress={() => setShowModal(true)} icon={<Feather name="plus" size={14} color="#FFF" />}>
-              Log Session
-            </Button>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onPress={() => setShowActivityModal(true)} 
+                icon={<Feather name="plus" size={14} color={theme.colors.primary} />}
+                style={{ backgroundColor: '#FFF', borderColor: theme.colors.primary, borderWidth: 1 }}
+              >
+                Log Activity
+              </Button>
+              <Button 
+                variant="primary" 
+                size="sm" 
+                onPress={() => setShowModal(true)} 
+                icon={<Feather name="plus" size={14} color="#FFF" />}
+              >
+                Log Gym
+              </Button>
+            </View>
           }
         />
       </SafeAreaView>
@@ -238,30 +359,67 @@ export default function WorkoutsScreen() {
 
         {loading ? (
           <LoadingState message="Fetching logged sessions..." />
-        ) : workouts.length === 0 ? (
+        ) : (workouts.length === 0 && activities.length === 0) ? (
           <EmptyState
             icon="zap"
             title="No workout logs"
-            description="You haven't recorded any workouts for today."
+            description="You haven't recorded any workouts or activities for today."
           />
         ) : (
-          workouts.map((workout, index) => (
-            <Card key={index} style={styles.workoutRow}>
-              <View style={[styles.workoutImage, { backgroundColor: theme.colors.primary }]}>
-                <FontAwesome5 name="dumbbell" size={18} color="#FFF" />
-              </View>
-              <View style={styles.workoutInfo}>
-                <View style={styles.workoutHeaderRow}>
-                  <Text style={styles.workoutTitle} numberOfLines={1}>{workout.notes || 'Workout Session'}</Text>
-                  <Text style={styles.durationTag}>{workout.duration_minutes} mins</Text>
+          <View>
+            {/* Gym Workouts */}
+            {workouts.map((workout, index) => (
+              <Card key={`workout-${index}`} style={styles.workoutRow}>
+                <View style={[styles.workoutImage, { backgroundColor: theme.colors.primary }]}>
+                  <FontAwesome5 name="dumbbell" size={18} color="#FFF" />
                 </View>
-                <Text style={styles.workoutDesc}>Completed successfully today</Text>
-                <View style={styles.tagsRow}>
-                  <Badge variant="primary" label="Active" />
+                <View style={styles.workoutInfo}>
+                  <View style={styles.workoutHeaderRow}>
+                    <Text style={styles.workoutTitle} numberOfLines={1}>{workout.notes || 'Workout Session'}</Text>
+                    <Text style={styles.durationTag}>{workout.duration_minutes} mins</Text>
+                  </View>
+                  <Text style={styles.workoutDesc}>Gym session completed</Text>
+                  <View style={styles.tagsRow}>
+                    <Badge variant="primary" label="Gym" />
+                  </View>
                 </View>
-              </View>
-            </Card>
-          ))
+              </Card>
+            ))}
+
+            {/* Custom Activities */}
+            {activities.map((activity, index) => (
+              <Card key={`activity-${index}`} style={styles.workoutRow}>
+                <View style={[styles.workoutImage, { backgroundColor: getActivityColor(activity.category) }]}>
+                  <FontAwesome5 name={getActivityIcon(activity.category)} size={18} color="#FFF" />
+                </View>
+                <View style={styles.workoutInfo}>
+                  <View style={styles.workoutHeaderRow}>
+                    <Text style={styles.workoutTitle} numberOfLines={1}>{activity.activity_name}</Text>
+                    <Text style={styles.durationTag}>{activity.duration_minutes} mins</Text>
+                  </View>
+                  <Text style={styles.workoutDesc}>
+                      {activity.notes || `${activity.category.toUpperCase()} session`}
+                  </Text>
+                  <View style={styles.tagsRow}>
+                    <Badge variant="secondary" label={activity.track_name || activity.category} />
+                    {activity.intensity && (
+                        <Badge 
+                            variant="primary" 
+                            label={`${activity.intensity.toUpperCase()}`} 
+                            style={{ marginLeft: 6, backgroundColor: theme.colors.warningLight }} 
+                        />
+                    )}
+                    <TouchableOpacity 
+                        style={{ marginLeft: 'auto', padding: 4 }} 
+                        onPress={() => handleDeleteActivity(activity.id)}
+                    >
+                        <Feather name="trash-2" size={14} color={theme.colors.danger} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </Card>
+            ))}
+          </View>
         )}
 
         {/* AI Recommendation Suggestion */}
@@ -392,6 +550,99 @@ export default function WorkoutsScreen() {
           {/* Save Button */}
           <Button variant="primary" size="lg" onPress={handleSaveWorkout} loading={saving} style={{ marginTop: 20 }}>
             Save Session
+          </Button>
+          
+          <View style={{ height: 60 }} />
+        </ScrollView>
+      </ModalView>
+
+      {/* Log Activity Modal */}
+      <ModalView visible={showActivityModal} title="Log Custom Activity" onClose={() => setShowActivityModal(false)}>
+        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+          <Text style={styles.inputLabel}>Activity Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Morning Hatha Yoga, Evening Dance"
+            placeholderTextColor={theme.colors.textTertiary}
+            value={activityName}
+            onChangeText={setActivityName}
+          />
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 15 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Duration (minutes)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 30"
+                placeholderTextColor={theme.colors.textTertiary}
+                value={activityDuration}
+                onChangeText={setActivityDuration}
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Intensity</Text>
+              <View style={styles.pickerWrap}>
+                <Picker
+                  selectedValue={activityIntensity}
+                  onValueChange={(val) => setActivityIntensity(val)}
+                  style={styles.picker}
+                  itemStyle={styles.pickerItem}
+                >
+                  <Picker.Item label="Low" value="low" />
+                  <Picker.Item label="Medium" value="medium" />
+                  <Picker.Item label="High" value="high" />
+                </Picker>
+              </View>
+            </View>
+          </View>
+
+          <Text style={styles.inputLabel}>Category</Text>
+          <View style={styles.pickerWrap}>
+            <Picker
+              selectedValue={activityCategory}
+              onValueChange={(val) => setActivityCategory(val)}
+              style={styles.picker}
+              itemStyle={styles.pickerItem}
+            >
+              <Picker.Item label="Yoga" value="yoga" />
+              <Picker.Item label="Meditation" value="meditation" />
+              <Picker.Item label="Dance" value="dance" />
+              <Picker.Item label="Cardio" value="cardio" />
+              <Picker.Item label="Strength" value="strength" />
+              <Picker.Item label="Other" value="other" />
+            </Picker>
+          </View>
+
+          <Text style={styles.inputLabel}>Associate with lifestyle track (Optional)</Text>
+          <View style={styles.pickerWrap}>
+            <Picker
+              selectedValue={activityTrackId}
+              onValueChange={(val) => setActivityTrackId(val)}
+              style={styles.picker}
+              itemStyle={styles.pickerItem}
+            >
+              <Picker.Item label="None" value="" />
+              {tracks.map((t) => (
+                <Picker.Item key={t.id} label={t.display_name} value={t.id.toString()} />
+              ))}
+            </Picker>
+          </View>
+
+          <Text style={styles.inputLabel}>Notes</Text>
+          <TextInput
+            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+            placeholder="e.g. Felt highly energetic, practiced deep breathing"
+            placeholderTextColor={theme.colors.textTertiary}
+            multiline
+            numberOfLines={3}
+            value={activityNotes}
+            onChangeText={setActivityNotes}
+          />
+
+          {/* Save Button */}
+          <Button variant="primary" size="lg" onPress={handleSaveActivity} loading={saving} style={{ marginTop: 20 }}>
+            Log Activity
           </Button>
           
           <View style={{ height: 60 }} />

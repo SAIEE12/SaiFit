@@ -41,25 +41,50 @@ export default function ProfileScreen({ navigation, onLogout }) {
       fitness_goal: ''
   });
 
+  const [myTracks, setMyTracks] = useState([]);
+
   useEffect(() => {
       fetchProfile();
       fetchProfileCoach();
-  }, []);
+
+      const unsubscribe = navigation.addListener('focus', () => {
+          fetchProfile();
+          fetchProfileCoach();
+      });
+      return unsubscribe;
+  }, [navigation]);
+
+  const formatDietaryPhilosophy = (philosophy) => {
+      switch (philosophy) {
+          case 'no_restrictions': return 'No restrictions';
+          case 'vegetarian': return 'Vegetarian';
+          case 'vegan': return 'Vegan';
+          case 'sattvic': return 'Sattvic';
+          case 'eat_before_sunset': return 'Eat before sunset';
+          case 'intermittent_fasting': return 'Intermittent fasting';
+          case 'other': return 'Other';
+          default: return philosophy || 'Not specified';
+      }
+  };
 
   const fetchProfile = async () => {
       try {
-          const res = await apiClient.get('/profile');
-          setUserData(res.data.user);
-          setProfileData(res.data.profile);
+          const [profileRes, myTracksRes] = await Promise.all([
+              apiClient.get('/profile'),
+              apiClient.get('/lifestyle/my-tracks')
+          ]);
+          setUserData(profileRes.data.user);
+          setProfileData(profileRes.data.profile);
+          setMyTracks(myTracksRes.data || []);
           setFormData({
-              full_name: res.data.profile.full_name || '',
-              age: res.data.profile.age?.toString() || '',
-              gender: res.data.profile.gender || '',
-              height: res.data.profile.height?.toString() || '',
-              weight: res.data.profile.weight?.toString() || '',
-              target_weight: res.data.profile.target_weight?.toString() || '',
-              activity_level: res.data.profile.activity_level || '',
-              fitness_goal: res.data.profile.fitness_goal || ''
+              full_name: profileRes.data.profile.full_name || '',
+              age: profileRes.data.profile.age?.toString() || '',
+              gender: profileRes.data.profile.gender || '',
+              height: profileRes.data.profile.height?.toString() || '',
+              weight: profileRes.data.profile.weight?.toString() || '',
+              target_weight: profileRes.data.profile.target_weight?.toString() || '',
+              activity_level: profileRes.data.profile.activity_level || '',
+              fitness_goal: profileRes.data.profile.fitness_goal || ''
           });
       } catch(e) {
           Alert.alert("Error", "Could not load profile details.");
@@ -241,6 +266,26 @@ export default function ProfileScreen({ navigation, onLogout }) {
               </View>
               <Text style={styles.menuItemText}>Activity Level: {profileData?.activity_level || 'Not set'}</Text>
             </View>
+          </Card>
+
+          <SectionHeader title="MY PATH" style={{marginTop: 20}} />
+          <Card style={styles.menuItem} onPress={() => navigation.navigate('ChoosePathEdit')}>
+              <View style={styles.menuItemLeft}>
+                  <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.primaryLight}]}>
+                      <Feather name="compass" size={16} color={theme.colors.primary} />
+                  </View>
+                  <View style={{flexDirection: 'column', flex: 1, paddingRight: 8}}>
+                      <Text style={styles.menuItemText}>Training Focus & Diet</Text>
+                      <Text style={styles.menuSubText} numberOfLines={1}>
+                          {myTracks.map(t => t.display_name).join(', ') || 'No training path selected'}
+                      </Text>
+                      <Text style={styles.menuSubText} numberOfLines={1}>
+                          Diet: {formatDietaryPhilosophy(profileData?.dietary_philosophy)}
+                          {profileData?.dietary_notes ? ` (${profileData.dietary_notes})` : ''}
+                      </Text>
+                  </View>
+              </View>
+              <Feather name="chevron-right" size={18} color={theme.colors.textSecondary} />
           </Card>
 
           <SectionHeader title="PREFERENCES & CONTROLS" style={{marginTop: 20}} />
@@ -489,9 +534,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 16,
   },
-  menuItemLeft: { flexDirection: 'row', alignItems: 'center' },
+  menuItemLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   menuIconWrap: { width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   menuItemText: { ...theme.typography.bodySmall, color: theme.colors.textPrimary, fontWeight: '600' },
+  menuSubText: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
   logoutCard: {
     borderColor: 'rgba(255, 59, 48, 0.18)',
   },

@@ -15,10 +15,12 @@ exports.getProfile = async (req, res) => {
         }
         
         const userRes = await db.query('SELECT username, role, created_at FROM users WHERE id = ?', [userId]);
+        const goalsRes = await db.query('SELECT * FROM user_goals WHERE user_id = ?', [userId]);
 
         res.json({
             user: userRes.rows[0],
-            profile: profileRes.rows[0]
+            profile: profileRes.rows[0],
+            goals: goalsRes.rows[0] || null
         });
     } catch(e) {
         res.status(500).json({ error: e.message });

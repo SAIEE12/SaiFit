@@ -43,11 +43,12 @@ const getUserLifestyleContext = async (userId) => {
 // Main Recommendations endpoint (Legacy / General plan)
 exports.getRecommendations = async (req, res) => {
   try {
-    const user_id = req.user.id;
-    
+    const todayStr = new Date().toISOString().split('T')[0];
+    const selectedDate = req.query.date || todayStr;
+
     const existingRec = await db.query(
-        'SELECT content FROM recommendations WHERE user_id = ? AND type = ? AND date(created_at) = CURRENT_DATE ORDER BY created_at DESC LIMIT 1',
-        [user_id, 'workout']
+        'SELECT content FROM recommendations WHERE user_id = ? AND type = ? AND date = ? ORDER BY created_at DESC LIMIT 1',
+        [user_id, 'workout', selectedDate]
     );
 
     if (existingRec.rows.length > 0) {
@@ -56,6 +57,10 @@ exports.getRecommendations = async (req, res) => {
         } catch (e) {
             console.error("Failed to parse cached recommendation", e);
         }
+    }
+
+    if (selectedDate !== todayStr) {
+        return res.json({ viewingPast: true });
     }
 
     const userGoals = await db.query('SELECT * FROM user_goals WHERE user_id = ?', [user_id]);
@@ -90,8 +95,8 @@ exports.getRecommendations = async (req, res) => {
 
     try {
         await db.query(
-          'INSERT INTO recommendations (user_id, type, content) VALUES (?, ?, ?)',
-          [user_id, 'workout', JSON.stringify(recommendation)]
+          'INSERT INTO recommendations (user_id, type, content, date) VALUES (?, ?, ?, ?)',
+          [user_id, 'workout', JSON.stringify(recommendation), selectedDate]
         );
     } catch (dbError) {
         console.error('Failed to save recommendation to DB:', dbError.message);
@@ -108,14 +113,21 @@ exports.getRecommendations = async (req, res) => {
 exports.getInsight = async (req, res) => {
     try {
         const userId = req.user.id;
+        const todayStr = new Date().toISOString().split('T')[0];
+        const selectedDate = req.query.date || todayStr;
 
         // Check cache first
         const cacheRes = await db.query(
-            'SELECT content FROM recommendations WHERE user_id = ? AND type = ? AND date(created_at) = CURRENT_DATE ORDER BY created_at DESC LIMIT 1',
-            [userId, 'insight']
+            'SELECT content FROM recommendations WHERE user_id = ? AND type = ? AND date = ? ORDER BY created_at DESC LIMIT 1',
+            [userId, 'insight', selectedDate]
         );
         if (cacheRes.rows.length > 0) {
             return res.json(JSON.parse(cacheRes.rows[0].content));
+        }
+
+        // If it's a past date and not cached, do not run Gemini
+        if (selectedDate !== todayStr) {
+            return res.json({ viewingPast: true });
         }
 
         // Load Context Variables
@@ -206,8 +218,8 @@ exports.getInsight = async (req, res) => {
 
         // Cache result
         await db.query(
-            'INSERT INTO recommendations (user_id, type, content) VALUES (?, ?, ?)',
-            [userId, 'insight', JSON.stringify(insight)]
+            'INSERT INTO recommendations (user_id, type, content, date) VALUES (?, ?, ?, ?)',
+            [userId, 'insight', JSON.stringify(insight), selectedDate]
         );
 
         res.json(insight);

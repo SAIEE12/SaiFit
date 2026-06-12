@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import apiClient, { setAuthToken } from '../api/client';
 import { theme } from '../theme';
 import ScreenContainer from '../components/ui/ScreenContainer';
+import CustomDialog from '../components/CustomDialog';
 import { Header, SectionHeader } from '../components/ui/Header';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -23,6 +24,37 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const [profileData, setProfileData] = useState(null);
   const [userData, setUserData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Dialog State
+  const [dialog, setDialog] = useState({
+    visible: false,
+    title: '',
+    description: '',
+    type: 'info',
+    onConfirm: () => {},
+    onCancel: () => {},
+    confirmText: 'OK',
+    cancelText: 'Cancel'
+  });
+
+  const showDialog = (title, description, type = 'info', onConfirm = () => {}, onCancel = () => {}, confirmText = 'OK', cancelText = 'Cancel') => {
+    setDialog({ visible: true, title, description, type, onConfirm, onCancel, confirmText, cancelText });
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchProfile(),
+        fetchProfileCoach()
+      ]);
+    } catch (e) {
+      console.error("Failed to refresh ProfileScreen data:", e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   // AI Progression Coach State
   const [profileCoach, setProfileCoach] = useState(null);
@@ -76,7 +108,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
           setUserData(profileRes.data.user);
           setProfileData(profileRes.data.profile);
           setMyTracks(myTracksRes.data || []);
-          setFormData({
+           setFormData({
               full_name: profileRes.data.profile.full_name || '',
               age: profileRes.data.profile.age?.toString() || '',
               gender: profileRes.data.profile.gender || '',
@@ -87,7 +119,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
               fitness_goal: profileRes.data.profile.fitness_goal || ''
           });
       } catch(e) {
-          Alert.alert("Error", "Could not load profile details.");
+          showDialog("Error", "Could not load profile details.", "error");
       } finally {
           setLoading(false);
       }
@@ -126,11 +158,9 @@ export default function ProfileScreen({ navigation, onLogout }) {
           const res = await apiClient.put('/profile', payload);
           setProfileData(res.data);
           setIsEditing(false);
-          Alert.alert("Success", "Profile updated successfully!", [
-              { text: "OK", onPress: () => fetchProfileCoach() }
-          ]);
+          showDialog("Success", "Profile updated successfully!", "success", () => fetchProfileCoach());
       } catch(e) {
-          Alert.alert("Error", "Could not save profile.");
+          showDialog("Error", "Could not save profile.", "error");
       } finally {
           setLoading(false);
       }
@@ -162,169 +192,194 @@ export default function ProfileScreen({ navigation, onLogout }) {
         />
       </SafeAreaView>
 
-      <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
-        {/* Profile Info */}
-        <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatarPlaceholder}>
-              <Feather name="user" size={36} color="#FFF" />
-            </View>
-          </View>
-          <Text style={styles.userName}>{profileData?.full_name || 'Fitness Fan'}</Text>
-          <Text style={styles.userEmail}>@{userData?.username}</Text>
-        </View>
-
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <Card style={styles.statCard}>
-            <Text style={styles.statValue}>{profileData?.weight || 0} <Text style={styles.statUnit}>kg</Text></Text>
-            <Text style={styles.statLabel}>Weight</Text>
-          </Card>
-          <Card style={styles.statCard}>
-            <Text style={styles.statValue}>{profileData?.height || 0} <Text style={styles.statUnit}>cm</Text></Text>
-            <Text style={styles.statLabel}>Height</Text>
-          </Card>
-          <Card style={styles.statCard}>
-            <Text style={styles.statValue}>{profileData?.age || 0} <Text style={styles.statUnit}>yo</Text></Text>
-            <Text style={styles.statLabel}>Age</Text>
-          </Card>
-        </View>
-
-        {/* AI Progression Intelligence */}
-        {profileCoach && !profileCoach.disabled && (
-            <AICoachCard
-                title="AI PROGRESSION INTELLIGENCE"
-                scoreLabel="FITNESS INDEX"
-                scoreValue={`${profileCoach.fitness_score} / 100`}
-                narrative={profileCoach.adaptive_goal_suggestions}
-                expanded={coachExpanded}
-                onToggle={toggleCoach}
-                segments={
-                    coachExpanded
-                        ? [
-                            {
-                                icon: 'award',
-                                title: 'Strengths',
-                                text: profileCoach.strengths,
-                                color: theme.colors.success,
-                            },
-                            {
-                                icon: 'alert-circle',
-                                title: 'Areas to Improve',
-                                text: profileCoach.weaknesses,
-                                color: theme.colors.warning,
-                            },
-                            {
-                                icon: 'calendar',
-                                title: 'Target Weight Timeline',
-                                text: profileCoach.target_weight_timeline,
-                                color: theme.colors.primary,
-                            },
-                        ]
-                        : []
-                }
-            />
-        )}
-
-        {/* Fitness Goal Banner */}
-        <Card style={styles.goalBanner} onPress={() => setIsEditing(true)}>
-          <View style={styles.goalInfo}>
-            <Text style={styles.goalLabel}>CURRENT GOAL</Text>
-            <Text style={styles.goalTitle}>{profileData?.fitness_goal || 'Set your fitness goal'}</Text>
-          </View>
-          <View style={styles.goalIconWrap}>
-            <FontAwesome5 name="dumbbell" size={18} color={theme.colors.primary} />
-          </View>
-        </Card>
-
-        {/* Menu Items */}
-        <View style={styles.menuContainer}>
-          <SectionHeader title="ACCOUNT DETAILS" />
-          
-          <Card style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.secondaryLight}]}>
-                <Feather name="user" size={16} color={theme.colors.secondary} />
+      <ScreenContainer scrollable={false} keyboardAvoiding={false} edges={['bottom']}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+          }
+        >
+          {/* Profile Info */}
+          <View style={styles.profileSection}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarPlaceholder}>
+                <Feather name="user" size={36} color="#FFF" />
               </View>
-              <Text style={styles.menuItemText}>Gender: {profileData?.gender || 'Not specified'}</Text>
+            </View>
+            <Text style={styles.userName}>{profileData?.full_name || 'Fitness Fan'}</Text>
+            <Text style={styles.userEmail}>@{userData?.username}</Text>
+          </View>
+
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <Card style={styles.statCard}>
+              <Text style={styles.statValue}>{profileData?.weight || 0} <Text style={styles.statUnit}>kg</Text></Text>
+              <Text style={styles.statLabel}>Weight</Text>
+            </Card>
+            <Card style={styles.statCard}>
+              <Text style={styles.statValue}>{profileData?.height || 0} <Text style={styles.statUnit}>cm</Text></Text>
+              <Text style={styles.statLabel}>Height</Text>
+            </Card>
+            <Card style={styles.statCard}>
+              <Text style={styles.statValue}>{profileData?.age || 0} <Text style={styles.statUnit}>yo</Text></Text>
+              <Text style={styles.statLabel}>Age</Text>
+            </Card>
+          </View>
+
+          {/* AI Progression Intelligence */}
+          {profileCoach && !profileCoach.disabled && (
+              <AICoachCard
+                  title="AI PROGRESSION INTELLIGENCE"
+                  scoreLabel="FITNESS INDEX"
+                  scoreValue={`${profileCoach.fitness_score} / 100`}
+                  narrative={profileCoach.adaptive_goal_suggestions}
+                  expanded={coachExpanded}
+                  onToggle={toggleCoach}
+                  segments={
+                      coachExpanded
+                          ? [
+                              {
+                                  icon: 'award',
+                                  title: 'Strengths',
+                                  text: profileCoach.strengths,
+                                  color: theme.colors.success,
+                              },
+                              {
+                                  icon: 'alert-circle',
+                                  title: 'Areas to Improve',
+                                  text: profileCoach.weaknesses,
+                                  color: theme.colors.warning,
+                              },
+                              {
+                                  icon: 'calendar',
+                                  title: 'Target Weight Timeline',
+                                  text: profileCoach.target_weight_timeline,
+                                  color: theme.colors.primary,
+                              },
+                          ]
+                          : []
+                  }
+              />
+          )}
+
+          {/* Fitness Goal Banner */}
+          <Card style={styles.goalBanner} onPress={() => setIsEditing(true)}>
+            <View style={styles.goalInfo}>
+              <Text style={styles.goalLabel}>CURRENT GOAL</Text>
+              <Text style={styles.goalTitle}>{profileData?.fitness_goal || 'Set your fitness goal'}</Text>
+            </View>
+            <View style={styles.goalIconWrap}>
+              <FontAwesome5 name="dumbbell" size={18} color={theme.colors.primary} />
             </View>
           </Card>
 
-          <Card style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.successLight}]}>
-                <Feather name="target" size={16} color={theme.colors.success} />
-              </View>
-              <Text style={styles.menuItemText}>Target Weight: {profileData?.target_weight || 0} kg</Text>
-            </View>
-          </Card>
-
-          <Card style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.warningLight}]}>
-                <Feather name="activity" size={16} color={theme.colors.warning} />
-              </View>
-              <Text style={styles.menuItemText}>Activity Level: {profileData?.activity_level || 'Not set'}</Text>
-            </View>
-          </Card>
-
-          <SectionHeader title="MY PATH" style={{marginTop: 20}} />
-          <Card style={styles.menuItem} onPress={() => navigation.navigate('ChoosePathEdit')}>
+          {/* Menu Items */}
+          <View style={styles.menuContainer}>
+            <SectionHeader title="ACCOUNT DETAILS" />
+            
+            <Card style={styles.menuItem}>
               <View style={styles.menuItemLeft}>
-                  <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.primaryLight}]}>
-                      <Feather name="compass" size={16} color={theme.colors.primary} />
-                  </View>
-                  <View style={{flexDirection: 'column', flex: 1, paddingRight: 8}}>
-                      <Text style={styles.menuItemText}>Training Focus & Diet</Text>
-                      <Text style={styles.menuSubText} numberOfLines={1}>
-                          {myTracks.map(t => t.display_name).join(', ') || 'No training path selected'}
-                      </Text>
-                      <Text style={styles.menuSubText} numberOfLines={1}>
-                          Diet: {formatDietaryPhilosophy(profileData?.dietary_philosophy)}
-                          {profileData?.dietary_notes ? ` (${profileData.dietary_notes})` : ''}
-                      </Text>
-                  </View>
+                <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.secondaryLight}]}>
+                  <Feather name="user" size={16} color={theme.colors.secondary} />
+                </View>
+                <Text style={styles.menuItemText}>Gender: {profileData?.gender || 'Not specified'}</Text>
               </View>
-              <Feather name="chevron-right" size={18} color={theme.colors.textSecondary} />
-          </Card>
+            </Card>
 
-          <SectionHeader title="PREFERENCES & CONTROLS" style={{marginTop: 20}} />
-          
-          {userData?.role === 'admin' && (
-            <Card style={styles.menuItem} onPress={() => navigation.navigate('Admin')}>
+            <Card style={styles.menuItem}>
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.successLight}]}>
+                  <Feather name="target" size={16} color={theme.colors.success} />
+                </View>
+                <Text style={styles.menuItemText}>Target Weight: {profileData?.target_weight || 0} kg</Text>
+              </View>
+            </Card>
+
+            <Card style={styles.menuItem}>
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.warningLight}]}>
+                  <Feather name="activity" size={16} color={theme.colors.warning} />
+                </View>
+                <Text style={styles.menuItemText}>Activity Level: {profileData?.activity_level || 'Not set'}</Text>
+              </View>
+            </Card>
+
+            <SectionHeader title="MY PATH" style={{marginTop: 20}} />
+            <Card style={styles.menuItem} onPress={() => navigation.navigate('ChoosePathEdit')}>
                 <View style={styles.menuItemLeft}>
                     <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.primaryLight}]}>
-                        <Feather name="shield" size={16} color={theme.colors.primary} />
+                        <Feather name="compass" size={16} color={theme.colors.primary} />
                     </View>
-                    <Text style={styles.menuItemText}>Admin Privileges</Text>
+                    <View style={{flexDirection: 'column', flex: 1, paddingRight: 8}}>
+                        <Text style={styles.menuItemText}>Training Focus & Diet</Text>
+                        <Text style={styles.menuSubText} numberOfLines={1}>
+                            {myTracks.map(t => t.display_name).join(', ') || 'No training path selected'}
+                        </Text>
+                        <Text style={styles.menuSubText} numberOfLines={1}>
+                            Diet: {formatDietaryPhilosophy(profileData?.dietary_philosophy)}
+                            {profileData?.dietary_notes ? ` (${profileData.dietary_notes})` : ''}
+                        </Text>
+                    </View>
                 </View>
                 <Feather name="chevron-right" size={18} color={theme.colors.textSecondary} />
             </Card>
-          )}
 
-          <Card style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.border}]}>
-                <FontAwesome5 name="user-tag" size={14} color={theme.colors.textSecondary} />
-              </View>
-              <Text style={styles.menuItemText}>Role: {userData?.role.toUpperCase()}</Text>
-            </View>
-          </Card>
+            <SectionHeader title="PREFERENCES & CONTROLS" style={{marginTop: 20}} />
+            
+            {userData?.role === 'admin' && (
+              <Card style={styles.menuItem} onPress={() => navigation.navigate('Admin')}>
+                  <View style={styles.menuItemLeft}>
+                      <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.primaryLight}]}>
+                          <Feather name="shield" size={16} color={theme.colors.primary} />
+                      </View>
+                      <Text style={styles.menuItemText}>Admin Privileges</Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={theme.colors.textSecondary} />
+              </Card>
+            )}
 
-          {/* Premium Integrated Logout Card */}
-          <Card style={[styles.menuItem, styles.logoutCard]} onPress={handleLogout}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.dangerLight}]}>
-                <Feather name="log-out" size={16} color={theme.colors.danger} />
+            <Card style={styles.menuItem}>
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.border}]}>
+                  <FontAwesome5 name="user-tag" size={14} color={theme.colors.textSecondary} />
+                </View>
+                <Text style={styles.menuItemText}>Role: {userData?.role.toUpperCase()}</Text>
               </View>
-              <Text style={styles.logoutCardText}>Log Out</Text>
-            </View>
-            <Feather name="chevron-right" size={18} color={theme.colors.danger} />
-          </Card>
-        </View>
-        
-        <View style={{height: 60}} />
+            </Card>
+
+            {/* Premium Integrated Logout Card */}
+            <Card style={[styles.menuItem, styles.logoutCard]} onPress={handleLogout}>
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.menuIconWrap, {backgroundColor: theme.colors.dangerLight}]}>
+                  <Feather name="log-out" size={16} color={theme.colors.danger} />
+                </View>
+                <Text style={styles.logoutCardText}>Log Out</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={theme.colors.danger} />
+            </Card>
+          </View>
+          
+          <View style={{height: 60}} />
+        </ScrollView>
       </ScreenContainer>
+
+      {/* Custom Reusable Dialog */}
+      <CustomDialog
+        visible={dialog.visible}
+        title={dialog.title}
+        description={dialog.description}
+        type={dialog.type}
+        confirmText={dialog.confirmText}
+        cancelText={dialog.cancelText}
+        onConfirm={() => {
+          setDialog(prev => ({ ...prev, visible: false }));
+          if (dialog.onConfirm) dialog.onConfirm();
+        }}
+        onCancel={() => {
+          setDialog(prev => ({ ...prev, visible: false }));
+          if (dialog.onCancel) dialog.onCancel();
+        }}
+      />
 
       {/* Edit Profile Modal */}
       <ModalView visible={isEditing} title="Edit Profile" onClose={() => setIsEditing(false)}>

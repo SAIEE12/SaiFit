@@ -43,6 +43,7 @@ const getUserLifestyleContext = async (userId) => {
 // Main Recommendations endpoint (Legacy / General plan)
 exports.getRecommendations = async (req, res) => {
   try {
+    const user_id = req.user.id;
     const todayStr = new Date().toISOString().split('T')[0];
     const selectedDate = req.query.date || todayStr;
 

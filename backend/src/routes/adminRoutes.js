@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const authenticateToken = require('../middlewares/authMiddleware');
+const adminController = require('../controllers/adminController');
 
 const requireAdmin = (req, res, next) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden: Admins only' });
@@ -9,6 +10,9 @@ const requireAdmin = (req, res, next) => {
 };
 
 router.use(authenticateToken, requireAdmin);
+
+router.get('/ai-usage', adminController.getAiUsage);
+router.get('/user-activity', adminController.getUserActivity);
 
 router.post('/invite', async (req, res) => {
     try {

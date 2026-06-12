@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     target_weight REAL,
     activity_level TEXT,
     fitness_goal TEXT,
+    dietary_philosophy TEXT,
+    dietary_notes TEXT,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -143,5 +145,42 @@ INSERT OR IGNORE INTO exercises (id, name, category, description) VALUES
 (10, 'Tricep Pushdown', 'Arms', 'Cable pushdowns for tricep lateral and medial heads.'),
 (11, 'Running', 'Cardio', 'Treadmill or outdoor distance running.'),
 (12, 'Cycling', 'Cardio', 'Stationary or outdoor cycling.');
+
+CREATE TABLE IF NOT EXISTS lifestyle_tracks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT UNIQUE NOT NULL,
+    display_name TEXT NOT NULL,
+    description TEXT,
+    icon_name TEXT
+);
+
+CREATE TABLE IF NOT EXISTS user_tracks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    track_id INTEGER REFERENCES lifestyle_tracks(id) ON DELETE CASCADE,
+    is_primary INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, track_id)
+);
+
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    track_id INTEGER REFERENCES lifestyle_tracks(id) ON DELETE SET NULL,
+    activity_name TEXT NOT NULL,
+    category TEXT,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    duration_minutes INTEGER NOT NULL,
+    intensity TEXT,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed default lifestyle tracks
+INSERT OR IGNORE INTO lifestyle_tracks (id, key, display_name, description, icon_name) VALUES 
+(1, 'gym', 'Gym Training', 'Structured strength training with equipment', 'dumbbell'),
+(2, 'home_workout', 'Home Workout', 'Bodyweight and minimal-equipment routines at home', 'home'),
+(3, 'yoga_meditation', 'Yoga & Meditation', 'Yoga asanas, breathing practices, and meditation for holistic wellbeing', 'spa'),
+(4, 'dance', 'Dance', 'Dance-based cardio and movement practice', 'music');
 
 

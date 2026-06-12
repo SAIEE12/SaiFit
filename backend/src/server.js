@@ -12,10 +12,20 @@ const recommendationRoutes = require('./routes/recommendationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const hydrationRoutes = require('./routes/hydrationRoutes');
+const lifestyleRoutes = require('./routes/lifestyleRoutes');
+const activityRoutes = require('./routes/activityRoutes');
 
 // Initialize SQLite database schema automatically for local dev
 const schema = fs.readFileSync(path.join(__dirname, 'models/schema.sql'), 'utf8');
 db.exec(schema);
+
+// Migration: Ensure new dietary columns exist on existing databases
+try {
+  db.exec("ALTER TABLE user_profiles ADD COLUMN dietary_philosophy TEXT;");
+} catch (e) {}
+try {
+  db.exec("ALTER TABLE user_profiles ADD COLUMN dietary_notes TEXT;");
+} catch (e) {}
 
 const app = express();
 
@@ -33,6 +43,8 @@ app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/hydration', hydrationRoutes);
+app.use('/api/lifestyle', lifestyleRoutes);
+app.use('/api/activities', activityRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'SaiFit API is running' });

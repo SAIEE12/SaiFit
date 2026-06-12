@@ -15,6 +15,16 @@ export default function AdminScreen({ navigation }) {
     const [loading, setLoading] = useState(false);
     const [newCodeLimit, setNewCodeLimit] = useState('10');
 
+    // New State Variables
+    const [aiPeriod, setAiPeriod] = useState('today');
+    const [aiUsage, setAiUsage] = useState({ users: [], appWideTotal: 0 });
+    const [userActivity, setUserActivity] = useState([]);
+
+    const [showInvites, setShowInvites] = useState(true);
+    const [showUsers, setShowUsers] = useState(true);
+    const [showAiUsage, setShowAiUsage] = useState(true);
+    const [showUserActivity, setShowUserActivity] = useState(true);
+
     // Dialog state
     const [dialog, setDialog] = useState({
         visible: false,
@@ -50,15 +60,31 @@ export default function AdminScreen({ navigation }) {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        fetchAiUsage();
+    }, [aiPeriod]);
+
+    const fetchAiUsage = async () => {
+        try {
+            const res = await apiClient.get(`/admin/ai-usage?period=${aiPeriod}`);
+            setAiUsage(res.data);
+        } catch (e) {
+            console.error("Failed to load AI usage details:", e);
+        }
+    };
+
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [usersRes, invitesRes] = await Promise.all([
+            const [usersRes, invitesRes, activityRes] = await Promise.all([
                 apiClient.get('/admin/users'),
-                apiClient.get('/admin/invites')
+                apiClient.get('/admin/invites'),
+                apiClient.get('/admin/user-activity')
             ]);
             setUsers(usersRes.data);
             setInvites(invitesRes.data);
+            setUserActivity(activityRes.data);
+            await fetchAiUsage();
         } catch(e) {
             showDialog("Error", "Could not load admin management details from server.", "error");
         } finally {
@@ -125,6 +151,74 @@ export default function AdminScreen({ navigation }) {
         );
     };
 
+    const formatRequestType = (type) => {
+        switch (type) {
+            case 'insight': return 'Insight';
+            case 'workout_coach': return 'Workout Coach';
+            case 'workout': return 'Workout';
+            case 'calendar_coach': return 'Calendar';
+            case 'profile_coach': return 'Profile';
+            case 'meal_scan': return 'Meals';
+            case 'smart_search': return 'Search';
+            case 'chat': return 'Chat';
+            default: return type;
+        }
+    };
+
+    const renderBreakdown = (breakdown) => {
+        if (!breakdown || Object.keys(breakdown).length === 0) return 'No requests logged';
+        const parts = Object.entries(breakdown).map(([type, count]) => {
+            return `${formatRequestType(type)}: ${count}`;
+        });
+        return parts.join(' · ');
+    };
+
+    const getRelativeTime = (dateString) => {
+        if (!dateString) return 'Never';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays === 1) return 'Yesterday';
+        return `${diffDays} days ago`;
+    };
+
+    const formatActivityType = (type) => {
+        switch (type) {
+            case 'meal': return 'Logged a meal';
+            case 'workout': return 'Logged a workout';
+            case 'hydration': return 'Logged water';
+            case 'custom_activity': return 'Logged an activity';
+            default: return 'Logged activity';
+        }
+    };
+
+    const formatLastActivity = (activity) => {
+        if (!activity) return 'No activity logged';
+        const typeLabel = formatActivityType(activity.type);
+        const timeLabel = getRelativeTime(activity.date);
+        return `${typeLabel} — ${timeLabel}`;
+    };
+
+    const isInactive = (lastLoginAt, lastActivityDate) => {
+        const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+        const now = new Date().getTime();
+        
+        const loginTime = lastLoginAt ? new Date(lastLoginAt).getTime() : 0;
+        const activityTime = lastActivityDate ? new Date(lastActivityDate).getTime() : 0;
+        
+        if (!lastLoginAt && !lastActivityDate) return true;
+        
+        const lastActiveTime = Math.max(loginTime, activityTime);
+        return (now - lastActiveTime) > threeDaysMs;
+    };
+
     return (
         <View style={styles.container}>
             <SafeAreaView edges={['top']} style={styles.safeHeader}>
@@ -140,88 +234,267 @@ export default function AdminScreen({ navigation }) {
                 <View style={styles.contentContainer}>
                     
                     {/* Invite Codes Section */}
-                    <View style={styles.sectionHeaderRow}>
-                        <Text style={styles.sectionTitle}>Invite Codes</Text>
-                        <Text style={styles.badgeText}>{invites.length} Total</Text>
-                    </View>
-
-                    <Card style={styles.createCard}>
-                        <Text style={styles.cardLabel}>Generate Invite Code</Text>
-                        <Text style={styles.cardDesc}>Set a daily usage request quota limit for the invite token.</Text>
-                        <View style={styles.inviteInputRow}>
-                            <TextInput 
-                                style={styles.inviteInput}
-                                value={newCodeLimit}
-                                onChangeText={setNewCodeLimit}
-                                keyboardType="numeric"
-                                placeholder="Requests Limit (e.g. 10)"
-                                placeholderTextColor={theme.colors.textTertiary}
-                            />
-                            <Button variant="primary" size="md" onPress={generateInvite} style={styles.generateBtn}>
-                                Generate
-                            </Button>
+                    <TouchableOpacity 
+                        style={styles.sectionHeaderRow} 
+                        onPress={() => setShowInvites(!showInvites)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.sectionTitleRow}>
+                            <Text style={styles.sectionTitle}>Invite Codes</Text>
+                            <Text style={styles.badgeText}>{invites.length} Total</Text>
                         </View>
-                    </Card>
+                        <Feather name={showInvites ? "chevron-up" : "chevron-down"} size={20} color={theme.colors.textSecondary} />
+                    </TouchableOpacity>
 
-                    <View style={styles.listContainer}>
-                        {invites.map((inv) => (
-                            <Card key={inv.id} style={styles.listItem}>
-                                <View style={styles.listItemLeft}>
-                                    <View style={[styles.listIconWrap, {backgroundColor: inv.is_used ? theme.colors.primaryLight : theme.colors.secondaryLight}]}>
-                                        <Feather name="key" size={16} color={inv.is_used ? theme.colors.primary : theme.colors.secondary} />
-                                    </View>
-                                    <View style={{flex: 1}}>
-                                        <Text style={styles.itemCode}>{inv.code}</Text>
-                                        <Text style={styles.itemSub}>Quota: {inv.max_daily_requests} reqs/day</Text>
-                                        {inv.is_used ? (
-                                            <Text style={[styles.itemStatus, {color: theme.colors.primary}]}>Registered: @{inv.assigned_username}</Text>
-                                        ) : (
-                                            <Text style={[styles.itemStatus, {color: theme.colors.secondary}]}>Unused & Active</Text>
-                                        )}
-                                    </View>
+                    {showInvites && (
+                        <View>
+                            <Card style={styles.createCard}>
+                                <Text style={styles.cardLabel}>Generate Invite Code</Text>
+                                <Text style={styles.cardDesc}>Set a daily usage request quota limit for the invite token.</Text>
+                                <View style={styles.inviteInputRow}>
+                                    <TextInput 
+                                        style={styles.inviteInput}
+                                        value={newCodeLimit}
+                                        onChangeText={setNewCodeLimit}
+                                        keyboardType="numeric"
+                                        placeholder="Requests Limit (e.g. 10)"
+                                        placeholderTextColor={theme.colors.textTertiary}
+                                    />
+                                    <Button variant="primary" size="md" onPress={generateInvite} style={styles.generateBtn}>
+                                        Generate
+                                    </Button>
                                 </View>
-                                {!inv.is_used && (
-                                    <TouchableOpacity onPress={() => deleteInvite(inv.id)} style={styles.deleteAction}>
-                                        <Feather name="trash-2" size={18} color={theme.colors.danger} />
-                                    </TouchableOpacity>
-                                )}
                             </Card>
-                        ))}
-                        {invites.length === 0 && (
-                            <Text style={styles.emptyListText}>No invite codes generated yet.</Text>
-                        )}
-                    </View>
+
+                            <View style={styles.listContainer}>
+                                {invites.map((inv) => (
+                                    <Card key={inv.id} style={styles.listItem}>
+                                        <View style={styles.listItemLeft}>
+                                            <View style={[styles.listIconWrap, {backgroundColor: inv.is_used ? theme.colors.primaryLight : theme.colors.secondaryLight}]}>
+                                                <Feather name="key" size={16} color={inv.is_used ? theme.colors.primary : theme.colors.secondary} />
+                                            </View>
+                                            <View style={{flex: 1}}>
+                                                <Text style={styles.itemCode}>{inv.code}</Text>
+                                                <Text style={styles.itemSub}>Quota: {inv.max_daily_requests} reqs/day</Text>
+                                                {inv.is_used ? (
+                                                    <Text style={[styles.itemStatus, {color: theme.colors.primary}]}>Registered: @{inv.assigned_username}</Text>
+                                                ) : (
+                                                    <Text style={[styles.itemStatus, {color: theme.colors.secondary}]}>Unused & Active</Text>
+                                                )}
+                                            </View>
+                                        </View>
+                                        {!inv.is_used && (
+                                            <TouchableOpacity onPress={() => deleteInvite(inv.id)} style={styles.deleteAction}>
+                                                <Feather name="trash-2" size={18} color={theme.colors.danger} />
+                                            </TouchableOpacity>
+                                        )}
+                                    </Card>
+                                ))}
+                                {invites.length === 0 && (
+                                    <Text style={styles.emptyListText}>No invite codes generated yet.</Text>
+                                )}
+                            </View>
+                        </View>
+                    )}
 
                     {/* Users Section */}
-                    <View style={[styles.sectionHeaderRow, { marginTop: theme.spacing.xl }]}>
-                        <Text style={styles.sectionTitle}>Registered Users</Text>
-                        <Text style={styles.badgeText}>{users.length} Total</Text>
-                    </View>
+                    <TouchableOpacity 
+                        style={[styles.sectionHeaderRow, { marginTop: theme.spacing.xl }]} 
+                        onPress={() => setShowUsers(!showUsers)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.sectionTitleRow}>
+                            <Text style={styles.sectionTitle}>Registered Users</Text>
+                            <Text style={styles.badgeText}>{users.length} Total</Text>
+                        </View>
+                        <Feather name={showUsers ? "chevron-up" : "chevron-down"} size={20} color={theme.colors.textSecondary} />
+                    </TouchableOpacity>
 
-                    <View style={styles.listContainer}>
-                        {users.map((usr) => (
-                            <Card key={usr.id} style={styles.listItem}>
-                                <View style={styles.listItemLeft}>
-                                    <View style={[styles.listIconWrap, {backgroundColor: usr.role === 'admin' ? theme.colors.primaryLight : theme.colors.successLight}]}>
-                                        <Feather name="user" size={16} color={usr.role === 'admin' ? theme.colors.primary : theme.colors.success} />
+                    {showUsers && (
+                        <View style={styles.listContainer}>
+                            {users.map((usr) => (
+                                <Card key={usr.id} style={styles.listItem}>
+                                    <View style={styles.listItemLeft}>
+                                        <View style={[styles.listIconWrap, {backgroundColor: usr.role === 'admin' ? theme.colors.primaryLight : theme.colors.successLight}]}>
+                                            <Feather name="user" size={16} color={usr.role === 'admin' ? theme.colors.primary : theme.colors.success} />
+                                        </View>
+                                        <View style={{flex: 1}}>
+                                            <Text style={styles.itemUsername}>{usr.username} <Text style={styles.itemRole}>({usr.role.toUpperCase()})</Text></Text>
+                                            <Text style={styles.itemSub}>API calls logged today: {usr.daily_usage_count} reqs</Text>
+                                            <Text style={styles.itemDate}>Created: {new Date(usr.created_at).toLocaleDateString()}</Text>
+                                        </View>
                                     </View>
-                                    <View style={{flex: 1}}>
-                                        <Text style={styles.itemUsername}>{usr.username} <Text style={styles.itemRole}>({usr.role.toUpperCase()})</Text></Text>
-                                        <Text style={styles.itemSub}>API calls logged today: {usr.daily_usage_count} reqs</Text>
-                                        <Text style={styles.itemDate}>Created: {new Date(usr.created_at).toLocaleDateString()}</Text>
-                                    </View>
-                                </View>
-                                {usr.role !== 'admin' && (
-                                    <TouchableOpacity onPress={() => deleteUser(usr.id)} style={styles.deleteAction}>
-                                        <Feather name="user-x" size={18} color={theme.colors.danger} />
-                                    </TouchableOpacity>
+                                    {usr.role !== 'admin' && (
+                                        <TouchableOpacity onPress={() => deleteUser(usr.id)} style={styles.deleteAction}>
+                                            <Feather name="user-x" size={18} color={theme.colors.danger} />
+                                        </TouchableOpacity>
+                                    )}
+                                </Card>
+                            ))}
+                            {users.length === 0 && (
+                                <Text style={styles.emptyListText}>No user accounts configured.</Text>
+                            )}
+                        </View>
+                    )}
+
+                    {/* AI Usage Dashboard Section */}
+                    <TouchableOpacity 
+                        style={[styles.sectionHeaderRow, { marginTop: theme.spacing.xl }]} 
+                        onPress={() => setShowAiUsage(!showAiUsage)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.sectionTitleRow}>
+                            <Text style={styles.sectionTitle}>AI Usage</Text>
+                            <Text style={[styles.badgeText, { backgroundColor: theme.colors.primaryLight, color: theme.colors.primary }]}>
+                                {aiUsage.appWideTotal} Total
+                            </Text>
+                        </View>
+                        <Feather name={showAiUsage ? "chevron-up" : "chevron-down"} size={20} color={theme.colors.textSecondary} />
+                    </TouchableOpacity>
+
+                    {showAiUsage && (
+                        <View>
+                            {/* Period Selector Chips */}
+                            <View style={styles.periodChipsRow}>
+                                {['today', 'week', 'month'].map((p) => {
+                                    const isSelected = aiPeriod === p;
+                                    return (
+                                        <TouchableOpacity
+                                            key={p}
+                                            onPress={() => setAiPeriod(p)}
+                                            style={[
+                                                styles.periodChip,
+                                                isSelected && styles.periodChipSelected
+                                            ]}
+                                        >
+                                            <Text style={[
+                                                styles.periodChipText,
+                                                isSelected && styles.periodChipTextSelected
+                                            ]}>
+                                                {p === 'today' ? 'Today' : p === 'week' ? 'This Week' : 'This Month'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+
+                            <View style={styles.listContainer}>
+                                {aiUsage.users.map((usr) => {
+                                    const isToday = aiPeriod === 'today';
+                                    const nearLimit = isToday && (usr.total >= usr.max_daily_requests * 0.8);
+                                    
+                                    return (
+                                        <Card key={usr.username} style={styles.listItem}>
+                                            <View style={styles.listItemLeft}>
+                                                <View style={[styles.listIconWrap, { backgroundColor: theme.colors.primaryLight }]}>
+                                                    <Feather name="cpu" size={16} color={theme.colors.primary} />
+                                                </View>
+                                                <View style={{ flex: 1 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                        <Text style={styles.itemUsername}>@{usr.username}</Text>
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                            <Text style={styles.usageCountText}>
+                                                                {usr.total} {isToday ? `/ ${usr.max_daily_requests}` : 'reqs'}
+                                                            </Text>
+                                                            {nearLimit && (
+                                                                <View style={styles.nearLimitBadge}>
+                                                                    <Text style={styles.nearLimitBadgeText}>LIMIT NEAR</Text>
+                                                                </View>
+                                                            )}
+                                                        </View>
+                                                    </View>
+                                                    
+                                                    <Text style={styles.itemSub} numberOfLines={2}>
+                                                        {renderBreakdown(usr.breakdown)}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        </Card>
+                                    );
+                                })}
+                                {aiUsage.users.length === 0 && (
+                                    <Text style={styles.emptyListText}>No AI usage logged in this period.</Text>
                                 )}
-                            </Card>
-                        ))}
-                        {users.length === 0 && (
-                            <Text style={styles.emptyListText}>No user accounts configured.</Text>
-                        )}
-                    </View>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* User Activity Overview Section */}
+                    <TouchableOpacity 
+                        style={[styles.sectionHeaderRow, { marginTop: theme.spacing.xl }]} 
+                        onPress={() => setShowUserActivity(!showUserActivity)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.sectionTitleRow}>
+                            <Text style={styles.sectionTitle}>User Activity</Text>
+                            <Text style={styles.badgeText}>{userActivity.length} Users</Text>
+                        </View>
+                        <Feather name={showUserActivity ? "chevron-up" : "chevron-down"} size={20} color={theme.colors.textSecondary} />
+                    </TouchableOpacity>
+
+                    {showUserActivity && (
+                        <View style={styles.listContainer}>
+                            {userActivity.map((act) => {
+                                const inactive = isInactive(act.last_login_at, act.last_activity?.date);
+                                return (
+                                    <Card 
+                                        key={act.username} 
+                                        style={[
+                                            styles.listItem,
+                                            inactive && styles.inactiveListItem
+                                        ]}
+                                    >
+                                        <View style={styles.listItemLeft}>
+                                            <View style={[
+                                                styles.listIconWrap, 
+                                                { 
+                                                    backgroundColor: inactive 
+                                                        ? theme.colors.border 
+                                                        : theme.colors.successLight 
+                                                }
+                                            ]}>
+                                                <Feather 
+                                                    name={inactive ? "user-minus" : "activity"} 
+                                                    size={16} 
+                                                    color={inactive ? theme.colors.textSecondary : theme.colors.success} 
+                                                />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <Text style={[
+                                                        styles.itemUsername,
+                                                        inactive && styles.inactiveText
+                                                    ]}>
+                                                        @{act.username}
+                                                    </Text>
+                                                    {act.streak > 0 && (
+                                                        <Text style={styles.streakText}>🔥 {act.streak} day{act.streak !== 1 ? 's' : ''}</Text>
+                                                    )}
+                                                </View>
+                                                
+                                                <Text style={[
+                                                    styles.itemSub,
+                                                    inactive && styles.inactiveText
+                                                ]}>
+                                                    Last Login: {getRelativeTime(act.last_login_at)}
+                                                </Text>
+                                                
+                                                <Text style={[
+                                                    styles.itemSub,
+                                                    inactive && styles.inactiveText
+                                                ]}>
+                                                    Last Activity: {formatLastActivity(act.last_activity)}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </Card>
+                                );
+                            })}
+                            {userActivity.length === 0 && (
+                                <Text style={styles.emptyListText}>No user activity logged.</Text>
+                            )}
+                        </View>
+                    )}
 
                 </View>
             </ScreenContainer>
@@ -273,6 +546,10 @@ const styles = StyleSheet.create({
         marginTop: theme.spacing.lg,
         marginBottom: theme.spacing.md,
     },
+    sectionTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     sectionTitle: {
         ...theme.typography.h3,
         color: theme.colors.textPrimary,
@@ -285,6 +562,7 @@ const styles = StyleSheet.create({
         paddingVertical: 3,
         borderRadius: 10,
         overflow: 'hidden',
+        marginLeft: 8,
     },
     contentContainer: {
         paddingBottom: theme.spacing.huge,
@@ -382,6 +660,62 @@ const styles = StyleSheet.create({
         color: theme.colors.textSecondary,
         textAlign: 'center',
         paddingVertical: 18,
+    },
+    periodChipsRow: {
+        flexDirection: 'row',
+        marginHorizontal: theme.spacing.xxl,
+        marginBottom: 12,
+        gap: 8,
+    },
+    periodChip: {
+        backgroundColor: theme.colors.card,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+    },
+    periodChipSelected: {
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.primaryLight,
+    },
+    periodChipText: {
+        ...theme.typography.captionStrong,
+        color: theme.colors.textSecondary,
+    },
+    periodChipTextSelected: {
+        color: theme.colors.primary,
+    },
+    usageCountText: {
+        ...theme.typography.captionStrong,
+        color: theme.colors.textPrimary,
+        fontWeight: '700',
+    },
+    nearLimitBadge: {
+        backgroundColor: theme.colors.dangerLight,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginLeft: 6,
+    },
+    nearLimitBadgeText: {
+        ...theme.typography.captionStrong,
+        color: theme.colors.danger,
+        fontSize: 9,
+    },
+    streakText: {
+        ...theme.typography.captionStrong,
+        color: '#FF9500', // Matches warning/orange
+    },
+    inactiveListItem: {
+        opacity: 0.65,
+        backgroundColor: '#F9F9F9',
+        borderStyle: 'dashed',
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    inactiveText: {
+        color: theme.colors.textTertiary,
     },
     absoluteLoader: {
         position: 'absolute',

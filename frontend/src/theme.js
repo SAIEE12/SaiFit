@@ -44,6 +44,7 @@ export const theme = {
 
     // Misc helpers (kept for backward compat with existing code)
     secondary: '#007AFF',
+    secondaryLight: 'rgba(0, 122, 255, 0.08)',
     orange: '#FF9500',
     green: '#10B981',
     yellow: '#F59E0B',

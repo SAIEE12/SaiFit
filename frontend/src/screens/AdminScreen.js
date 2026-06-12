@@ -25,6 +25,10 @@ export default function AdminScreen({ navigation }) {
     const [showAiUsage, setShowAiUsage] = useState(true);
     const [showUserActivity, setShowUserActivity] = useState(true);
 
+    // Inline Quota Edit state
+    const [editingUserId, setEditingUserId] = useState(null);
+    const [editingQuotaValue, setEditingQuotaValue] = useState('');
+
     // Dialog state
     const [dialog, setDialog] = useState({
         visible: false,
@@ -127,6 +131,26 @@ export default function AdminScreen({ navigation }) {
             () => {},
             "Remove User"
         );
+    };
+
+    const saveQuota = async (userId) => {
+        const val = parseInt(editingQuotaValue);
+        if (isNaN(val) || val < 0) {
+            showDialog("Invalid Input", "Please enter a valid positive number for requests limit.", "error");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            await apiClient.put(`/admin/users/${userId}/quota`, { max_daily_requests: val });
+            showDialog("Success", "Daily quota limit updated successfully.", "success");
+            setEditingUserId(null);
+            fetchData();
+        } catch(e) {
+            showDialog("Error", e.response?.data?.error || "Could not update quota limit.", "error");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const deleteInvite = async (id, isUsed = false) => {
@@ -324,7 +348,39 @@ export default function AdminScreen({ navigation }) {
                                         </View>
                                         <View style={{flex: 1}}>
                                             <Text style={styles.itemUsername}>{usr.username} <Text style={styles.itemRole}>({usr.role.toUpperCase()})</Text></Text>
-                                            <Text style={styles.itemSub}>API calls logged today: {usr.daily_usage_count} reqs</Text>
+                                            {editingUserId === usr.id ? (
+                                                <View style={styles.inlineEditRow}>
+                                                    <Text style={styles.inlineEditLabel}>Limit:</Text>
+                                                    <TextInput 
+                                                        style={styles.inlineEditInput}
+                                                        value={editingQuotaValue}
+                                                        onChangeText={setEditingQuotaValue}
+                                                        keyboardType="numeric"
+                                                        autoFocus
+                                                    />
+                                                    <TouchableOpacity onPress={() => saveQuota(usr.id)} style={styles.inlineEditAction}>
+                                                        <Feather name="check" size={16} color={theme.colors.success} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity onPress={() => setEditingUserId(null)} style={styles.inlineEditAction}>
+                                                        <Feather name="x" size={16} color={theme.colors.danger} />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ) : (
+                                                <View style={styles.quotaLimitRow}>
+                                                    <Text style={styles.itemSub}>
+                                                        Today: {usr.daily_usage_count} reqs · Limit: {usr.quota_limit !== null && usr.quota_limit !== undefined ? usr.quota_limit : 10} reqs/day
+                                                    </Text>
+                                                    <TouchableOpacity 
+                                                        onPress={() => {
+                                                            setEditingUserId(usr.id);
+                                                            setEditingQuotaValue(String(usr.quota_limit !== null && usr.quota_limit !== undefined ? usr.quota_limit : 10));
+                                                        }}
+                                                        style={styles.editQuotaBtn}
+                                                    >
+                                                        <Feather name="edit-2" size={11} color={theme.colors.primary} />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            )}
                                             <Text style={styles.itemDate}>Created: {new Date(usr.created_at).toLocaleDateString()}</Text>
                                         </View>
                                     </View>
@@ -731,5 +787,41 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
+    },
+    inlineEditRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
+        gap: 6,
+    },
+    inlineEditLabel: {
+        ...theme.typography.captionStrong,
+        color: theme.colors.textSecondary,
+    },
+    inlineEditInput: {
+        width: 50,
+        height: 26,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderRadius: 6,
+        backgroundColor: theme.colors.background,
+        paddingHorizontal: 6,
+        fontSize: 11,
+        color: theme.colors.textPrimary,
+        textAlign: 'center',
+        fontWeight: 'bold',
+    },
+    inlineEditAction: {
+        padding: 4,
+    },
+    quotaLimitRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+    },
+    editQuotaBtn: {
+        marginLeft: 6,
+        paddingVertical: 2,
+        paddingHorizontal: 4,
     }
 });

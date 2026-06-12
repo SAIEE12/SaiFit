@@ -117,6 +117,8 @@ export default function MealsScreen() {
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.2, // Highly compressed for rapid AI scanning
+      maxWidth: 1024,
+      maxHeight: 1024,
     });
     if (!result.canceled) analyzeImage(result.assets[0].uri, 'upload');
   };

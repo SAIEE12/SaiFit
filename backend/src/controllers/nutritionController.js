@@ -242,6 +242,15 @@ exports.smartSearch = async (req, res) => {
     const remainingFat = Math.max(0, (goal.target_fats || 65) - totalFat);
 
     const lifestyleContext = await getUserLifestyleContext(userId);
+    const contextStr = JSON.stringify(lifestyleContext || {});
+    const searchKey = 'search_' + crypto.createHash('md5').update(`${query.trim().toLowerCase()}_${contextStr}`).digest('hex');
+
+    const cached = await getCachedResult(searchKey);
+    if (cached) {
+        console.log('--- Cache Hit (Smart Search) ---');
+        return res.json({ ...cached, cached: true });
+    }
+
     const contextualPrompt = injectLifestyleContext(PROMPT_SMART_SEARCH, lifestyleContext);
     const finalPrompt = contextualPrompt
         .replace('{{QUERY}}', query)
@@ -260,9 +269,14 @@ exports.smartSearch = async (req, res) => {
         throw new Error('AI response did not contain valid JSON: ' + responseText);
     }
     const searchResult = JSON.parse(jsonMatch[0]);
+    
+    await setCachedResult(searchKey, searchResult);
     await logAiUsage(userId, 'smart_search');
 
-    res.json(searchResult);
+    res.json({
+        ...searchResult,
+        cached: false
+    });
   } catch (error) {
     console.error('Smart search error:', error);
     res.status(500).json({ error: 'Failed to perform smart search: ' + error.message });

@@ -16,6 +16,8 @@ export default function FoodScannerScreen() {
       aspect: [4, 3],
       quality: 0.5,
       base64: true,
+      maxWidth: 1024,
+      maxHeight: 1024,
     });
 
     if (!result.canceled) {

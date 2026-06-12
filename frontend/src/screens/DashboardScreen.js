@@ -677,7 +677,7 @@ export default function DashboardScreen({ navigation }) {
             </Animated.View>
 
             {/* 3. AI Coach Card or Past Data Banner */}
-            <Animated.View style={getEntranceStyle(3)}>
+            <Animated.View style={{ opacity: entranceAnims[3], width: '100%' }}>
               {recommendation && recommendation.viewingPast ? (
                 <Card style={styles.pastDataIndicator}>
                   <View style={styles.pastDataRow}>
@@ -1218,16 +1218,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.infoLight,
     borderWidth: 1,
     borderColor: 'rgba(0, 122, 255, 0.15)',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
   },
   plusBtn: {
     backgroundColor: theme.colors.info,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    ...theme.shadows.soft,
   },
   workoutPillsWrapper: {
     flexDirection: 'row',
@@ -1300,9 +1293,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
   },
   closeHeaderBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: theme.colors.border,
     justifyContent: 'center',
     alignItems: 'center',

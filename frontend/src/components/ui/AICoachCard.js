@@ -136,7 +136,7 @@ export default function AICoachCard({
                 <Ionicons
                   name="trophy-outline"
                   size={12}
-                  color="#FFF"
+                  color={theme.colors.primary}
                   style={styles.trophyIcon}
                 />
                 <Text style={styles.milestoneText}>{mil}</Text>
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   scoreBadge: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.textPrimary, // WCAG AA compliant: dark base
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
     borderRadius: theme.radii.full,
@@ -251,15 +251,19 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   narrativeWrap: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.surface, // WCAG AA compliant: white background
     borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primaryBorder, // crimson border
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.primary, // elegant crimson left bar
     ...theme.shadows.soft,
   },
   narrativeText: {
     ...theme.typography.bodySmall,
-    color: '#FFF',
+    color: theme.colors.textPrimary, // WCAG AA compliant: dark charcoal text
     fontWeight: '600',
     lineHeight: 20,
   },
@@ -317,17 +321,19 @@ const styles = StyleSheet.create({
   milestonePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.surface, // WCAG AA compliant: white background
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radii.full,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong, // neutral border
   },
   trophyIcon: {
     marginRight: 6,
   },
   milestoneText: {
     ...theme.typography.labelSmall,
-    color: '#FFF',
+    color: theme.colors.textPrimary, // WCAG AA compliant: dark charcoal text
     letterSpacing: 0,
     fontWeight: '700',
   },

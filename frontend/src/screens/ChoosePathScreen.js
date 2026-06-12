@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import apiClient from '../api/client';
 import { theme } from '../theme';
 import ScreenContainer from '../components/ui/ScreenContainer';
@@ -146,13 +146,13 @@ export default function ChoosePathScreen({ onComplete, isEdit = false, navigatio
         }
     };
 
-    const getIconName = (key) => {
+    const getIconInfo = (key) => {
         switch (key) {
-            case 'gym': return 'dumbbell';
-            case 'home_workout': return 'home';
-            case 'yoga_meditation': return 'sun';
-            case 'dance': return 'music';
-            default: return 'activity';
+            case 'gym': return { family: 'FontAwesome5', name: 'dumbbell' };
+            case 'home_workout': return { family: 'Feather', name: 'home' };
+            case 'yoga_meditation': return { family: 'Feather', name: 'sun' };
+            case 'dance': return { family: 'Feather', name: 'music' };
+            default: return { family: 'Feather', name: 'activity' };
         }
     };
 
@@ -181,7 +181,7 @@ export default function ChoosePathScreen({ onComplete, isEdit = false, navigatio
                         {tracks.map((track) => {
                             const isSelected = selectedTrackIds.includes(track.id);
                             const isPrimary = primaryTrackId === track.id;
-                            const iconName = getIconName(track.key);
+                            const iconInfo = getIconInfo(track.key);
 
                             return (
                                 <TouchableOpacity
@@ -200,11 +200,19 @@ export default function ChoosePathScreen({ onComplete, isEdit = false, navigatio
                                                 styles.iconWrap, 
                                                 isSelected ? styles.iconWrapSelected : styles.iconWrapUnselected
                                             ]}>
-                                                <Feather 
-                                                    name={iconName} 
-                                                    size={20} 
-                                                    color={isSelected ? theme.colors.primary : theme.colors.textSecondary} 
-                                                />
+                                                {iconInfo.family === 'FontAwesome5' ? (
+                                                    <FontAwesome5 
+                                                        name={iconInfo.name} 
+                                                        size={18} 
+                                                        color={isSelected ? theme.colors.primary : theme.colors.textSecondary} 
+                                                    />
+                                                ) : (
+                                                    <Feather 
+                                                        name={iconInfo.name} 
+                                                        size={20} 
+                                                        color={isSelected ? theme.colors.primary : theme.colors.textSecondary} 
+                                                    />
+                                                )}
                                             </View>
                                             
                                             {isSelected && (

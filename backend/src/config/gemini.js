@@ -1,47 +1,22 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const db = require('./db');
 require('dotenv').config();
 
 /**
- * Gets the AI instance with the latest API key from settings
+ * Gets the AI instance using the GEMINI_API_KEY from environment variables
  */
 const getAIInstance = async () => {
-    try {
-        const res = await db.query('SELECT value FROM system_settings WHERE key = ?', ['GEMINI_API_KEY']);
-        const dbKey = (res.rows && res.rows.length > 0) ? res.rows[0].value : null;
-        const envKey = process.env.GEMINI_API_KEY;
-        
-        const apiKey = (dbKey && dbKey.trim() !== '') ? dbKey : envKey;
-        
-        if (!apiKey) {
-            console.warn('GEMINI_API_KEY not found in database or environment variables.');
-        }
-        
-        return new GoogleGenerativeAI(apiKey || '');
-    } catch (e) {
-        console.error('Error fetching GEMINI_API_KEY from DB:', e);
-        return new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        console.warn('GEMINI_API_KEY not found in environment variables.');
     }
+    return new GoogleGenerativeAI(apiKey || '');
 };
 
 /**
- * Helper to get any system setting
- */
-const getSystemSetting = async (key, defaultValue = null) => {
-    try {
-        const res = await db.query('SELECT value FROM system_settings WHERE key = ?', [key]);
-        const val = (res.rows && res.rows.length > 0) ? res.rows[0].value : null;
-        return (val !== null && val.trim() !== '') ? val : defaultValue;
-    } catch (e) {
-        return defaultValue;
-    }
-};
-
-/**
- * Helper to get the configured model name and sanitize it
+ * Helper to get the configured model name and sanitize it using GEMINI_MODEL_NAME from env
  */
 const getModelName = async () => {
-    const rawModel = await getSystemSetting('GEMINI_MODEL_NAME', 'gemini-1.5-flash');
+    const rawModel = process.env.GEMINI_MODEL_NAME || 'gemini-1.5-flash';
     
     // Map admin friendly selection names to correct, stable official Google model names
     const mapping = {
@@ -97,4 +72,4 @@ const safeGenerateContent = async (prompt, imageBuffer = null, mimeType = null) 
     throw lastError || new Error("All loaded generative fallback models failed to complete content execution.");
 };
 
-module.exports = { getAIInstance, getModelName, getSystemSetting, safeGenerateContent };
+module.exports = { getAIInstance, getModelName, safeGenerateContent };

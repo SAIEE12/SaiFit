@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import CustomDialog from '../components/CustomDialog';
 import apiClient from '../api/client';
 import { theme } from '../theme';
@@ -30,6 +30,7 @@ import AICoachCard from '../components/ui/AICoachCard';
 import Badge from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/StateViews';
 import ModalView from '../components/ui/ModalView';
+import Toast from '../components/ui/Toast';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -70,6 +71,15 @@ export default function WorkoutsScreen({ route, navigation }) {
   const [loadingRecommendation, setLoadingRecommendation] = useState(false);
   const [showAiPlanModal, setShowAiPlanModal] = useState(false);
 
+  // Custom picker and delete/toast states
+  const [activePickerRowIndex, setActivePickerRowIndex] = useState(null);
+  const [deletingItems, setDeletingItems] = useState({});
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+  };
+
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [notes, setNotes] = useState('');
@@ -96,6 +106,8 @@ export default function WorkoutsScreen({ route, navigation }) {
     onConfirm: () => {},
     onCancel: null
   });
+
+  const isFocused = useIsFocused();
 
   // Animation values
   const headerOpacity = useRef(new Animated.Value(0)).current;
@@ -151,7 +163,7 @@ export default function WorkoutsScreen({ route, navigation }) {
   // Pulse effect on empty state
   useEffect(() => {
     let pulse;
-    if (workouts.length === 0 && activities.length === 0 && !loading) {
+    if (workouts.length === 0 && activities.length === 0 && !loading && isFocused) {
       pulse = Animated.loop(
         Animated.sequence([
           Animated.timing(emptyStatePulse, { toValue: 1.08, duration: 900, useNativeDriver: true }),
@@ -159,9 +171,11 @@ export default function WorkoutsScreen({ route, navigation }) {
         ])
       );
       pulse.start();
+    } else {
+      emptyStatePulse.setValue(1);
     }
     return () => pulse && pulse.stop();
-  }, [workouts, activities, loading]);
+  }, [workouts, activities, loading, isFocused]);
 
   // Breathing skeleton loader animation
   useEffect(() => {
@@ -283,10 +297,44 @@ export default function WorkoutsScreen({ route, navigation }) {
       'danger',
       async () => {
         try {
+          setDeletingItems(prev => ({ ...prev, [`activity-${id}`]: true }));
           await apiClient.delete(`/activities/${id}`);
           fetchWorkouts();
+          showToast('Activity log deleted successfully', 'success');
         } catch (e) {
           showDialog('Failed', 'Could not delete activity log.', 'error');
+        } finally {
+          setDeletingItems(prev => {
+            const copy = { ...prev };
+            delete copy[`activity-${id}`];
+            return copy;
+          });
+        }
+      },
+      () => {},
+      'Delete'
+    );
+  };
+
+  const handleDeleteWorkout = async (id) => {
+    showDialog(
+      'Delete Log',
+      'Are you sure you want to delete this workout log?',
+      'danger',
+      async () => {
+        try {
+          setDeletingItems(prev => ({ ...prev, [`workout-${id}`]: true }));
+          await apiClient.delete(`/workouts/${id}`);
+          fetchWorkouts();
+          showToast('Workout log deleted successfully', 'success');
+        } catch (e) {
+          showDialog('Failed', 'Could not delete workout log.', 'error');
+        } finally {
+          setDeletingItems(prev => {
+            const copy = { ...prev };
+            delete copy[`workout-${id}`];
+            return copy;
+          });
         }
       },
       () => {},
@@ -699,8 +747,20 @@ export default function WorkoutsScreen({ route, navigation }) {
                         <Text style={styles.durationTag}>{workout.duration_minutes} mins</Text>
                       </View>
                       <Text style={styles.workoutDesc}>Gym session completed</Text>
-                      <View style={styles.tagsRow}>
+                      <View style={[styles.tagsRow, { alignItems: 'center' }]}>
                         <Badge variant="primary" label="Gym" />
+                        {deletingItems[`workout-${workout.id}`] ? (
+                          <ActivityIndicator size="small" color={theme.colors.danger} style={{ marginLeft: 'auto', padding: 5 }} />
+                        ) : (
+                          <TouchableOpacity
+                            style={{ marginLeft: 'auto', padding: 5 }}
+                            onPress={() => handleDeleteWorkout(workout.id)}
+                            accessibilityLabel="Delete workout log"
+                            accessibilityRole="button"
+                          >
+                            <Feather name="trash-2" size={14} color={theme.colors.danger} />
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </View>
                   </Card>
@@ -725,7 +785,7 @@ export default function WorkoutsScreen({ route, navigation }) {
                       <Text style={styles.workoutDesc}>
                         {activity.notes || `${activity.category.toUpperCase()} session`}
                       </Text>
-                      <View style={styles.tagsRow}>
+                      <View style={[styles.tagsRow, { alignItems: 'center' }]}>
                         <Badge variant="secondary" label={activity.track_name || activity.category} />
                         {activity.intensity && (
                           <Badge
@@ -734,14 +794,18 @@ export default function WorkoutsScreen({ route, navigation }) {
                             style={{ marginLeft: 6, backgroundColor: theme.colors.warningLight }}
                           />
                         )}
-                        <TouchableOpacity
-                          style={{ marginLeft: 'auto', padding: 15 }}
-                          onPress={() => handleDeleteActivity(activity.id)}
-                          accessibilityLabel="Delete activity log"
-                          accessibilityRole="button"
-                        >
-                          <Feather name="trash-2" size={14} color={theme.colors.danger} />
-                        </TouchableOpacity>
+                        {deletingItems[`activity-${activity.id}`] ? (
+                          <ActivityIndicator size="small" color={theme.colors.danger} style={{ marginLeft: 'auto', padding: 5 }} />
+                        ) : (
+                          <TouchableOpacity
+                            style={{ marginLeft: 'auto', padding: 5 }}
+                            onPress={() => handleDeleteActivity(activity.id)}
+                            accessibilityLabel="Delete activity log"
+                            accessibilityRole="button"
+                          >
+                            <Feather name="trash-2" size={14} color={theme.colors.danger} />
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </View>
                   </Card>
@@ -845,19 +909,18 @@ export default function WorkoutsScreen({ route, navigation }) {
                 </TouchableOpacity>
               </View>
 
-              {/* Exercises picker wrap */}
-              <View style={styles.pickerWrap}>
-                <Picker
-                  selectedValue={row.exercise_id}
-                  onValueChange={(val) => handleUpdateExerciseRow(idx, 'exercise_id', val)}
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
-                >
-                  {getFilteredExercises().map((item) => (
-                    <Picker.Item key={item.id} label={item.name} value={item.id.toString()} />
-                  ))}
-                </Picker>
-              </View>
+              {/* Custom Cross-Platform Exercise Selector */}
+              <TouchableOpacity
+                style={styles.customPickerButton}
+                onPress={() => setActivePickerRowIndex(idx)}
+                accessibilityLabel="Select exercise type"
+                accessibilityRole="button"
+              >
+                <Text style={styles.customPickerButtonText}>
+                  {getFilteredExercises().find(ex => ex.id.toString() === row.exercise_id.toString())?.name || "Select Exercise"}
+                </Text>
+                <Feather name="chevron-down" size={16} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
 
               {/* Sets, Reps, Weight metrics layout */}
               <View style={styles.metricsRow}>
@@ -1076,6 +1139,50 @@ export default function WorkoutsScreen({ route, navigation }) {
         cancelText={dialog.cancelText}
         onConfirm={dialog.onConfirm}
         onCancel={dialog.onCancel}
+      />
+
+      {/* Exercise Picker Modal */}
+      <ModalView
+        visible={activePickerRowIndex !== null}
+        title="Select Exercise"
+        onClose={() => setActivePickerRowIndex(null)}
+      >
+        <ScrollView style={{ padding: theme.spacing.lg }} showsVerticalScrollIndicator={false}>
+          {activePickerRowIndex !== null && getFilteredExercises().map((item) => {
+            const isSelected = addedExercises[activePickerRowIndex]?.exercise_id?.toString() === item.id.toString();
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.pickerItemRow,
+                  isSelected && styles.pickerItemRowSelected
+                ]}
+                onPress={() => {
+                  handleUpdateExerciseRow(activePickerRowIndex, 'exercise_id', item.id.toString());
+                  setActivePickerRowIndex(null);
+                }}
+              >
+                <Text style={[
+                  styles.pickerItemRowText,
+                  isSelected && styles.pickerItemRowTextSelected
+                ]}>
+                  {item.name}
+                </Text>
+                {isSelected && (
+                  <Feather name="check" size={16} color={theme.colors.primary} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </ModalView>
+
+      {/* Toast Notification */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onDismiss={() => setToast(prev => ({ ...prev, visible: false }))}
       />
     </View>
   );
@@ -1356,5 +1463,42 @@ const styles = StyleSheet.create({
     ...theme.typography.captionStrong,
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.sm,
+  },
+  customPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radii.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    height: 48,
+    marginBottom: 12,
+  },
+  customPickerButtonText: {
+    ...theme.typography.body,
+    color: theme.colors.textPrimary,
+  },
+  pickerItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  pickerItemRowSelected: {
+    backgroundColor: theme.colors.primaryLight,
+  },
+  pickerItemRowText: {
+    ...theme.typography.body,
+    color: theme.colors.textPrimary,
+  },
+  pickerItemRowTextSelected: {
+    color: theme.colors.primary,
+    fontWeight: '700',
   },
 });

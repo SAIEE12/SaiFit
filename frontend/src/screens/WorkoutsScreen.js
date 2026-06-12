@@ -1,6 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  ActivityIndicator,
+  Animated,
+  Platform,
+  TouchableWithoutFeedback,
+  RefreshControl,
+  LayoutAnimation,
+  UIManager
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,8 +28,12 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import AICoachCard from '../components/ui/AICoachCard';
 import Badge from '../components/ui/Badge';
-import { LoadingState, EmptyState } from '../components/ui/StateViews';
+import { EmptyState } from '../components/ui/StateViews';
 import ModalView from '../components/ui/ModalView';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -23,20 +42,34 @@ const getLocalDateString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-export default function WorkoutsScreen() {
-  const [selectedDate, setSelectedDate] = useState(getLocalDateString());
+export default function WorkoutsScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
+  const routeDate = route?.params?.date;
+
+  // Selected date defaults to route parameter or current local date
+  const [selectedDate, setSelectedDate] = useState(routeDate || getLocalDateString());
   const [workouts, setWorkouts] = useState([]);
   const [activities, setActivities] = useState([]);
   const [tracks, setTracks] = useState([]);
   const [exercisesList, setExercisesList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+
+  // Category selection filter state
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  // Workout checklist states
+  const [checkedExercises, setCheckedExercises] = useState({});
+
+  // Success confirm visual state
+  const [gotItSuccess, setGotItSuccess] = useState(false);
+
   // Recommendation State
   const [recommendation, setRecommendation] = useState(null);
   const [loadingRecommendation, setLoadingRecommendation] = useState(false);
   const [showAiPlanModal, setShowAiPlanModal] = useState(false);
-  
+
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [notes, setNotes] = useState('');
@@ -54,42 +87,125 @@ export default function WorkoutsScreen() {
 
   // Reusable Dialog State
   const [dialog, setDialog] = useState({
-      visible: false,
-      title: '',
-      description: '',
-      type: 'info',
-      confirmText: 'OK',
-      cancelText: 'Cancel',
-      onConfirm: () => {},
-      onCancel: null
+    visible: false,
+    title: '',
+    description: '',
+    type: 'info',
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    onConfirm: () => {},
+    onCancel: null
   });
 
+  // Animation values
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const headerTranslateY = useRef(new Animated.Value(-15)).current;
+  const sparkleOpacity = useRef(new Animated.Value(0.6)).current;
+  const skeletonAlpha = useRef(new Animated.Value(0.3)).current;
+  const emptyStatePulse = useRef(new Animated.Value(1)).current;
+
+  // Staggered entrance animations
+  const entranceAnims = useRef([
+    new Animated.Value(0), // Categories ribbon
+    new Animated.Value(0), // Logs Header / list
+    new Animated.Value(0), // Custom activities list
+    new Animated.Value(0), // AI Coach suggestion card
+  ]).current;
+
+  // Press interaction scales
+  const logGymScale = useRef(new Animated.Value(1)).current;
+  const logActivityScale = useRef(new Animated.Value(1)).current;
+  const viewPlanScale = useRef(new Animated.Value(1)).current;
+  const gotItScale = useRef(new Animated.Value(1)).current;
+
+  // Synchronize date selection from params
+  useEffect(() => {
+    if (routeDate) {
+      setSelectedDate(routeDate);
+    }
+  }, [routeDate]);
+
+  // Entrance and loop animations
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.timing(headerTranslateY, { toValue: 0, duration: 400, useNativeDriver: true })
+    ]).start();
+
+    const anims = entranceAnims.map(anim =>
+      Animated.timing(anim, { toValue: 1, duration: 500, useNativeDriver: true })
+    );
+    Animated.stagger(100, anims).start();
+
+    const sparkleLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(sparkleOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(sparkleOpacity, { toValue: 0.6, duration: 800, useNativeDriver: true })
+      ])
+    );
+    sparkleLoop.start();
+
+    return () => sparkleLoop.stop();
+  }, []);
+
+  // Pulse effect on empty state
+  useEffect(() => {
+    let pulse;
+    if (workouts.length === 0 && activities.length === 0 && !loading) {
+      pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(emptyStatePulse, { toValue: 1.08, duration: 900, useNativeDriver: true }),
+          Animated.timing(emptyStatePulse, { toValue: 1, duration: 900, useNativeDriver: true })
+        ])
+      );
+      pulse.start();
+    }
+    return () => pulse && pulse.stop();
+  }, [workouts, activities, loading]);
+
+  // Breathing skeleton loader animation
+  useEffect(() => {
+    let loop;
+    if (loading) {
+      loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(skeletonAlpha, { toValue: 0.7, duration: 600, useNativeDriver: true }),
+          Animated.timing(skeletonAlpha, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+        ])
+      );
+      loop.start();
+    } else {
+      skeletonAlpha.setValue(0.3);
+    }
+    return () => loop && loop.stop();
+  }, [loading]);
+
   const showDialog = (title, description, type = 'info', onConfirm = null, onCancel = null, confirmText = 'OK') => {
-      setDialog({
-          visible: true,
-          title,
-          description,
-          type,
-          confirmText,
-          cancelText: 'Cancel',
-          onConfirm: () => {
-              setDialog(prev => ({ ...prev, visible: false }));
-              if (onConfirm) onConfirm();
-          },
-          onCancel: onCancel ? () => {
-              setDialog(prev => ({ ...prev, visible: false }));
-              onCancel();
-          } : null
-      });
+    setDialog({
+      visible: true,
+      title,
+      description,
+      type,
+      confirmText,
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        setDialog(prev => ({ ...prev, visible: false }));
+        if (onConfirm) onConfirm();
+      },
+      onCancel: onCancel ? () => {
+        setDialog(prev => ({ ...prev, visible: false }));
+        onCancel();
+      } : null
+    });
   };
 
   const fetchRecommendation = async () => {
     try {
       setLoadingRecommendation(true);
-      const res = await apiClient.get('/recommendations/workout-coach');
+      const res = await apiClient.get(`/recommendations/workout-coach?date=${selectedDate}`);
       setRecommendation(res.data);
     } catch (e) {
-      console.error("Failed to fetch recommendation", e);
+      console.error('Failed to fetch recommendation:', e);
     } finally {
       setLoadingRecommendation(false);
     }
@@ -112,7 +228,7 @@ export default function WorkoutsScreen() {
       const res = await apiClient.get('/lifestyle/tracks');
       setTracks(res.data || []);
     } catch (e) {
-      console.error("Failed to fetch tracks", e);
+      console.error('Failed to fetch tracks:', e);
     }
   };
 
@@ -120,16 +236,22 @@ export default function WorkoutsScreen() {
     try {
       setLoading(true);
       const [workoutsRes, activitiesRes] = await Promise.all([
-          apiClient.get(`/workouts?date=${selectedDate}`),
-          apiClient.get(`/activities?date=${selectedDate}`)
+        apiClient.get(`/workouts?date=${selectedDate}`),
+        apiClient.get(`/activities?date=${selectedDate}`)
       ]);
       setWorkouts(workoutsRes.data || []);
       setActivities(activitiesRes.data || []);
     } catch (e) {
-      console.error("Failed to fetch workouts/activities", e);
+      console.error('Failed to fetch workouts/activities:', e);
     } finally {
       setLoading(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([fetchWorkouts(), fetchRecommendation()]);
+    setRefreshing(false);
   };
 
   const getActivityIcon = (category) => {
@@ -156,29 +278,29 @@ export default function WorkoutsScreen() {
 
   const handleDeleteActivity = async (id) => {
     showDialog(
-      "Delete Log", 
-      "Are you sure you want to delete this activity log?", 
-      "danger", 
+      'Delete Log',
+      'Are you sure you want to delete this activity log?',
+      'danger',
       async () => {
         try {
           await apiClient.delete(`/activities/${id}`);
           fetchWorkouts();
         } catch (e) {
-          showDialog("Failed", "Could not delete activity log.", "error");
+          showDialog('Failed', 'Could not delete activity log.', 'error');
         }
       },
       () => {},
-      "Delete"
+      'Delete'
     );
   };
 
   const handleSaveActivity = async () => {
     if (!activityName.trim()) {
-      showDialog("Required Field", "Please enter an activity name.", "warning");
+      showDialog('Required Field', 'Please enter an activity name.', 'warning');
       return;
     }
     if (!activityDuration || isNaN(activityDuration)) {
-      showDialog("Invalid Input", "Please enter a valid duration in minutes.", "warning");
+      showDialog('Invalid Input', 'Please enter a valid duration in minutes.', 'warning');
       return;
     }
 
@@ -195,7 +317,7 @@ export default function WorkoutsScreen() {
       };
 
       await apiClient.post('/activities/log', payload);
-      showDialog("Logged! 🎉", "Your activity has been recorded successfully.", "success", () => {
+      showDialog('Logged! 🎉', 'Your activity has been recorded successfully.', 'success', () => {
         setActivityName('');
         setActivityDuration('');
         setActivityNotes('');
@@ -206,7 +328,7 @@ export default function WorkoutsScreen() {
         fetchWorkouts();
       });
     } catch (e) {
-      showDialog("Logging Failed", e.response?.data?.error || e.message, "error");
+      showDialog('Logging Failed', e.response?.data?.error || e.message, 'error');
     } finally {
       setSaving(false);
     }
@@ -217,19 +339,27 @@ export default function WorkoutsScreen() {
       const res = await apiClient.get('/workouts/exercises');
       setExercisesList(res.data);
     } catch (e) {
-      console.error("Failed to fetch exercises list", e);
+      console.error('Failed to fetch exercises list:', e);
     }
   };
 
+  const getFilteredExercises = () => {
+    if (!selectedCategory) return exercisesList;
+    return exercisesList.filter(
+      ex => ex.category && ex.category.toLowerCase() === selectedCategory.toLowerCase()
+    );
+  };
+
   const handleAddExerciseRow = () => {
-    if (exercisesList.length === 0) {
-      showDialog("Warning", "Exercises database is empty or loading. Please wait.", "warning");
+    const list = getFilteredExercises();
+    if (list.length === 0) {
+      showDialog('Warning', 'No exercises available in this category.', 'warning');
       return;
     }
     setAddedExercises([
       ...addedExercises,
       {
-        exercise_id: exercisesList[0].id.toString(),
+        exercise_id: list[0].id.toString(),
         sets: '3',
         reps: '10',
         weight: '60'
@@ -251,15 +381,15 @@ export default function WorkoutsScreen() {
 
   const handleSaveWorkout = async () => {
     if (!notes.trim()) {
-      showDialog("Required Field", "Please enter workout name or notes.", "warning");
+      showDialog('Required Field', 'Please enter workout name or notes.', 'warning');
       return;
     }
     if (!duration || isNaN(duration)) {
-      showDialog("Invalid Input", "Please enter a valid duration in minutes.", "warning");
+      showDialog('Invalid Input', 'Please enter a valid duration in minutes.', 'warning');
       return;
     }
     if (addedExercises.length === 0) {
-      showDialog("No Exercises", "Please add at least one exercise row to this session.", "warning");
+      showDialog('No Exercises', 'Please add at least one exercise row to this session.', 'warning');
       return;
     }
 
@@ -267,7 +397,7 @@ export default function WorkoutsScreen() {
     for (let i = 0; i < addedExercises.length; i++) {
       const ex = addedExercises[i];
       if (!ex.sets || isNaN(ex.sets) || !ex.reps || isNaN(ex.reps) || !ex.weight || isNaN(ex.weight)) {
-        showDialog("Invalid Metrics", `Please make sure Sets, Reps, and Weight are numeric in Row #${i + 1}.`, "warning");
+        showDialog('Invalid Metrics', `Please make sure Sets, Reps, and Weight are numeric in Row #${i + 1}.`, 'warning');
         return;
       }
     }
@@ -287,157 +417,381 @@ export default function WorkoutsScreen() {
       };
 
       await apiClient.post('/workouts/log', payload);
-      showDialog("Logged! 🎉", "Your workout session has been recorded successfully.", "success", () => {
-        // Reset form
+      showDialog('Logged! 🎉', 'Your workout session has been recorded successfully.', 'success', () => {
         setNotes('');
         setDuration('');
         setAddedExercises([]);
         setShowModal(false);
-        // Refresh list
         fetchWorkouts();
       });
     } catch (e) {
-      showDialog("Logging Failed", e.response?.data?.error || e.message, "error");
+      showDialog('Logging Failed', e.response?.data?.error || e.message, 'error');
     } finally {
       setSaving(false);
     }
   };
 
+  // Categories metadata with matching DB values
   const categories = [
     { name: 'Chest', icon: 'stop-circle', color: theme.colors.orange },
     { name: 'Back', icon: 'align-center', color: theme.colors.primary },
     { name: 'Legs', icon: 'child', color: theme.colors.yellow },
     { name: 'Cardio', icon: 'running', color: theme.colors.info },
-    { name: 'Full Body', icon: 'dumbbell', color: theme.colors.success }
+    { name: 'Shoulders', icon: 'user', color: theme.colors.success },
+    { name: 'Arms', icon: 'activity', color: theme.colors.primary }
   ];
+
+  const toggleCategory = (catName) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (selectedCategory === catName) {
+      setSelectedCategory(null);
+    } else {
+      setSelectedCategory(catName);
+    }
+  };
+
+  // Got it click confirm handler
+  const handleGotItPress = () => {
+    setGotItSuccess(true);
+    setTimeout(() => {
+      setShowAiPlanModal(false);
+      setGotItSuccess(false);
+      setCheckedExercises({});
+    }, 850);
+  };
+
+  // Press Scale Handlers
+  const handlePressInLogGym = () => Animated.spring(logGymScale, { toValue: 0.9, useNativeDriver: true }).start();
+  const handlePressOutLogGym = () => Animated.spring(logGymScale, { toValue: 1, useNativeDriver: true }).start();
+
+  const handlePressInLogActivity = () => Animated.spring(logActivityScale, { toValue: 0.9, useNativeDriver: true }).start();
+  const handlePressOutLogActivity = () => Animated.spring(logActivityScale, { toValue: 1, useNativeDriver: true }).start();
+
+  const handlePressInViewPlan = () => Animated.spring(viewPlanScale, { toValue: 0.9, useNativeDriver: true }).start();
+  const handlePressOutViewPlan = () => Animated.spring(viewPlanScale, { toValue: 1, useNativeDriver: true }).start();
+
+  const handlePressInGotIt = () => Animated.spring(gotItScale, { toValue: 0.95, useNativeDriver: true }).start();
+  const handlePressOutGotIt = () => Animated.spring(gotItScale, { toValue: 1, useNativeDriver: true }).start();
+
+  const getEntranceStyle = (index) => ({
+    opacity: entranceAnims[index],
+    transform: [
+      {
+        translateY: entranceAnims[index].interpolate({
+          inputRange: [0, 1],
+          outputRange: [15, 0],
+        }),
+      },
+    ],
+  });
+
+  // Category Render Helper
+  const CategoryPill = ({ cat }) => {
+    const isSelected = selectedCategory === cat.name;
+    const scale = useRef(new Animated.Value(1)).current;
+
+    const handlePressIn = () => Animated.spring(scale, { toValue: 0.9, useNativeDriver: true }).start();
+    const handlePressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
+
+    return (
+      <TouchableWithoutFeedback
+        onPress={() => toggleCategory(cat.name)}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        accessibilityLabel={`Filter exercises database by ${cat.name}`}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: isSelected }}
+      >
+        <Animated.View style={[styles.categoryItem, { transform: [{ scale }] }]}>
+          <Card
+            style={[
+              styles.categoryIconWrap,
+              isSelected && { backgroundColor: cat.color, borderColor: cat.color, ...theme.shadows.primaryGlow }
+            ]}
+          >
+            <FontAwesome5 name={cat.icon} size={18} color={isSelected ? '#FFF' : cat.color} />
+          </Card>
+          <Text style={[styles.categoryName, isSelected && { color: theme.colors.textPrimary, fontWeight: '700' }]}>
+            {cat.name}
+          </Text>
+        </Animated.View>
+      </TouchableWithoutFeedback>
+    );
+  };
+
+  // Interactive Checklist Card helper
+  const InteractiveExerciseCard = ({ exercise, idx }) => {
+    const isChecked = !!checkedExercises[idx];
+    const scale = useRef(new Animated.Value(1)).current;
+
+    const handlePressIn = () => Animated.spring(scale, { toValue: 0.96, useNativeDriver: true }).start();
+    const handlePressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
+
+    return (
+      <TouchableWithoutFeedback
+        onPress={() => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setCheckedExercises(prev => ({ ...prev, [idx]: !prev[idx] }));
+        }}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        accessibilityLabel={`Mark recommended exercise ${exercise} as complete`}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: isChecked }}
+      >
+        <Animated.View style={{ transform: [{ scale }], marginBottom: 12 }}>
+          <Card
+            style={[
+              styles.aiExerciseCard,
+              isChecked && { borderColor: theme.colors.success, backgroundColor: theme.colors.successLight }
+            ]}
+          >
+            <View style={[styles.aiExerciseNumberWrap, isChecked && { backgroundColor: theme.colors.success }]}>
+              {isChecked ? (
+                <Feather name="check" size={14} color="#FFF" />
+              ) : (
+                <Text style={styles.aiExerciseNumber}>{idx + 1}</Text>
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={[
+                  styles.aiExerciseName,
+                  isChecked && { textDecorationLine: 'line-through', color: theme.colors.textSecondary }
+                ]}
+              >
+                {exercise}
+              </Text>
+            </View>
+          </Card>
+        </Animated.View>
+      </TouchableWithoutFeedback>
+    );
+  };
+
+  // Skeleton rendering helpers
+  const renderSkeleton = () => (
+    <View style={styles.skeletonContainer}>
+      <Animated.View style={[styles.skeletonCard, { opacity: skeletonAlpha, height: 78 }]} />
+      <Animated.View style={[styles.skeletonCard, { opacity: skeletonAlpha, height: 78 }]} />
+      <Animated.View style={[styles.skeletonCard, { opacity: skeletonAlpha, height: 78 }]} />
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <SafeAreaView edges={['top']} style={styles.safeHeader}>
+      {/* Safe Custom Header - No device status bar overlap */}
+      <Animated.View
+        style={[
+          styles.safeHeader,
+          {
+            paddingTop: Math.max(theme.spacing.sm, insets.top),
+            opacity: headerOpacity,
+            transform: [{ translateY: headerTranslateY }]
+          }
+        ]}
+      >
         <Header
           title="Workouts"
+          subtitle={selectedDate === getLocalDateString() ? 'Today' : selectedDate.toUpperCase()}
           rightElement={
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onPress={() => setShowActivityModal(true)} 
-                icon={<Feather name="plus" size={14} color={theme.colors.primary} />}
-                style={{ backgroundColor: '#FFF', borderColor: theme.colors.primary, borderWidth: 1 }}
+              {/* Log Activity Button */}
+              <TouchableWithoutFeedback
+                onPress={() => setShowActivityModal(true)}
+                onPressIn={handlePressInLogActivity}
+                onPressOut={handlePressOutLogActivity}
+                accessibilityLabel="Log custom wellness activity"
+                accessibilityRole="button"
               >
-                Log Activity
-              </Button>
-              <Button 
-                variant="primary" 
-                size="sm" 
-                onPress={() => setShowModal(true)} 
-                icon={<Feather name="plus" size={14} color="#FFF" />}
+                <Animated.View style={{ transform: [{ scale: logActivityScale }] }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    pointerEvents="none"
+                    icon={<Feather name="plus" size={14} color={theme.colors.primary} />}
+                    style={{ backgroundColor: '#FFF', borderColor: theme.colors.primary, borderWidth: 1 }}
+                  >
+                    Log Activity
+                  </Button>
+                </Animated.View>
+              </TouchableWithoutFeedback>
+
+              {/* Log Gym Button */}
+              <TouchableWithoutFeedback
+                onPress={() => setShowModal(true)}
+                onPressIn={handlePressInLogGym}
+                onPressOut={handlePressOutLogGym}
+                accessibilityLabel="Log structural gym workout session"
+                accessibilityRole="button"
               >
-                Log Gym
-              </Button>
+                <Animated.View style={{ transform: [{ scale: logGymScale }] }}>
+                  <Button variant="primary" size="sm" pointerEvents="none" icon={<Feather name="plus" size={14} color="#FFF" />}>
+                    Log Gym
+                  </Button>
+                </Animated.View>
+              </TouchableWithoutFeedback>
             </View>
           }
         />
-      </SafeAreaView>
+      </Animated.View>
 
-      <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
-        {/* Categories ribbon */}
-        <View style={styles.categoriesWrapper}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-            {categories.map((cat, index) => (
-              <TouchableOpacity key={index} style={styles.categoryItem} activeOpacity={0.8}>
-                <Card style={styles.categoryIconWrap}>
-                  <FontAwesome5 name={cat.icon} size={18} color={cat.color} />
-                </Card>
-                <Text style={styles.categoryName}>{cat.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+      <ScreenContainer scrollable={false} keyboardAvoiding={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+          }
+        >
+          {/* 1. Category filter Ribbon */}
+          <Animated.View style={[styles.categoriesWrapper, getEntranceStyle(0)]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesScroll}>
+              {categories.map((cat, index) => (
+                <CategoryPill key={index} cat={cat} />
+              ))}
+            </ScrollView>
+          </Animated.View>
 
-        <SectionHeader title="ACTIVITY LOGS" />
+          {/* 2. Logs Title Header */}
+          <Animated.View style={getEntranceStyle(1)}>
+            <SectionHeader
+              title={selectedCategory ? `ACTIVITY LOGS: ${selectedCategory.toUpperCase()}` : 'ALL ACTIVITY LOGS'}
+            />
+          </Animated.View>
 
-        {loading ? (
-          <LoadingState message="Fetching logged sessions..." />
-        ) : (workouts.length === 0 && activities.length === 0) ? (
-          <EmptyState
-            icon="zap"
-            title="No workout logs"
-            description="You haven't recorded any workouts or activities for today."
-          />
-        ) : (
-          <View>
-            {/* Gym Workouts */}
-            {workouts.map((workout, index) => (
-              <Card key={`workout-${index}`} style={styles.workoutRow}>
-                <View style={[styles.workoutImage, { backgroundColor: theme.colors.primary }]}>
-                  <FontAwesome5 name="dumbbell" size={18} color="#FFF" />
-                </View>
-                <View style={styles.workoutInfo}>
-                  <View style={styles.workoutHeaderRow}>
-                    <Text style={styles.workoutTitle} numberOfLines={1}>{workout.notes || 'Workout Session'}</Text>
-                    <Text style={styles.durationTag}>{workout.duration_minutes} mins</Text>
-                  </View>
-                  <Text style={styles.workoutDesc}>Gym session completed</Text>
-                  <View style={styles.tagsRow}>
-                    <Badge variant="primary" label="Gym" />
-                  </View>
+          {/* 3. Workouts List Feed */}
+          {loading ? (
+            renderSkeleton()
+          ) : workouts.length === 0 && activities.length === 0 ? (
+            <Animated.View style={[getEntranceStyle(2), { transform: [{ scale: emptyStatePulse }], alignItems: 'center' }]}>
+              <EmptyState
+                icon="zap"
+                title="No workout logs"
+                description={
+                  selectedCategory
+                    ? `You haven't logged any ${selectedCategory} workouts for this date.`
+                    : "You haven't recorded any workouts or activities for this date."
+                }
+              />
+            </Animated.View>
+          ) : (
+            <Animated.View style={getEntranceStyle(2)}>
+              {/* Gym Workouts logs */}
+              {workouts
+                .filter(w => {
+                  if (!selectedCategory) return true;
+                  // If category filter is active, check if any workout exercise matches the category
+                  if (w.exercises && w.exercises.length > 0) {
+                    return w.exercises.some(
+                      ex => ex.category && ex.category.toLowerCase() === selectedCategory.toLowerCase()
+                    );
+                  }
+                  return false;
+                })
+                .map((workout, index) => (
+                  <Card key={`workout-${index}`} style={styles.workoutRow}>
+                    <View style={[styles.workoutImage, { backgroundColor: theme.colors.primary }]}>
+                      <FontAwesome5 name="dumbbell" size={18} color="#FFF" />
+                    </View>
+                    <View style={styles.workoutInfo}>
+                      <View style={styles.workoutHeaderRow}>
+                        <Text style={styles.workoutTitle} numberOfLines={1}>{workout.notes || 'Workout Session'}</Text>
+                        <Text style={styles.durationTag}>{workout.duration_minutes} mins</Text>
+                      </View>
+                      <Text style={styles.workoutDesc}>Gym session completed</Text>
+                      <View style={styles.tagsRow}>
+                        <Badge variant="primary" label="Gym" />
+                      </View>
+                    </View>
+                  </Card>
+                ))}
+
+              {/* Custom Activities logs */}
+              {activities
+                .filter(a => {
+                  if (!selectedCategory) return true;
+                  return a.category && a.category.toLowerCase() === selectedCategory.toLowerCase();
+                })
+                .map((activity, index) => (
+                  <Card key={`activity-${index}`} style={styles.workoutRow}>
+                    <View style={[styles.workoutImage, { backgroundColor: getActivityColor(activity.category) }]}>
+                      <FontAwesome5 name={getActivityIcon(activity.category)} size={18} color="#FFF" />
+                    </View>
+                    <View style={styles.workoutInfo}>
+                      <View style={styles.workoutHeaderRow}>
+                        <Text style={styles.workoutTitle} numberOfLines={1}>{activity.activity_name}</Text>
+                        <Text style={styles.durationTag}>{activity.duration_minutes} mins</Text>
+                      </View>
+                      <Text style={styles.workoutDesc}>
+                        {activity.notes || `${activity.category.toUpperCase()} session`}
+                      </Text>
+                      <View style={styles.tagsRow}>
+                        <Badge variant="secondary" label={activity.track_name || activity.category} />
+                        {activity.intensity && (
+                          <Badge
+                            variant="primary"
+                            label={`${activity.intensity.toUpperCase()}`}
+                            style={{ marginLeft: 6, backgroundColor: theme.colors.warningLight }}
+                          />
+                        )}
+                        <TouchableOpacity
+                          style={{ marginLeft: 'auto', padding: 15 }}
+                          onPress={() => handleDeleteActivity(activity.id)}
+                          accessibilityLabel="Delete activity log"
+                          accessibilityRole="button"
+                        >
+                          <Feather name="trash-2" size={14} color={theme.colors.danger} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </Card>
+                ))}
+            </Animated.View>
+          )}
+
+          {/* 4. AI Coach Workout Recommendation Block */}
+          <Animated.View style={getEntranceStyle(3)}>
+            {recommendation && recommendation.viewingPast ? (
+              <Card style={styles.pastDataIndicator}>
+                <View style={styles.pastDataRow}>
+                  <Feather name="clock" size={18} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
+                  <Text style={styles.pastDataText}>Viewing historical recommendations for {selectedDate}</Text>
                 </View>
               </Card>
-            ))}
-
-            {/* Custom Activities */}
-            {activities.map((activity, index) => (
-              <Card key={`activity-${index}`} style={styles.workoutRow}>
-                <View style={[styles.workoutImage, { backgroundColor: getActivityColor(activity.category) }]}>
-                  <FontAwesome5 name={getActivityIcon(activity.category)} size={18} color="#FFF" />
-                </View>
-                <View style={styles.workoutInfo}>
-                  <View style={styles.workoutHeaderRow}>
-                    <Text style={styles.workoutTitle} numberOfLines={1}>{activity.activity_name}</Text>
-                    <Text style={styles.durationTag}>{activity.duration_minutes} mins</Text>
-                  </View>
-                  <Text style={styles.workoutDesc}>
-                      {activity.notes || `${activity.category.toUpperCase()} session`}
-                  </Text>
-                  <View style={styles.tagsRow}>
-                    <Badge variant="secondary" label={activity.track_name || activity.category} />
-                    {activity.intensity && (
-                        <Badge 
-                            variant="primary" 
-                            label={`${activity.intensity.toUpperCase()}`} 
-                            style={{ marginLeft: 6, backgroundColor: theme.colors.warningLight }} 
-                        />
-                    )}
-                    <TouchableOpacity 
-                        style={{ marginLeft: 'auto', padding: 4 }} 
-                        onPress={() => handleDeleteActivity(activity.id)}
+            ) : recommendation ? (
+              <Animated.View style={{ opacity: sparkleOpacity }}>
+                <AICoachCard
+                  title="AI SUGGESTED TOMORROW"
+                  scoreLabel="Workout Focus"
+                  scoreValue={recommendation.workout_plan || 'Active Recovery'}
+                  narrative={recommendation.recovery_advice}
+                  actions={
+                    <TouchableWithoutFeedback
+                      onPress={() => setShowAiPlanModal(true)}
+                      onPressIn={handlePressInViewPlan}
+                      onPressOut={handlePressOutViewPlan}
+                      accessibilityLabel="View tomorrow AI workout details"
+                      accessibilityRole="button"
                     >
-                        <Feather name="trash-2" size={14} color={theme.colors.danger} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                      <Animated.View style={{ transform: [{ scale: viewPlanScale }] }}>
+                        <Button variant="primary" size="md" pointerEvents="none" icon={<Feather name="arrow-right" size={16} color="#FFF" />}>
+                          View Plan
+                        </Button>
+                      </Animated.View>
+                    </TouchableWithoutFeedback>
+                  }
+                />
+              </Animated.View>
+            ) : loadingRecommendation ? (
+              <Card variant="ai" style={[styles.loadingCard, { marginHorizontal: theme.spacing.xxl, marginTop: 12 }]}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Loading dynamic AI plan...</Text>
               </Card>
-            ))}
-          </View>
-        )}
+            ) : null}
+          </Animated.View>
 
-        {/* AI Recommendation Suggestion */}
-        {recommendation ? (
-          <AICoachCard
-            title="AI SUGGESTED TOMORROW"
-            scoreLabel="Workout Focus"
-            scoreValue={recommendation.workout_plan || 'Active Recovery'}
-            narrative={recommendation.recovery_advice}
-            actions={
-              <Button variant="secondary" size="md" onPress={() => setShowAiPlanModal(true)} icon={<Feather name="arrow-right" size={16} color="#FFF" style={{ marginLeft: 'auto' }} />}>
-                View Plan
-              </Button>
-            }
-          />
-        ) : loadingRecommendation ? (
-          <LoadingState message="Loading dynamic AI plan..." />
-        ) : null}
+          <View style={{ height: 40 }} />
+        </ScrollView>
       </ScreenContainer>
 
       {/* Log Workout Modal */}
@@ -486,7 +840,7 @@ export default function WorkoutsScreen() {
             <Card key={idx} style={styles.exerciseRowCard}>
               <View style={styles.exerciseRowHeader}>
                 <Text style={styles.exerciseRowTitle}>Exercise #{idx + 1}</Text>
-                <TouchableOpacity onPress={() => handleRemoveExerciseRow(idx)}>
+                <TouchableOpacity onPress={() => handleRemoveExerciseRow(idx)} accessibilityLabel={`Remove exercise row ${idx + 1}`} accessibilityRole="button">
                   <Feather name="trash-2" size={16} color={theme.colors.danger} />
                 </TouchableOpacity>
               </View>
@@ -499,7 +853,7 @@ export default function WorkoutsScreen() {
                   style={styles.picker}
                   itemStyle={styles.pickerItem}
                 >
-                  {exercisesList.map((item) => (
+                  {getFilteredExercises().map((item) => (
                     <Picker.Item key={item.id} label={item.name} value={item.id.toString()} />
                   ))}
                 </Picker>
@@ -551,7 +905,7 @@ export default function WorkoutsScreen() {
           <Button variant="primary" size="lg" onPress={handleSaveWorkout} loading={saving} style={{ marginTop: 20 }}>
             Save Session
           </Button>
-          
+
           <View style={{ height: 60 }} />
         </ScrollView>
       </ModalView>
@@ -644,7 +998,7 @@ export default function WorkoutsScreen() {
           <Button variant="primary" size="lg" onPress={handleSaveActivity} loading={saving} style={{ marginTop: 20 }}>
             Log Activity
           </Button>
-          
+
           <View style={{ height: 60 }} />
         </ScrollView>
       </ModalView>
@@ -654,54 +1008,74 @@ export default function WorkoutsScreen() {
         <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
           {recommendation && (
             <>
+              {/* Premium Gradient Hero Block */}
               <View style={styles.aiPlanHeroCard}>
                 <Text style={styles.aiPlanHeroLabel}>TOMORROW'S FOCUS</Text>
                 <Text style={styles.aiPlanHeroTitle}>{recommendation.workout_plan}</Text>
               </View>
 
+              {/* Numbered Exercises checklist */}
               <Text style={styles.sectionHeading}>Exercises & Activities</Text>
               {recommendation.exercises && recommendation.exercises.length > 0 ? (
                 recommendation.exercises.map((exercise, idx) => (
-                  <Card key={idx} style={styles.aiExerciseCard}>
-                    <View style={styles.aiExerciseNumberWrap}>
-                      <Text style={styles.aiExerciseNumber}>{idx + 1}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.aiExerciseName}>{exercise}</Text>
-                    </View>
-                  </Card>
+                  <InteractiveExerciseCard key={idx} exercise={exercise} idx={idx} />
                 ))
               ) : (
                 <Text style={styles.noExercisesText}>No specific exercises listed. Focus on active mobility!</Text>
               )}
 
-              <Text style={styles.sectionHeading}>Recovery Guidance</Text>
-              <Card style={styles.aiRecoveryCard}>
-                <View style={styles.aiRecoveryHeader}>
-                  <FontAwesome5 name="heartbeat" size={16} color={theme.colors.primary} style={{ marginRight: 8 }} />
-                  <Text style={styles.aiRecoveryTitle}>Coach's Guidance</Text>
-                </View>
-                <Text style={styles.aiRecoveryText}>{recommendation.recovery_advice}</Text>
-              </Card>
+              {/* Coach Guidance Block */}
+              <Text style={styles.sectionHeading}>Coach's Advice</Text>
+              <AICoachCard
+                title="Coach's Guidance"
+                narrative={recommendation.recovery_advice}
+                expanded={true}
+                style={{ marginHorizontal: 0, marginBottom: 32 }}
+              />
 
-              <Button variant="primary" size="lg" onPress={() => setShowAiPlanModal(false)} style={{ marginBottom: 40 }}>
-                Got it, Let's do it! 💪
-              </Button>
+              {/* Satisfying Confirmation CTA */}
+              <TouchableWithoutFeedback
+                onPress={handleGotItPress}
+                onPressIn={handlePressInGotIt}
+                onPressOut={handlePressOutGotIt}
+                disabled={gotItSuccess}
+                accessibilityLabel="Confirm understanding of workout plan"
+                accessibilityRole="button"
+              >
+                <Animated.View style={{ transform: [{ scale: gotItScale }], marginBottom: 40 }}>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    pointerEvents="none"
+                    style={{ backgroundColor: gotItSuccess ? theme.colors.success : theme.colors.primary }}
+                    textStyle={{ color: '#FFF' }}
+                    icon={
+                      gotItSuccess ? (
+                        <Feather name="check" size={18} color="#FFF" />
+                      ) : (
+                        <Feather name="thumbs-up" size={18} color="#FFF" />
+                      )
+                    }
+                  >
+                    {gotItSuccess ? "Let's Crush It! 🎉" : "Got it, Let's do it! 💪"}
+                  </Button>
+                </Animated.View>
+              </TouchableWithoutFeedback>
             </>
           )}
         </ScrollView>
       </ModalView>
 
       {/* Custom Reusable Dialog */}
-      <CustomDialog 
-          visible={dialog.visible}
-          title={dialog.title}
-          description={dialog.description}
-          type={dialog.type}
-          confirmText={dialog.confirmText}
-          cancelText={dialog.cancelText}
-          onConfirm={dialog.onConfirm}
-          onCancel={dialog.onCancel}
+      <CustomDialog
+        visible={dialog.visible}
+        title={dialog.title}
+        description={dialog.description}
+        type={dialog.type}
+        confirmText={dialog.confirmText}
+        cancelText={dialog.cancelText}
+        onConfirm={dialog.onConfirm}
+        onCancel={dialog.onCancel}
       />
     </View>
   );
@@ -714,17 +1088,20 @@ const styles = StyleSheet.create({
   },
   safeHeader: {
     backgroundColor: theme.colors.background,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
   },
   categoriesWrapper: {
-    marginBottom: 20,
-    marginTop: 10,
+    paddingVertical: 12,
+    backgroundColor: theme.colors.background,
   },
   categoriesScroll: {
-    paddingLeft: theme.spacing.xxl,
+    paddingHorizontal: theme.spacing.xxl,
+    gap: 12,
   },
   categoryItem: {
     alignItems: 'center',
-    marginRight: 20,
+    width: 68,
   },
   categoryIconWrap: {
     width: 52,
@@ -734,6 +1111,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
     padding: 0,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    backgroundColor: '#FFF',
+    ...theme.shadows.soft,
   },
   categoryName: {
     ...theme.typography.labelSmall,
@@ -744,6 +1125,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: theme.spacing.xxl,
     marginBottom: 14,
+    borderColor: theme.colors.border,
+    borderWidth: 1,
+    ...theme.shadows.soft,
   },
   workoutImage: {
     width: 48,
@@ -779,6 +1163,7 @@ const styles = StyleSheet.create({
   },
   tagsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
   modalBody: {
     padding: 24,
@@ -880,17 +1265,16 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     textAlign: 'center',
   },
-  
-  // AI Plan Modal styles
   aiPlanHeroCard: {
-    backgroundColor: theme.colors.darkBase,
+    backgroundColor: theme.colors.primary,
     padding: 24,
     borderRadius: theme.radii.xxl,
     marginBottom: 28,
+    ...theme.shadows.primaryGlow,
   },
   aiPlanHeroLabel: {
     ...theme.typography.labelSmall,
-    color: theme.colors.primary,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: 8,
   },
   aiPlanHeroTitle: {
@@ -907,7 +1291,9 @@ const styles = StyleSheet.create({
   aiExerciseCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    borderColor: theme.colors.border,
+    borderWidth: 1,
+    ...theme.shadows.soft,
   },
   aiExerciseNumberWrap: {
     width: 32,
@@ -933,24 +1319,42 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginBottom: 20,
   },
-  aiRecoveryCard: {
-    backgroundColor: theme.colors.primaryLight,
-    borderColor: theme.colors.primaryBorder,
+  pastDataIndicator: {
+    marginHorizontal: theme.spacing.xxl,
+    marginVertical: theme.spacing.md,
+    backgroundColor: theme.colors.border,
+    borderColor: theme.colors.borderStrong,
     borderWidth: 1,
-    marginBottom: 32,
   },
-  aiRecoveryHeader: {
+  pastDataRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    justifyContent: 'center',
+    paddingVertical: 8,
   },
-  aiRecoveryTitle: {
+  pastDataText: {
     ...theme.typography.captionStrong,
-    color: theme.colors.primary,
+    color: theme.colors.textSecondary,
   },
-  aiRecoveryText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.textPrimary,
-    lineHeight: 22,
+  skeletonContainer: {
+    paddingHorizontal: theme.spacing.xxl,
+    gap: 14,
+    marginTop: theme.spacing.md,
+  },
+  skeletonCard: {
+    backgroundColor: theme.colors.border,
+    borderRadius: theme.radii.lg,
+  },
+  loadingCard: {
+    paddingVertical: theme.spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: theme.colors.border,
+    borderWidth: 1,
+  },
+  loadingText: {
+    ...theme.typography.captionStrong,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
   },
 });

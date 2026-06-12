@@ -27,7 +27,13 @@ export default function ModalView({
         <View style={styles.header}>
           {title && <Text style={styles.title}>{title}</Text>}
           {onClose && (
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
+            <TouchableOpacity 
+              onPress={onClose} 
+              style={styles.closeBtn} 
+              activeOpacity={0.7}
+              accessibilityLabel="Close modal"
+              accessibilityRole="button"
+            >
               <Feather name="x" size={20} color={theme.colors.textPrimary} />
             </TouchableOpacity>
           )}

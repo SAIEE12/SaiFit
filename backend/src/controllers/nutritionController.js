@@ -1,5 +1,6 @@
 const db = require('../config/db');
-const { getAIInstance, getModelName, getSystemSetting, safeGenerateContent } = require('../config/gemini');
+const { getAIInstance, getModelName, safeGenerateContent } = require('../config/gemini');
+const { PROMPT_MEAL_ANALYSIS, PROMPT_SMART_SEARCH } = require('../config/prompts');
 const fs = require('fs');
 const crypto = require('crypto');
 const { logAiUsage } = require('../middlewares/usageMiddleware');
@@ -43,32 +44,7 @@ exports.analyzeFoodImage = async (req, res) => {
         });
     }
 
-    const isFeatureEnabled = await getSystemSetting('ENABLE_MEAL_SCAN', 'true');
-    if (isFeatureEnabled === 'false') {
-        const fallbackMeal = {
-            food_name: "Logged Food Image (AI Scanning Offline)",
-            calories: 420,
-            protein: 24,
-            carbs: 48,
-            fats: 14
-        };
-        return res.json({
-            ...fallbackMeal,
-            image_url: '/uploads/' + req.file.filename,
-            cached: false,
-            message: "AI Scan is currently disabled in system governance."
-        });
-    }
-
-    const defaultPrompt = `Analyze this food image. Return a JSON object exactly like this (no markdown, pure JSON):
-    {
-      "food_name": "Name of food",
-      "calories": 0,
-      "protein": 0,
-      "carbs": 0,
-      "fats": 0
-    }`;
-    const prompt = await getSystemSetting('PROMPT_MEAL_ANALYSIS', defaultPrompt);
+    const prompt = PROMPT_MEAL_ANALYSIS.replace('{{TEXT}}', '').replace('{{text}}', '');
 
     let responseText;
     try {
@@ -112,32 +88,7 @@ exports.analyzeFoodText = async (req, res) => {
         return res.json({ ...cached, cached: true });
     }
 
-    const isFeatureEnabled = await getSystemSetting('ENABLE_MEAL_SCAN', 'true');
-    if (isFeatureEnabled === 'false') {
-        const fallbackMeal = {
-            food_name: text || "Logged Food (AI Scanning Offline)",
-            calories: 340,
-            protein: 18,
-            carbs: 42,
-            fats: 10
-        };
-        return res.json({
-            ...fallbackMeal,
-            cached: false,
-            message: "AI Scan is currently disabled in system governance."
-        });
-    }
-
-    const defaultPrompt = `Analyze this food description: "${text}". Return a JSON object exactly like this (no markdown, pure JSON):
-    {
-      "food_name": "Name of food",
-      "calories": 0,
-      "protein": 0,
-      "carbs": 0,
-      "fats": 0
-    }`;
-    const prompt = await getSystemSetting('PROMPT_MEAL_ANALYSIS', defaultPrompt);
-    const finalPrompt = prompt.replace('{{TEXT}}', text).replace('{{text}}', text);
+    const finalPrompt = PROMPT_MEAL_ANALYSIS.replace('{{TEXT}}', text).replace('{{text}}', text);
 
     let responseText;
     try {
@@ -231,12 +182,6 @@ exports.smartSearch = async (req, res) => {
     const { query } = req.body;
     if (!query) return res.status(400).json({ error: 'Search query is required' });
 
-    // Verify if Smart Search setting is enabled
-    const isEnabled = await getSystemSetting('ENABLE_SMART_SEARCH', 'false');
-    if (isEnabled !== 'true') {
-        return res.status(403).json({ error: 'Smart search is currently disabled in system settings.' });
-    }
-
     const userId = req.user.id;
     const targetDate = new Date().toISOString().split('T')[0];
 
@@ -262,30 +207,7 @@ exports.smartSearch = async (req, res) => {
     const remainingCarb = Math.max(0, (goal.target_carbs || 200) - totalCarb);
     const remainingFat = Math.max(0, (goal.target_fats || 65) - totalFat);
 
-    const defaultPrompt = `Act as an elite AI nutrition coach and personal trainer. The user is asking a conceptual query: "{{QUERY}}".
-    Today's Date: ${targetDate}.
-    Current User Nutrition Status Today:
-    - Logged so far: ${totalCals} kcal (P: ${totalProt}g, C: ${totalCarb}g, F: ${totalFat}g)
-    - Target goals: ${goal.target_calories || 2000} kcal (P: ${goal.target_protein || 150}g, C: ${goal.target_carbs || 200}g, F: ${goal.target_fats || 65}g)
-    - Remaining today: ${remainingCals} kcal (P: ${remainingProt}g, C: ${remainingCarb}g, F: ${remainingFat}g)
-    
-    User Profile Context:
-    - Goal: ${profile.fitness_goal}
-    - Level: ${profile.activity_level}
-    
-    Please recommend a precise recipe, food, or nearby meal recommendation that perfectly matches their query, matches their current time and location preferences, and dynamically balances their remaining targets today.
-    Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
-    {
-      "food_name": "Name of recommended food/meal/recipe",
-      "calories": 0,
-      "protein": 0,
-      "carbs": 0,
-      "fats": 0,
-      "advice": "Context-aware explanation of why this fits their exact query and nutritional balance (under 25 words)"
-    }`;
-
-    const prompt = await getSystemSetting('PROMPT_SMART_SEARCH', defaultPrompt);
-    const finalPrompt = prompt
+    const finalPrompt = PROMPT_SMART_SEARCH
         .replace('{{QUERY}}', query)
         .replace('{{query}}', query);
 
@@ -313,8 +235,7 @@ exports.smartSearch = async (req, res) => {
 
 exports.getSmartSearchStatus = async (req, res) => {
   try {
-    const isEnabled = await getSystemSetting('ENABLE_SMART_SEARCH', 'false');
-    res.json({ enabled: isEnabled === 'true' });
+    res.json({ enabled: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

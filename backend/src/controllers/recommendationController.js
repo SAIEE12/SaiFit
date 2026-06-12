@@ -1,6 +1,12 @@
-const { getAIInstance, getModelName, getSystemSetting, safeGenerateContent } = require('../config/gemini');
+const { getAIInstance, getModelName, safeGenerateContent } = require('../config/gemini');
 const db = require('../config/db');
 const { logAiUsage } = require('../middlewares/usageMiddleware');
+const {
+    PROMPT_GLOBAL_INSIGHT,
+    PROMPT_WORKOUT_SUGGESTION,
+    PROMPT_CALENDAR_COACH,
+    PROMPT_PROFILE_COACH
+} = require('../config/prompts');
 
 
 // Streak Calculation Helper
@@ -68,59 +74,32 @@ exports.getRecommendations = async (req, res) => {
         }
     }
 
-    const ai = await getAIInstance();
-    const modelName = await getModelName();
-
     const userGoals = await db.query('SELECT * FROM user_goals WHERE user_id = ?', [user_id]);
     const recentWorkouts = await db.query('SELECT * FROM workout_logs WHERE user_id = ? ORDER BY date DESC LIMIT 3', [user_id]);
 
     const goalContext = userGoals.rows.length > 0 ? userGoals.rows[0] : { goal_type: 'general fitness' };
     
-    const defaultPrompt = `
-      Act as an expert AI personal trainer.
-      User Goal: {{GOAL}}
-      Recent Workouts Count: {{COUNT}}
-      
-      Please provide a highly personalized, beginner-friendly workout recommendation and some recovery advice for tomorrow.
-      Format the response as a valid JSON object with the following structure (no markdown, pure JSON):
-      {
-        "workout_plan": "String describing the workout plan",
-        "exercises": ["Exercise 1", "Exercise 2"],
-        "recovery_advice": "String with recovery advice"
-      }
-    `;
-    const configuredPrompt = await getSystemSetting('PROMPT_WORKOUT_SUGGESTION', defaultPrompt);
-    const finalPrompt = configuredPrompt
+    const finalPrompt = PROMPT_WORKOUT_SUGGESTION
         .replace('{{GOAL}}', goalContext.goal_type)
         .replace('{{COUNT}}', recentWorkouts.rows.length);
 
-    const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
-    const isFeatureEnabled = await getSystemSetting('ENABLE_WORKOUT_COACH', 'true');
     let recommendation;
-    if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
-        recommendation = {
-            workout_plan: "Active Recovery Day (AI Disabled)",
-            exercises: ["30 min light walking", "15 min full body stretching"],
-            recovery_advice: "Your AI workout coach is currently offline. Focus on standard recovery!"
-        };
-    } else {
-        try {
-            const responseText = await safeGenerateContent(finalPrompt);
-            
-            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) {
-                throw new Error('AI response did not contain valid JSON: ' + responseText);
-            }
-            recommendation = JSON.parse(jsonMatch[0]);
-            await logAiUsage(user_id, 'workout');
-        } catch (aiError) {
-            console.error('Gemini API Error, using fallback:', aiError.message);
-            recommendation = {
-                workout_plan: "Active Recovery Day",
-                exercises: ["30 min light walking", "15 min full body stretching"],
-                recovery_advice: "Your AI coach is taking a short break. Focus on mobility and recovery!"
-            };
+    try {
+        const responseText = await safeGenerateContent(finalPrompt);
+        
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error('AI response did not contain valid JSON: ' + responseText);
         }
+        recommendation = JSON.parse(jsonMatch[0]);
+        await logAiUsage(user_id, 'workout');
+    } catch (aiError) {
+        console.error('Gemini API Error, using fallback:', aiError.message);
+        recommendation = {
+            workout_plan: "Active Recovery Day",
+            exercises: ["30 min light walking", "15 min full body stretching"],
+            recovery_advice: "Your AI coach is taking a short break. Focus on mobility and recovery!"
+        };
     }
 
     try {
@@ -153,77 +132,6 @@ exports.getInsight = async (req, res) => {
             return res.json(JSON.parse(cacheRes.rows[0].content));
         }
 
-        const ai = await getAIInstance();
-        const modelName = await getModelName();
-
-        // Load Context Variables
-        const todayStr = new Date().toISOString().split('T')[0];
-        const yesterdayDate = new Date();
-        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-        const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
-
-        // Fetch yesterday's meals
-        const yesterdayMeals = await db.query(
-            `SELECT m.*, fl.food_name, fl.calories, fl.protein, fl.carbs, fl.fats 
-             FROM meals m
-             JOIN food_logs fl ON m.id = fl.meal_id
-             WHERE m.user_id = ? AND m.date = ?`,
-            [userId, yesterdayStr]
-        );
-        let mealsSummary = "No meals logged yesterday.";
-        if (yesterdayMeals.rows.length > 0) {
-            const list = yesterdayMeals.rows.map(m => `${m.food_name} (${m.calories} kcal, P:${m.protein}g, C:${m.carbs}g, F:${m.fats}g)`);
-            mealsSummary = list.join(', ');
-        }
-
-        // Fetch yesterday's workouts
-        const yesterdayWorkouts = await db.query(
-            `SELECT wl.*, ws.sets, ws.reps, ws.weight, e.name as ex_name 
-             FROM workout_logs wl
-             JOIN workout_sets ws ON wl.id = ws.workout_log_id
-             JOIN exercises e ON ws.exercise_id = e.id
-             WHERE wl.user_id = ? AND wl.date = ?`,
-            [userId, yesterdayStr]
-        );
-        let workoutsSummary = "No workouts logged yesterday.";
-        if (yesterdayWorkouts.rows.length > 0) {
-            const list = yesterdayWorkouts.rows.map(w => `${w.ex_name} (${w.sets} sets x ${w.reps} reps @ ${w.weight}kg)`);
-            workoutsSummary = `${yesterdayWorkouts.rows[0].notes || 'Workout'} completed: ${list.join(', ')}`;
-        }
-
-        // Fetch yesterday's hydration
-        const yesterdayHydrationRes = await db.query(
-            'SELECT SUM(amount_ml) as total FROM hydration_logs WHERE user_id = ? AND date = ?',
-            [userId, yesterdayStr]
-        );
-        const yesterdayHydration = yesterdayHydrationRes.rows[0]?.total || 0;
-
-        // Fetch goal configurations
-        const goalsRes = await db.query('SELECT * FROM user_goals WHERE user_id = ?', [userId]);
-        const profileRes = await db.query('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
-        
-        const goal = goalsRes.rows[0] || { target_calories: 2000 };
-        const profile = profileRes.rows[0] || { fitness_goal: 'general fitness', activity_level: 'Intermediate', weight: 70, target_weight: 65 };
-
-        // Fetch consistency & streak
-        const streak = await calculateHabitStreak(userId);
-        const recentDaysRes = await db.query(
-            `SELECT COUNT(DISTINCT date) as count FROM workout_logs WHERE user_id = ? AND date >= date('now', '-7 days')`,
-            [userId]
-        );
-        const recentDays = recentDaysRes.rows[0]?.count || 0;
-
-        const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
-        const isFeatureEnabled = await getSystemSetting('ENABLE_GLOBAL_INSIGHT', 'true');
-        if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
-            return res.json({
-                summary: "AI Daily Insights are currently disabled by the administrator.",
-                analysis: "You can re-enable this dashboard intelligence engine anytime via the System Governance panel.",
-                motivational_quote: "Focus on daily incremental consistency.",
-                next_actions: ["Visit your settings panel", "Log water manually"]
-            });
-        }
-
         const healthData = `
           Today's Date: ${todayStr}.
           User Profile: Goal: ${profile.fitness_goal}, Weight: ${profile.weight} kg (Target: ${profile.target_weight} kg), Activity Level: ${profile.activity_level}, Daily Target Calories: ${goal.target_calories} kcal.
@@ -231,20 +139,7 @@ exports.getInsight = async (req, res) => {
           Consistency Metrics: Logged active workouts in ${recentDays} out of the last 7 days. Habit Streak: ${streak} days.
         `;
 
-        const defaultPrompt = `
-            Act as an elite Senior AI Personal Trainer and Coach from Apple and Google.
-            Analyze today and yesterday health data: {{DATA}}. Highlight improvements, hydration, macros, and workout splits in 2 sentences.
-            Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
-            {
-              "summary": "Short 1-2 sentence preview summary of yesterday vs goals.",
-              "analysis": "Full detailed context-aware personal trainer analysis and review (under 100 words).",
-              "motivational_quote": "An inspiring, highly personalized coaching quote.",
-              "next_actions": ["Action 1", "Action 2"]
-            }
-        `;
-
-        const configuredPrompt = await getSystemSetting('PROMPT_GLOBAL_INSIGHT', defaultPrompt);
-        const finalPrompt = configuredPrompt.replace('{{DATA}}', healthData);
+        const finalPrompt = PROMPT_GLOBAL_INSIGHT.replace('{{DATA}}', healthData);
 
         let insight;
         try {
@@ -291,64 +186,7 @@ exports.getWorkoutCoach = async (req, res) => {
             return res.json(JSON.parse(cacheRes.rows[0].content));
         }
 
-        const ai = await getAIInstance();
-        const modelName = await getModelName();
-
-        // Load goals & recent logs
-        const profileRes = await db.query('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
-        const profile = profileRes.rows[0] || { fitness_goal: 'Gym Workout', weight: 70, target_weight: 65, activity_level: 'Intermediate' };
-
-        const recentLogs = await db.query(
-            `SELECT wl.*, ws.sets, ws.reps, ws.weight, e.name as ex_name 
-             FROM workout_logs wl
-             JOIN workout_sets ws ON wl.id = ws.workout_log_id
-             JOIN exercises e ON ws.exercise_id = e.id
-             WHERE wl.user_id = ? ORDER BY wl.date DESC LIMIT 5`,
-            [userId]
-        );
-        let recentSummary = "No workouts logged yet.";
-        if (recentLogs.rows.length > 0) {
-            const list = recentLogs.rows.map(w => `${w.date}: ${w.ex_name} (${w.sets}x${w.reps}@${w.weight}kg)`);
-            recentSummary = list.join('\n');
-        }
-
-        // Fetch missed sessions count (days with no workouts in last 5 days)
-        const activeDaysRes = await db.query(
-            `SELECT COUNT(DISTINCT date) as count FROM workout_logs WHERE user_id = ? AND date >= date('now', '-5 days')`,
-            [userId]
-        );
-        const missedSessions = Math.max(0, 5 - (activeDaysRes.rows[0]?.count || 0));
-
-        const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
-        const isFeatureEnabled = await getSystemSetting('ENABLE_WORKOUT_COACH', 'true');
-        if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
-            return res.json({
-                summary: "AI Workout recommendations are currently disabled by the administrator.",
-                workout_plan: "Standard Strength & Mobility",
-                exercises: ["Push-ups (3 sets x 12)", "Squats (3 sets x 15)", "Plank (3 sets x 45s)"],
-                trainer_advice: "Re-enable the Workout Trainer suite anytime inside the System Governance control panel.",
-                intensity_level: "Medium"
-            });
-        }
-
-        const defaultPrompt = `
-            Act as an expert AI personal trainer.
-            User Goal: {{GOAL}}
-            Recent Workouts Count: {{COUNT}}
-
-            Please provide a highly personalized, beginner-friendly workout recommendation and some recovery advice for tomorrow.
-            Format the response as a valid JSON object with the following structure (no markdown, pure JSON):
-            {
-              "summary": "Short 1-sentence workout suggestion preview.",
-              "workout_plan": "Name of tomorrow's workout plan (e.g. Chest Hypertrophy)",
-              "exercises": ["Exercise 1 (Sets x Reps @ Weight)", "Exercise 2"],
-              "trainer_advice": "Detailed personal trainer reasoning for why this workout is suggested.",
-              "intensity_level": "Low / Medium / High"
-            }
-        `;
-
-        const configuredPrompt = await getSystemSetting('PROMPT_WORKOUT_SUGGESTION', defaultPrompt);
-        const finalPrompt = configuredPrompt
+        const finalPrompt = PROMPT_WORKOUT_SUGGESTION
             .replace('{{GOAL}}', profile.fitness_goal)
             .replace('{{COUNT}}', missedSessions);
 
@@ -397,61 +235,7 @@ exports.getCalendarCoach = async (req, res) => {
             return res.json(JSON.parse(cacheRes.rows[0].content));
         }
 
-        const ai = await getAIInstance();
-        const modelName = await getModelName();
-
-        // Load 14 days activity logs
-        const recentLogs = await db.query(
-            `SELECT date, notes, duration_minutes FROM workout_logs 
-             WHERE user_id = ? AND date >= date('now', '-14 days') ORDER BY date DESC`,
-            [userId]
-        );
-        let logsSummary = "No recent workouts logged in the last 14 days.";
-        if (recentLogs.rows.length > 0) {
-            const list = recentLogs.rows.map(w => `${w.date}: ${w.notes || 'Workout'} (${w.duration_minutes} mins)`);
-            logsSummary = list.join('\n');
-        }
-
-        const streak = await calculateHabitStreak(userId);
-
-        const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
-        const isFeatureEnabled = await getSystemSetting('ENABLE_CALENDAR_COACH', 'true');
-        if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
-            return res.json({
-                summary: "Calendar Intelligence is currently disabled by the administrator.",
-                expanded_narrative: "You can re-enable this journey split analysis suite anytime inside the System Governance control panel.",
-                consistency_score: "N/A",
-                streak_analysis: "Streaks logs calculations paused.",
-                workout_predictions: "Rest day logs forecasted.",
-                best_time_suggestion: "Activity hours metrics paused.",
-                overtraining_alerts: "Fatigue indicators disabled.",
-                milestones: ["Analytics system paused"]
-            });
-        }
-
-        const defaultPrompt = `
-            Act as an elite AI Fitness Journey Analyst from Apple and Google Fit.
-            Analyze the user's last 14 days logs:
-            {{LOGS}}
-            
-            Current active habit streak: {{STREAK}} days.
-            
-            Provide workout split consistency assessments, rest warnings, logical tomorrow workout forecasts, best time suggestions based on log trends, and compiled milestones achievements.
-            Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
-            {
-              "summary": "Exactly one short sentence overview of the user's active journey.",
-              "expanded_narrative": "A simple, friendly 5 to 6 sentence paragraph summarizing the user's complete calendar activity and previous tracked data over the past 14 days, including workout types, macro habits, rest, and predicted goals.",
-              "consistency_score": "e.g. 85%",
-              "streak_analysis": "Streak details and habit advice.",
-              "workout_predictions": "Logical workout prediction details.",
-              "best_time_suggestion": "Optimal workout hours reasoning based on active logs.",
-              "overtraining_alerts": "Overtraining recovery alerts or rest validation.",
-              "milestones": ["Completed multiple splits this week!", "Consistent habit logger."]
-            }
-        `;
-
-        const configuredPrompt = await getSystemSetting('PROMPT_CALENDAR_COACH', defaultPrompt);
-        const finalPrompt = configuredPrompt
+        const finalPrompt = PROMPT_CALENDAR_COACH
             .replace('{{LOGS}}', logsSummary)
             .replace('{{STREAK}}', streak);
 
@@ -502,59 +286,12 @@ exports.getProfileCoach = async (req, res) => {
             return res.json(JSON.parse(cacheRes.rows[0].content));
         }
 
-        const ai = await getAIInstance();
-        const modelName = await getModelName();
-
-        // Load profile stats
-        const profileRes = await db.query('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
-        const profile = profileRes.rows[0] || { weight: 70, target_weight: 65, height: 175, age: 25, gender: 'Male', fitness_goal: 'Fat Loss' };
-
-        // Fetch user totals
-        const workoutsCountRes = await db.query('SELECT COUNT(*) as count FROM workout_logs WHERE user_id = ?', [userId]);
-        const totalWorkouts = workoutsCountRes.rows[0]?.count || 0;
-
-        const mealsCountRes = await db.query(
-            `SELECT SUM(total_calories) as total FROM meals WHERE user_id = ?`,
-            [userId]
-        );
-        const totalCals = mealsCountRes.rows[0]?.total || 0;
-
-        const globalAIEnabled = await getSystemSetting('ENABLE_AI_FEATURES', 'true');
-        const isFeatureEnabled = await getSystemSetting('ENABLE_PROFILE_COACH', 'true');
-        if (globalAIEnabled === 'false' || isFeatureEnabled === 'false') {
-            return res.json({
-                summary: "Profile Progression Coach is currently disabled by the administrator.",
-                fitness_score: 100,
-                strengths: "All feature metrics tracking active.",
-                weaknesses: "AI scoring logs disabled by admin.",
-                body_predictions: "Transformation predictions are currently paused.",
-                adaptive_suggestions: "Re-enable the Journey Analytics suite in System Governance.",
-                motivational_summary: "Keep up your consistent logging schedule every single day!"
-            });
-        }
-
-        const defaultPrompt = `
-            Act as an expert AI Progress & Body Metrics Analyst.
-            Analyze user profile weights, height, target weights, gender, age: {{PROFILE}}. Provide adaptive progress timelines, body predictions, adaptive suggestions, and a dynamic fitness score.
-            Return a JSON object exactly like this (no markdown block, pure JSON, no backticks):
-            {
-              "summary": "Brief progression summary preview.",
-              "fitness_score": 75,
-              "strengths": "Strength highlights.",
-              "weaknesses": "Weakness feedback.",
-              "body_predictions": "Goal achievement body transformation timeline predictions.",
-              "adaptive_suggestions": "Suggestions to speed up results.",
-              "motivational_summary": "Coaching motivation summary."
-            }
-        `;
-
         const profileData = `
           Height: ${profile.height} cm, Age: ${profile.age} years, Gender: ${profile.gender}, Current Weight: ${profile.weight} kg, Target Weight: ${profile.target_weight} kg, Goal: ${profile.fitness_goal}.
           Logging History: Workouts Logged: ${totalWorkouts} sessions, Calories Logged: ${totalCals} kcal.
         `;
 
-        const configuredPrompt = await getSystemSetting('PROMPT_PROFILE_COACH', defaultPrompt);
-        const finalPrompt = configuredPrompt.replace('{{PROFILE}}', profileData);
+        const finalPrompt = PROMPT_PROFILE_COACH.replace('{{PROFILE}}', profileData);
 
         let profileAnalysis;
         try {

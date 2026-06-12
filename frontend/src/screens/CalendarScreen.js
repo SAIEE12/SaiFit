@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, LayoutAnimation, Platform, UIManager } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, LayoutAnimation, Platform, UIManager, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/client';
@@ -41,8 +41,8 @@ export default function CalendarScreen({ navigation }) {
     const [calendarCoach, setCalendarCoach] = useState(null);
     const [loadingCoach, setLoadingCoach] = useState(false);
     const [coachExpanded, setCoachExpanded] = useState(false);
-    const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
     const [achievements, setAchievements] = useState({});
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         fetchDayDetails(selectedDate);
@@ -50,9 +50,23 @@ export default function CalendarScreen({ navigation }) {
 
     useEffect(() => {
         fetchCalendarCoach();
-        checkSmartSearchStatus();
         fetchAchievements();
     }, []);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                fetchDayDetails(selectedDate),
+                fetchCalendarCoach(),
+                fetchAchievements()
+            ]);
+        } catch (e) {
+            console.error("Failed to refresh CalendarScreen data:", e);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [selectedDate]);
 
     const fetchDayDetails = async (date) => {
         const dateStr = getLocalDateString(date);
@@ -85,15 +99,6 @@ export default function CalendarScreen({ navigation }) {
             console.error("Error fetching day details:", e);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const checkSmartSearchStatus = async () => {
-        try {
-            const res = await apiClient.get('/nutrition/smart-search/status');
-            setIsSmartSearchEnabled(res.data.enabled);
-        } catch (e) {
-            console.error("Failed to check smart search status", e);
         }
     };
 
@@ -196,108 +201,123 @@ export default function CalendarScreen({ navigation }) {
                 />
             </SafeAreaView>
 
-            <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
-                {/* Calendar Card */}
-                <Card style={styles.calendarContainer}>
-                    <View style={styles.monthHeader}>
-                        <Text style={styles.monthTitle}>{MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}</Text>
-                        <View style={styles.navBtns}>
-                            <TouchableOpacity onPress={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))} style={styles.navBtn}><Feather name="chevron-left" size={20} color={theme.colors.textPrimary} /></TouchableOpacity>
-                            <TouchableOpacity onPress={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))} style={styles.navBtn}><Feather name="chevron-right" size={20} color={theme.colors.textPrimary} /></TouchableOpacity>
+            <ScreenContainer scrollable={false} keyboardAvoiding={false} edges={['bottom']}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+                    }
+                >
+                    {/* Calendar Card */}
+                    <Card style={styles.calendarContainer}>
+                        <View style={styles.monthHeader}>
+                            <Text style={styles.monthTitle}>{MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}</Text>
+                            <View style={styles.navBtns}>
+                                <TouchableOpacity onPress={() => {
+                                    const nextDate = new Date(currentDate);
+                                    nextDate.setMonth(currentDate.getMonth() - 1);
+                                    setCurrentDate(nextDate);
+                                }} style={styles.navBtn}><Feather name="chevron-left" size={20} color={theme.colors.textPrimary} /></TouchableOpacity>
+                                <TouchableOpacity onPress={() => {
+                                    const nextDate = new Date(currentDate);
+                                    nextDate.setMonth(currentDate.getMonth() + 1);
+                                    setCurrentDate(nextDate);
+                                }} style={styles.navBtn}><Feather name="chevron-right" size={20} color={theme.colors.textPrimary} /></TouchableOpacity>
+                            </View>
                         </View>
-                    </View>
-                    <View style={styles.weekDays}>{DAYS.map(day => <Text key={day} style={styles.weekDayText}>{day.toUpperCase()}</Text>)}</View>
-                    <View style={styles.daysGrid}>{renderCalendar()}</View>
-                </Card>
+                        <View style={styles.weekDays}>{DAYS.map(day => <Text key={day} style={styles.weekDayText}>{day.toUpperCase()}</Text>)}</View>
+                        <View style={styles.daysGrid}>{renderCalendar()}</View>
+                    </Card>
 
-                {/* AI Calendar Journey Intelligence */}
-                {isSmartSearchEnabled && calendarCoach && !calendarCoach.disabled && (
-                    <AICoachCard
-                        title="AI JOURNEY INTELLIGENCE"
-                        scoreLabel="CONSISTENCY INDEX"
-                        scoreValue={calendarCoach.consistency_score}
-                        narrative={calendarCoach.expanded_narrative}
-                        expanded={coachExpanded}
-                        onToggle={toggleCoach}
-                        segments={
-                            coachExpanded
-                                ? [
-                                    {
-                                        icon: 'trending-up',
-                                        title: 'Streak Analysis',
-                                        text: calendarCoach.streak_analysis,
-                                        color: theme.colors.primary,
-                                    },
-                                    {
-                                        icon: 'clock',
-                                        title: 'Best Workout Time',
-                                        text: calendarCoach.best_time_suggestion,
-                                        color: theme.colors.secondary,
-                                    },
-                                    {
-                                        icon: 'compass',
-                                        title: 'Split Predictions',
-                                        text: calendarCoach.workout_predictions,
-                                        color: theme.colors.success,
-                                    },
-                                    {
-                                        icon: 'heart',
-                                        title: 'Overtraining Status',
-                                        text: calendarCoach.overtraining_alerts,
-                                        color: theme.colors.warning,
-                                    },
-                                ]
-                                : []
-                        }
-                        milestones={
-                            coachExpanded && calendarCoach.milestones && calendarCoach.milestones.length > 0
-                                ? calendarCoach.milestones
-                                : []
-                        }
-                    />
-                )}
-
-                {/* Day Details */}
-                <View style={styles.detailsContainer}>
-                    {loading ? (
-                        <LoadingState message="Fetching daily details..." />
-                    ) : (
-                        <View style={styles.content}>
-                            <SectionHeader title="ACTIVITIES" />
-                            
-                            {/* Workout Logs */}
-                            {dayData.workouts.length > 0 ? dayData.workouts.map((w, i) => (
-                                <Card key={i} style={styles.logCard}>
-                                    <View style={[styles.logIcon, {backgroundColor: theme.colors.primaryLight}]}><FontAwesome5 name="running" size={16} color={theme.colors.primary} /></View>
-                                    <View style={styles.logInfo}>
-                                        <Text style={styles.logTitle}>{w.notes || 'Workout Session'}</Text>
-                                        <Text style={styles.logSubtitle}>{w.duration_minutes} mins • {new Date(w.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
-                                    </View>
-                                </Card>
-                            )) : null}
-
-                            {/* Meal Logs */}
-                            {dayData.meals.length > 0 ? dayData.meals.map((m, i) => (
-                                <Card key={i} style={styles.logCard}>
-                                    <View style={[styles.logIcon, {backgroundColor: theme.colors.successLight}]}><MaterialCommunityIcons name="food" size={18} color={theme.colors.success} /></View>
-                                    <View style={styles.logInfo}>
-                                        <Text style={styles.logTitle}>{m.meal_type.toUpperCase()}</Text>
-                                        <Text style={styles.logSubtitle}>{m.total_calories} kcal • {m.total_protein}g Protein</Text>
-                                    </View>
-                                </Card>
-                            )) : null}
-
-                            {dayData.workouts.length === 0 && dayData.meals.length === 0 && (
-                                <EmptyState
-                                    icon="activity"
-                                    title="No activities"
-                                    description="No activities logged on this date."
-                                />
-                            )}
-                        </View>
+                    {/* AI Calendar Journey Intelligence */}
+                    {calendarCoach && !calendarCoach.disabled && (
+                        <AICoachCard
+                            title="AI JOURNEY INTELLIGENCE"
+                            scoreLabel="CONSISTENCY INDEX"
+                            scoreValue={calendarCoach.consistency_score}
+                            narrative={calendarCoach.expanded_narrative}
+                            expanded={coachExpanded}
+                            onToggle={toggleCoach}
+                            segments={
+                                coachExpanded
+                                    ? [
+                                        {
+                                            icon: 'trending-up',
+                                            title: 'Streak Analysis',
+                                            text: calendarCoach.streak_analysis,
+                                            color: theme.colors.primary,
+                                        },
+                                        {
+                                            icon: 'clock',
+                                            title: 'Best Workout Time',
+                                            text: calendarCoach.best_time_suggestion,
+                                            color: theme.colors.secondary,
+                                        },
+                                        {
+                                            icon: 'compass',
+                                            title: 'Split Predictions',
+                                            text: calendarCoach.workout_predictions,
+                                            color: theme.colors.success,
+                                        },
+                                        {
+                                            icon: 'heart',
+                                            title: 'Overtraining Status',
+                                            text: calendarCoach.overtraining_alerts,
+                                            color: theme.colors.warning,
+                                        },
+                                    ]
+                                    : []
+                            }
+                            milestones={
+                                coachExpanded && calendarCoach.milestones && calendarCoach.milestones.length > 0
+                                    ? calendarCoach.milestones
+                                    : []
+                            }
+                        />
                     )}
-                </View>
-                <View style={{height: 100}} />
+
+                    {/* Day Details */}
+                    <View style={styles.detailsContainer}>
+                        {loading ? (
+                            <LoadingState message="Fetching daily details..." />
+                        ) : (
+                            <View style={styles.content}>
+                                <SectionHeader title="ACTIVITIES" />
+                                
+                                {/* Workout Logs */}
+                                {dayData.workouts.length > 0 ? dayData.workouts.map((w, i) => (
+                                    <Card key={i} style={styles.logCard}>
+                                        <View style={[styles.logIcon, {backgroundColor: theme.colors.primaryLight}]}><FontAwesome5 name="running" size={16} color={theme.colors.primary} /></View>
+                                        <View style={styles.logInfo}>
+                                            <Text style={styles.logTitle}>{w.notes || 'Workout Session'}</Text>
+                                            <Text style={styles.logSubtitle}>{w.duration_minutes} mins • {new Date(w.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
+                                        </View>
+                                    </Card>
+                                )) : null}
+
+                                {/* Meal Logs */}
+                                {dayData.meals.length > 0 ? dayData.meals.map((m, i) => (
+                                    <Card key={i} style={styles.logCard}>
+                                        <View style={[styles.logIcon, {backgroundColor: theme.colors.successLight}]}><MaterialCommunityIcons name="food" size={18} color={theme.colors.success} /></View>
+                                        <View style={styles.logInfo}>
+                                            <Text style={styles.logTitle}>{m.meal_type.toUpperCase()}</Text>
+                                            <Text style={styles.logSubtitle}>{m.total_calories} kcal • {m.total_protein}g Protein</Text>
+                                        </View>
+                                    </Card>
+                                )) : null}
+
+                                {dayData.workouts.length === 0 && dayData.meals.length === 0 && (
+                                    <EmptyState
+                                        icon="activity"
+                                        title="No activities"
+                                        description="No activities logged on this date."
+                                    />
+                                )}
+                            </View>
+                        )}
+                    </View>
+                    <View style={{height: 100}} />
+                </ScrollView>
             </ScreenContainer>
         </View>
     );
@@ -326,8 +346,8 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
     },
     dayText: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
-    selectedDayCell: { backgroundColor: theme.colors.border, borderRadius: theme.radii.md },
-    selectedDayText: { color: theme.colors.textPrimary, fontWeight: '800' },
+    selectedDayCell: { backgroundColor: theme.colors.primary, borderRadius: theme.radii.md },
+    selectedDayText: { color: '#FFFFFF', fontWeight: '800' },
     todayDayCell: { borderBottomWidth: 2, borderBottomColor: theme.colors.primary },
     todayText: { color: theme.colors.primary, fontWeight: '800' },
     detailsContainer: { paddingHorizontal: theme.spacing.xxl, paddingTop: 10 },

@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -140,16 +141,18 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      {isAuthenticated ? (
-         needsOnboarding ? (
-           <ChoosePathScreen onComplete={() => setNeedsOnboarding(false)} />
-         ) : (
-           <MainTabs onLogout={handleLogout} userRole={userRole} />
-         )
-      ) : (
-         <LoginScreen onLoginSuccess={handleLoginSuccess} />
-      )}
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        {isAuthenticated ? (
+           needsOnboarding ? (
+             <ChoosePathScreen onComplete={() => setNeedsOnboarding(false)} />
+           ) : (
+             <MainTabs onLogout={handleLogout} userRole={userRole} />
+           )
+        ) : (
+           <LoginScreen onLoginSuccess={handleLoginSuccess} />
+        )}
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

@@ -258,7 +258,7 @@ export default function DashboardScreen({ navigation }) {
     try {
       setLoading(true);
       const [recRes, mealsRes, workoutsRes, hydrationRes, profileRes] = await Promise.all([
-        apiClient.get(`/recommendations?date=${selectedDate}`),
+        apiClient.get(`/recommendations?date=${selectedDate}&today=${getLocalDateString()}`),
         apiClient.get(`/nutrition/meals?date=${selectedDate}`),
         apiClient.get(`/workouts?date=${selectedDate}`),
         apiClient.get(`/hydration?date=${selectedDate}`),
@@ -564,6 +564,7 @@ export default function DashboardScreen({ navigation }) {
 
       {/* Main Content Area */}
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -690,36 +691,44 @@ export default function DashboardScreen({ navigation }) {
                 </Card>
               ) : (
                 recommendation && !recommendation.disabled && (
-                  <Animated.View style={{ opacity: sparkleOpacity }}>
-                    <AICoachCard
-                      title="COACH'S DAILY INSIGHT"
-                      scoreLabel="RECOVERY STATUS"
-                      scoreValue="Optimal Recovery"
-                      narrative={recommendation.recovery_advice}
-                      expanded={insightExpanded}
-                      onToggle={() => {
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                        setInsightExpanded(!insightExpanded);
-                      }}
-                      segments={
-                        insightExpanded && recommendation.workout_plan
-                          ? [
-                              {
-                                icon: 'trending-up',
-                                title: 'Workout Focus',
-                                text: recommendation.workout_plan,
-                                color: theme.colors.primary,
-                              },
-                            ]
-                          : []
-                      }
-                      milestones={
-                        insightExpanded && recommendation.exercises && recommendation.exercises.length > 0
-                          ? recommendation.exercises
-                          : []
-                      }
-                    />
-                  </Animated.View>
+                  <AICoachCard
+                    title="COACH'S DAILY INSIGHT"
+                    scoreLabel={recommendation.isError ? undefined : "RECOVERY STATUS"}
+                    scoreValue={recommendation.isError ? undefined : "Optimal Recovery"}
+                    narrative={recommendation.recovery_advice}
+                    expanded={insightExpanded}
+                    isError={!!recommendation.isError}
+                    onToggle={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setInsightExpanded(!insightExpanded);
+                    }}
+                    segments={
+                      insightExpanded && recommendation.workout_plan
+                        ? [
+                            {
+                              icon: 'trending-up',
+                              title: 'Workout Focus',
+                              text: recommendation.workout_plan,
+                              color: theme.colors.primary,
+                            },
+                          ]
+                        : []
+                    }
+                    milestones={
+                      insightExpanded && recommendation.exercises && recommendation.exercises.length > 0
+                        ? recommendation.exercises
+                        : []
+                    }
+                    actions={
+                      recommendation.isError ? (
+                        <Button
+                          title="Retry Connection"
+                          variant="primary"
+                          onPress={fetchDashboardData}
+                        />
+                      ) : null
+                    }
+                  />
                 )
               )}
             </Animated.View>
@@ -1032,8 +1041,12 @@ export default function DashboardScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+  },
   scrollContent: {
     paddingBottom: theme.spacing.huge,
+    flexGrow: 1,
   },
   greetingContainer: {
     flexDirection: 'row',
@@ -1209,9 +1222,15 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.infoLight,
     borderWidth: 1,
     borderColor: 'rgba(0, 122, 255, 0.15)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   plusBtn: {
     backgroundColor: theme.colors.info,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     ...theme.shadows.soft,
   },
   workoutPillsWrapper: {

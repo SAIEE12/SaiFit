@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme';
 import Card from './Card';
@@ -18,8 +18,22 @@ export default function AICoachCard({
   expanded = false,
   onToggle,
   loading = false,
+  isError = false,
   style,
 }) {
+  const sparkleOpacity = useRef(new Animated.Value(0.6)).current;
+
+  useEffect(() => {
+    const sparkleLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(sparkleOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(sparkleOpacity, { toValue: 0.6, duration: 800, useNativeDriver: true })
+      ])
+    );
+    sparkleLoop.start();
+    return () => sparkleLoop.stop();
+  }, []);
+
   if (loading) {
     return (
       <Card variant="ai" style={[styles.loadingCard, style]}>
@@ -30,7 +44,7 @@ export default function AICoachCard({
   }
 
   // Handle collapsible trigger mode
-  if (!expanded && onToggle) {
+  if (!expanded && onToggle && !isError) {
     return (
       <TouchableOpacity
         activeOpacity={0.85}
@@ -38,7 +52,9 @@ export default function AICoachCard({
         onPress={onToggle}
       >
         <View style={styles.triggerLeft}>
-          <Ionicons name="sparkles" size={15} color={theme.colors.primary} />
+          <Animated.View style={{ opacity: sparkleOpacity }}>
+            <Ionicons name="sparkles" size={15} color={theme.colors.primary} />
+          </Animated.View>
           <Text style={styles.triggerText}>{title}</Text>
         </View>
         <Feather name="chevron-down" size={16} color={theme.colors.primary} />
@@ -47,16 +63,24 @@ export default function AICoachCard({
   }
 
   return (
-    <Card variant="ai" style={[styles.aiCard, style]}>
+    <Card variant={isError ? "default" : "ai"} style={[styles.aiCard, isError && styles.errorCard, style]}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleWrap}>
-          <View style={styles.sparkleIcon}>
-            <Ionicons name="sparkles" size={14} color="#FFF" />
-          </View>
-          <Text style={styles.titleText}>{title.toUpperCase()}</Text>
+          {isError ? (
+            <View style={[styles.sparkleIcon, { backgroundColor: theme.colors.danger }]}>
+              <Feather name="alert-circle" size={14} color="#FFF" />
+            </View>
+          ) : (
+            <Animated.View style={[styles.sparkleIcon, { opacity: sparkleOpacity }]}>
+              <Ionicons name="sparkles" size={14} color="#FFF" />
+            </Animated.View>
+          )}
+          <Text style={[styles.titleText, isError && { color: theme.colors.danger }]}>
+            {isError ? "AI COACH OFFLINE" : title.toUpperCase()}
+          </Text>
         </View>
-        {onToggle && (
+        {onToggle && !isError && (
           <TouchableOpacity onPress={onToggle} style={styles.collapseBtn}>
             <Feather name="chevron-up" size={18} color={theme.colors.textSecondary} />
           </TouchableOpacity>
@@ -64,7 +88,7 @@ export default function AICoachCard({
       </View>
 
       {/* Score bar */}
-      {scoreLabel && scoreValue && (
+      {!isError && scoreLabel && scoreValue && (
         <View style={styles.scoreBar}>
           <Text style={styles.scoreLabel}>{scoreLabel.toUpperCase()}</Text>
           <View style={styles.scoreBadge}>
@@ -75,13 +99,13 @@ export default function AICoachCard({
 
       {/* Main Narrative / Advice */}
       {narrative && (
-        <View style={styles.narrativeWrap}>
-          <Text style={styles.narrativeText}>{narrative}</Text>
+        <View style={[styles.narrativeWrap, isError && styles.errorNarrativeWrap]}>
+          <Text style={[styles.narrativeText, isError && styles.errorNarrativeText]}>{narrative}</Text>
         </View>
       )}
 
       {/* Dynamic Segments */}
-      {segments.length > 0 && (
+      {!isError && segments.length > 0 && (
         <View style={styles.segmentsWrap}>
           {segments.map((seg, idx) => (
             <View key={idx} style={styles.segmentCard}>
@@ -103,7 +127,7 @@ export default function AICoachCard({
       )}
 
       {/* Milestones list */}
-      {milestones.length > 0 && (
+      {!isError && milestones.length > 0 && (
         <View style={styles.milestonesWrap}>
           <Text style={styles.sectionHeading}>JOURNEY MILESTONES</Text>
           <View style={styles.milestoneGrid}>
@@ -112,7 +136,7 @@ export default function AICoachCard({
                 <Ionicons
                   name="trophy-outline"
                   size={12}
-                  color={theme.colors.primary}
+                  color="#FFF"
                   style={styles.trophyIcon}
                 />
                 <Text style={styles.milestoneText}>{mil}</Text>
@@ -147,9 +171,11 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.xxl,
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 45, 85, 0.12)',
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
     ...theme.shadows.soft,
+    marginHorizontal: theme.spacing.xxl,
+    marginBottom: theme.spacing.lg,
   },
   triggerLeft: {
     flexDirection: 'row',
@@ -164,6 +190,10 @@ const styles = StyleSheet.create({
   aiCard: {
     marginHorizontal: theme.spacing.xxl,
     marginBottom: theme.spacing.lg,
+  },
+  errorCard: {
+    borderColor: theme.colors.danger,
+    borderWidth: 1.5,
   },
   header: {
     flexDirection: 'row',
@@ -196,17 +226,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: theme.colors.primaryLight,
+    backgroundColor: theme.colors.background,
     paddingVertical: 10,
     paddingHorizontal: theme.spacing.md,
     borderRadius: theme.radii.lg,
     marginBottom: theme.spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 45, 85, 0.08)',
+    borderColor: theme.colors.border,
   },
   scoreLabel: {
     ...theme.typography.labelSmall,
-    color: theme.colors.primary,
+    color: theme.colors.textPrimary,
     letterSpacing: 1,
   },
   scoreBadge: {
@@ -221,18 +251,25 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   narrativeWrap: {
-    backgroundColor: theme.colors.primaryLight,
+    backgroundColor: theme.colors.primary,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 45, 85, 0.1)',
     marginBottom: theme.spacing.md,
+    ...theme.shadows.soft,
   },
   narrativeText: {
     ...theme.typography.bodySmall,
-    color: theme.colors.primary,
+    color: '#FFF',
     fontWeight: '600',
     lineHeight: 20,
+  },
+  errorNarrativeWrap: {
+    backgroundColor: theme.colors.dangerLight,
+    borderColor: theme.colors.danger,
+    borderWidth: 1,
+  },
+  errorNarrativeText: {
+    color: theme.colors.danger,
   },
   segmentsWrap: {
     gap: theme.spacing.md,
@@ -259,9 +296,9 @@ const styles = StyleSheet.create({
   },
   segmentText: {
     ...theme.typography.caption,
-    color: theme.colors.textSecondary,
+    color: theme.colors.textPrimary,
     lineHeight: 18,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   milestonesWrap: {
     marginTop: theme.spacing.sm,
@@ -280,7 +317,7 @@ const styles = StyleSheet.create({
   milestonePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.primaryLight,
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radii.full,
@@ -290,7 +327,7 @@ const styles = StyleSheet.create({
   },
   milestoneText: {
     ...theme.typography.labelSmall,
-    color: theme.colors.primary,
+    color: '#FFF',
     letterSpacing: 0,
     fontWeight: '700',
   },

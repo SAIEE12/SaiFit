@@ -42,9 +42,17 @@ const CalendarStrip = ({ selectedDate, onDateSelected }) => {
               ]}
               onPress={() => onDateSelected(dateStr)}
             >
-              <Text style={[styles.dayText, isSelected && styles.selectedText]}>{getDayName(date).toUpperCase()}</Text>
-              <View style={[styles.circle, isSelected && styles.selectedCircle, isToday && !isSelected && styles.todayCircle]}>
-                <Text style={[styles.dateText, isSelected && styles.selectedText]}>{date.getDate()}</Text>
+              <Text style={[styles.dayText, isSelected && styles.selectedDayText]}>
+                {getDayName(date).toUpperCase()}
+              </Text>
+              <View style={[
+                styles.circle,
+                isSelected && styles.selectedCircle,
+                isToday && !isSelected && styles.todayCircle
+              ]}>
+                <Text style={[styles.dateText, isSelected && styles.selectedText]}>
+                  {date.getDate()}
+                </Text>
               </View>
               {isToday && !isSelected && <View style={styles.todayIndicator} />}
             </TouchableOpacity>
@@ -68,10 +76,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: theme.spacing.sm,
   },
+  selectedCard: {
+    // optional card container changes
+  },
   dayText: {
     ...theme.typography.labelSmall,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
+  },
+  selectedDayText: {
+    color: theme.colors.primary,
+    fontWeight: '800',
   },
   circle: {
     width: 44,

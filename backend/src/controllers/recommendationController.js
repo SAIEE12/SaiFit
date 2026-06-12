@@ -5,8 +5,39 @@ const {
     PROMPT_GLOBAL_INSIGHT,
     PROMPT_WORKOUT_SUGGESTION,
     PROMPT_CALENDAR_COACH,
-    PROMPT_PROFILE_COACH
+    PROMPT_PROFILE_COACH,
+    injectLifestyleContext
 } = require('../config/prompts');
+
+const getUserLifestyleContext = async (userId) => {
+    try {
+        const tracksRes = await db.query(
+            `SELECT lt.display_name 
+             FROM user_tracks ut 
+             JOIN lifestyle_tracks lt ON ut.track_id = lt.id 
+             WHERE ut.user_id = ?`,
+            [userId]
+        );
+        const tracks = tracksRes.rows.map(r => r.display_name).join(', ');
+
+        const profileRes = await db.query(
+            `SELECT dietary_philosophy, dietary_notes 
+             FROM user_profiles 
+             WHERE user_id = ?`,
+            [userId]
+        );
+        const profile = profileRes.rows[0] || {};
+
+        return {
+            tracks,
+            dietaryPhilosophy: profile.dietary_philosophy,
+            dietaryNotes: profile.dietary_notes
+        };
+    } catch (e) {
+        console.error('Error fetching user lifestyle context:', e);
+        return null;
+    }
+};
 
 
 // Streak Calculation Helper
@@ -79,7 +110,9 @@ exports.getRecommendations = async (req, res) => {
 
     const goalContext = userGoals.rows.length > 0 ? userGoals.rows[0] : { goal_type: 'general fitness' };
     
-    const finalPrompt = PROMPT_WORKOUT_SUGGESTION
+    const lifestyleContext = await getUserLifestyleContext(user_id);
+    const contextualPrompt = injectLifestyleContext(PROMPT_WORKOUT_SUGGESTION, lifestyleContext);
+    const finalPrompt = contextualPrompt
         .replace('{{GOAL}}', goalContext.goal_type)
         .replace('{{COUNT}}', recentWorkouts.rows.length);
 
@@ -139,7 +172,9 @@ exports.getInsight = async (req, res) => {
           Consistency Metrics: Logged active workouts in ${recentDays} out of the last 7 days. Habit Streak: ${streak} days.
         `;
 
-        const finalPrompt = PROMPT_GLOBAL_INSIGHT.replace('{{DATA}}', healthData);
+        const lifestyleContext = await getUserLifestyleContext(userId);
+        const contextualPrompt = injectLifestyleContext(PROMPT_GLOBAL_INSIGHT, lifestyleContext);
+        const finalPrompt = contextualPrompt.replace('{{DATA}}', healthData);
 
         let insight;
         try {
@@ -186,7 +221,9 @@ exports.getWorkoutCoach = async (req, res) => {
             return res.json(JSON.parse(cacheRes.rows[0].content));
         }
 
-        const finalPrompt = PROMPT_WORKOUT_SUGGESTION
+        const lifestyleContext = await getUserLifestyleContext(userId);
+        const contextualPrompt = injectLifestyleContext(PROMPT_WORKOUT_SUGGESTION, lifestyleContext);
+        const finalPrompt = contextualPrompt
             .replace('{{GOAL}}', profile.fitness_goal)
             .replace('{{COUNT}}', missedSessions);
 
@@ -235,7 +272,9 @@ exports.getCalendarCoach = async (req, res) => {
             return res.json(JSON.parse(cacheRes.rows[0].content));
         }
 
-        const finalPrompt = PROMPT_CALENDAR_COACH
+        const lifestyleContext = await getUserLifestyleContext(userId);
+        const contextualPrompt = injectLifestyleContext(PROMPT_CALENDAR_COACH, lifestyleContext);
+        const finalPrompt = contextualPrompt
             .replace('{{LOGS}}', logsSummary)
             .replace('{{STREAK}}', streak);
 
@@ -291,7 +330,9 @@ exports.getProfileCoach = async (req, res) => {
           Logging History: Workouts Logged: ${totalWorkouts} sessions, Calories Logged: ${totalCals} kcal.
         `;
 
-        const finalPrompt = PROMPT_PROFILE_COACH.replace('{{PROFILE}}', profileData);
+        const lifestyleContext = await getUserLifestyleContext(userId);
+        const contextualPrompt = injectLifestyleContext(PROMPT_PROFILE_COACH, lifestyleContext);
+        const finalPrompt = contextualPrompt.replace('{{PROFILE}}', profileData);
 
         let profileAnalysis;
         try {

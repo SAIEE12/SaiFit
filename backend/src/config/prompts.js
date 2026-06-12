@@ -39,6 +39,25 @@ const PROMPT_HYDRATION_COACH = `Act as an expert AI Hydration Specialist. Design
 
 const PROMPT_SLEEP_ADVISOR = `Act as an expert AI Sleep & Muscle Recovery Advisor. Analyze user daily active logs and suggest sleep targets, recovery suggestions, and fatigue checks: {{RECOVERY_DATA}}.`;
 
+function injectLifestyleContext(promptStr, context) {
+    if (!context) return promptStr;
+    const { tracks, dietaryPhilosophy, dietaryNotes } = context;
+    const parts = [];
+    if (tracks && tracks.trim()) {
+        parts.push(`This user follows: ${tracks.trim()}.`);
+    }
+    if (dietaryPhilosophy && dietaryPhilosophy.trim()) {
+        parts.push(`Their dietary preference: ${dietaryPhilosophy.trim()}.`);
+    }
+    if (dietaryNotes && dietaryNotes.trim()) {
+        parts.push(`Dietary notes: ${dietaryNotes.trim()}.`);
+    }
+    if (parts.length > 0) {
+        return `${parts.join(' ')} Tailor your suggestions and tone accordingly.\n\n${promptStr}`;
+    }
+    return promptStr;
+}
+
 module.exports = {
     PROMPT_GLOBAL_INSIGHT,
     PROMPT_WORKOUT_SUGGESTION,
@@ -48,5 +67,6 @@ module.exports = {
     PROMPT_PROFILE_COACH,
     PROMPT_SMART_NOTIFICATIONS,
     PROMPT_HYDRATION_COACH,
-    PROMPT_SLEEP_ADVISOR
+    PROMPT_SLEEP_ADVISOR,
+    injectLifestyleContext
 };

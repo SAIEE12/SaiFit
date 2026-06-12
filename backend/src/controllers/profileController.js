@@ -28,13 +28,13 @@ exports.getProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { full_name, age, gender, height, weight, target_weight, activity_level, fitness_goal } = req.body;
+        const { full_name, age, gender, height, weight, target_weight, activity_level, fitness_goal, dietary_philosophy, dietary_notes } = req.body;
 
         const updated = await db.query(
             `UPDATE user_profiles 
-             SET full_name = ?, age = ?, gender = ?, height = ?, weight = ?, target_weight = ?, activity_level = ?, fitness_goal = ?, updated_at = CURRENT_TIMESTAMP
+             SET full_name = ?, age = ?, gender = ?, height = ?, weight = ?, target_weight = ?, activity_level = ?, fitness_goal = ?, dietary_philosophy = ?, dietary_notes = ?, updated_at = CURRENT_TIMESTAMP
              WHERE user_id = ? RETURNING *`,
-            [full_name, age, gender, height, weight, target_weight, activity_level, fitness_goal, userId]
+            [full_name, age, gender, height, weight, target_weight, activity_level, fitness_goal, dietary_philosophy, dietary_notes, userId]
         );
 
         if (updated.rows.length === 0) {

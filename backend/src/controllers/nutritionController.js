@@ -1,9 +1,39 @@
 const db = require('../config/db');
 const { getAIInstance, getModelName, safeGenerateContent } = require('../config/gemini');
-const { PROMPT_MEAL_ANALYSIS, PROMPT_SMART_SEARCH } = require('../config/prompts');
+const { PROMPT_MEAL_ANALYSIS, PROMPT_SMART_SEARCH, injectLifestyleContext } = require('../config/prompts');
 const fs = require('fs');
 const crypto = require('crypto');
 const { logAiUsage } = require('../middlewares/usageMiddleware');
+
+const getUserLifestyleContext = async (userId) => {
+    try {
+        const tracksRes = await db.query(
+            `SELECT lt.display_name 
+             FROM user_tracks ut 
+             JOIN lifestyle_tracks lt ON ut.track_id = lt.id 
+             WHERE ut.user_id = ?`,
+            [userId]
+        );
+        const tracks = tracksRes.rows.map(r => r.display_name).join(', ');
+
+        const profileRes = await db.query(
+            `SELECT dietary_philosophy, dietary_notes 
+             FROM user_profiles 
+             WHERE user_id = ?`,
+            [userId]
+        );
+        const profile = profileRes.rows[0] || {};
+
+        return {
+            tracks,
+            dietaryPhilosophy: profile.dietary_philosophy,
+            dietaryNotes: profile.dietary_notes
+        };
+    } catch (e) {
+        console.error('Error fetching user lifestyle context:', e);
+        return null;
+    }
+};
 
 
 // Helper to get MD5 hash of a file
@@ -44,7 +74,9 @@ exports.analyzeFoodImage = async (req, res) => {
         });
     }
 
-    const prompt = PROMPT_MEAL_ANALYSIS.replace('{{TEXT}}', '').replace('{{text}}', '');
+    const lifestyleContext = await getUserLifestyleContext(req.user.id);
+    const contextualPrompt = injectLifestyleContext(PROMPT_MEAL_ANALYSIS, lifestyleContext);
+    const prompt = contextualPrompt.replace('{{TEXT}}', '').replace('{{text}}', '');
 
     let responseText;
     try {
@@ -88,7 +120,9 @@ exports.analyzeFoodText = async (req, res) => {
         return res.json({ ...cached, cached: true });
     }
 
-    const finalPrompt = PROMPT_MEAL_ANALYSIS.replace('{{TEXT}}', text).replace('{{text}}', text);
+    const lifestyleContext = await getUserLifestyleContext(req.user.id);
+    const contextualPrompt = injectLifestyleContext(PROMPT_MEAL_ANALYSIS, lifestyleContext);
+    const finalPrompt = contextualPrompt.replace('{{TEXT}}', text).replace('{{text}}', text);
 
     let responseText;
     try {
@@ -207,7 +241,9 @@ exports.smartSearch = async (req, res) => {
     const remainingCarb = Math.max(0, (goal.target_carbs || 200) - totalCarb);
     const remainingFat = Math.max(0, (goal.target_fats || 65) - totalFat);
 
-    const finalPrompt = PROMPT_SMART_SEARCH
+    const lifestyleContext = await getUserLifestyleContext(userId);
+    const contextualPrompt = injectLifestyleContext(PROMPT_SMART_SEARCH, lifestyleContext);
+    const finalPrompt = contextualPrompt
         .replace('{{QUERY}}', query)
         .replace('{{query}}', query);
 

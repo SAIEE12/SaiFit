@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
 import CustomDialog from '../components/CustomDialog';
+import Toast from '../components/ui/Toast';
 import apiClient from '../api/client';
 import { theme } from '../theme';
 import ScreenContainer from '../components/ui/ScreenContainer';
@@ -42,6 +43,12 @@ export default function MealsScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [showCamera, setShowCamera] = useState(false);
   const cameraRef = useRef(null);
+
+  // Toast notification state
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+  };
 
   // Reusable Dialog State
   const [dialog, setDialog] = useState({
@@ -273,9 +280,8 @@ export default function MealsScreen() {
                 if (logId === lastLoggedSmartSearchId) {
                     setLastLoggedSmartSearchId(null);
                 }
-                showDialog("Removed", "Food item has been deleted successfully.", "success", () => {
-                    fetchMealLogs();
-                });
+                showToast("Food item has been deleted successfully.", "success");
+                fetchMealLogs();
             } catch(e) {
                 showDialog("Error", e.response?.data?.error || "Could not delete food log.", "error");
             } finally {
@@ -506,6 +512,14 @@ export default function MealsScreen() {
           cancelText={dialog.cancelText}
           onConfirm={dialog.onConfirm}
           onCancel={dialog.onCancel}
+      />
+
+      {/* Toast Notification */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onDismiss={() => setToast(prev => ({ ...prev, visible: false }))}
       />
     </View>
   );

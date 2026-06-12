@@ -229,18 +229,23 @@ exports.getInsight = async (req, res) => {
     }
 };
 
-// 2. Workout Screen Context-Aware Trainer
 exports.getWorkoutCoach = async (req, res) => {
     try {
         const userId = req.user.id;
+        const todayStr = new Date().toISOString().split('T')[0];
+        const selectedDate = req.query.date || todayStr;
 
         // Check cache first
         const cacheRes = await db.query(
-            'SELECT content FROM recommendations WHERE user_id = ? AND type = ? AND date(created_at) = CURRENT_DATE ORDER BY created_at DESC LIMIT 1',
-            [userId, 'workout_coach']
+            'SELECT content FROM recommendations WHERE user_id = ? AND type = ? AND date = ? ORDER BY created_at DESC LIMIT 1',
+            [userId, 'workout_coach', selectedDate]
         );
         if (cacheRes.rows.length > 0) {
             return res.json(JSON.parse(cacheRes.rows[0].content));
+        }
+
+        if (selectedDate !== todayStr) {
+            return res.json({ viewingPast: true });
         }
 
         // Load goals & recent logs
@@ -295,8 +300,8 @@ exports.getWorkoutCoach = async (req, res) => {
 
         // Cache results
         await db.query(
-            'INSERT INTO recommendations (user_id, type, content) VALUES (?, ?, ?)',
-            [userId, 'workout_coach', JSON.stringify(workoutPlan)]
+            'INSERT INTO recommendations (user_id, type, content, date) VALUES (?, ?, ?, ?)',
+            [userId, 'workout_coach', JSON.stringify(workoutPlan), selectedDate]
         );
 
         res.json(workoutPlan);

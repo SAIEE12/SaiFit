@@ -165,6 +165,63 @@ exports.getInsight = async (req, res) => {
             return res.json(JSON.parse(cacheRes.rows[0].content));
         }
 
+        // Load Context Variables
+        const todayStr = new Date().toISOString().split('T')[0];
+        const yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+        // Fetch yesterday's meals
+        const yesterdayMeals = await db.query(
+            `SELECT m.*, fl.food_name, fl.calories, fl.protein, fl.carbs, fl.fats 
+             FROM meals m
+             JOIN food_logs fl ON m.id = fl.meal_id
+             WHERE m.user_id = ? AND m.date = ?`,
+            [userId, yesterdayStr]
+        );
+        let mealsSummary = "No meals logged yesterday.";
+        if (yesterdayMeals.rows.length > 0) {
+            const list = yesterdayMeals.rows.map(m => `${m.food_name} (${m.calories} kcal, P:${m.protein}g, C:${m.carbs}g, F:${m.fats}g)`);
+            mealsSummary = list.join(', ');
+        }
+
+        // Fetch yesterday's workouts
+        const yesterdayWorkouts = await db.query(
+            `SELECT wl.*, ws.sets, ws.reps, ws.weight, e.name as ex_name 
+             FROM workout_logs wl
+             JOIN workout_sets ws ON wl.id = ws.workout_log_id
+             JOIN exercises e ON ws.exercise_id = e.id
+             WHERE wl.user_id = ? AND wl.date = ?`,
+            [userId, yesterdayStr]
+        );
+        let workoutsSummary = "No workouts logged yesterday.";
+        if (yesterdayWorkouts.rows.length > 0) {
+            const list = yesterdayWorkouts.rows.map(w => `${w.ex_name} (${w.sets} sets x ${w.reps} reps @ ${w.weight}kg)`);
+            workoutsSummary = `${yesterdayWorkouts.rows[0].notes || 'Workout'} completed: ${list.join(', ')}`;
+        }
+
+        // Fetch yesterday's hydration
+        const yesterdayHydrationRes = await db.query(
+            'SELECT SUM(amount_ml) as total FROM hydration_logs WHERE user_id = ? AND date = ?',
+            [userId, yesterdayStr]
+        );
+        const yesterdayHydration = yesterdayHydrationRes.rows[0]?.total || 0;
+
+        // Fetch goal configurations
+        const goalsRes = await db.query('SELECT * FROM user_goals WHERE user_id = ?', [userId]);
+        const profileRes = await db.query('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
+        
+        const goal = goalsRes.rows[0] || { target_calories: 2000 };
+        const profile = profileRes.rows[0] || { fitness_goal: 'general fitness', activity_level: 'Intermediate', weight: 70, target_weight: 65 };
+
+        // Fetch consistency & streak
+        const streak = await calculateHabitStreak(userId);
+        const recentDaysRes = await db.query(
+            `SELECT COUNT(DISTINCT date) as count FROM workout_logs WHERE user_id = ? AND date >= date('now', '-7 days')`,
+            [userId]
+        );
+        const recentDays = recentDaysRes.rows[0]?.count || 0;
+
         const healthData = `
           Today's Date: ${todayStr}.
           User Profile: Goal: ${profile.fitness_goal}, Weight: ${profile.weight} kg (Target: ${profile.target_weight} kg), Activity Level: ${profile.activity_level}, Daily Target Calories: ${goal.target_calories} kcal.
@@ -221,6 +278,31 @@ exports.getWorkoutCoach = async (req, res) => {
             return res.json(JSON.parse(cacheRes.rows[0].content));
         }
 
+        // Load goals & recent logs
+        const profileRes = await db.query('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
+        const profile = profileRes.rows[0] || { fitness_goal: 'Gym Workout', weight: 70, target_weight: 65, activity_level: 'Intermediate' };
+
+        const recentLogs = await db.query(
+            `SELECT wl.*, ws.sets, ws.reps, ws.weight, e.name as ex_name 
+             FROM workout_logs wl
+             JOIN workout_sets ws ON wl.id = ws.workout_log_id
+             JOIN exercises e ON ws.exercise_id = e.id
+             WHERE wl.user_id = ? ORDER BY wl.date DESC LIMIT 5`,
+            [userId]
+        );
+        let recentSummary = "No workouts logged yet.";
+        if (recentLogs.rows.length > 0) {
+            const list = recentLogs.rows.map(w => `${w.date}: ${w.ex_name} (${w.sets}x${w.reps}@${w.weight}kg)`);
+            recentSummary = list.join('\n');
+        }
+
+        // Fetch missed sessions count (days with no workouts in last 5 days)
+        const activeDaysRes = await db.query(
+            `SELECT COUNT(DISTINCT date) as count FROM workout_logs WHERE user_id = ? AND date >= date('now', '-5 days')`,
+            [userId]
+        );
+        const missedSessions = Math.max(0, 5 - (activeDaysRes.rows[0]?.count || 0));
+
         const lifestyleContext = await getUserLifestyleContext(userId);
         const contextualPrompt = injectLifestyleContext(PROMPT_WORKOUT_SUGGESTION, lifestyleContext);
         const finalPrompt = contextualPrompt
@@ -271,6 +353,20 @@ exports.getCalendarCoach = async (req, res) => {
         if (cacheRes.rows.length > 0) {
             return res.json(JSON.parse(cacheRes.rows[0].content));
         }
+
+        // Load 14 days activity logs
+        const recentLogs = await db.query(
+            `SELECT date, notes, duration_minutes FROM workout_logs 
+             WHERE user_id = ? AND date >= date('now', '-14 days') ORDER BY date DESC`,
+            [userId]
+        );
+        let logsSummary = "No recent workouts logged in the last 14 days.";
+        if (recentLogs.rows.length > 0) {
+            const list = recentLogs.rows.map(w => `${w.date}: ${w.notes || 'Workout'} (${w.duration_minutes} mins)`);
+            logsSummary = list.join('\n');
+        }
+
+        const streak = await calculateHabitStreak(userId);
 
         const lifestyleContext = await getUserLifestyleContext(userId);
         const contextualPrompt = injectLifestyleContext(PROMPT_CALENDAR_COACH, lifestyleContext);
@@ -324,6 +420,20 @@ exports.getProfileCoach = async (req, res) => {
         if (cacheRes.rows.length > 0) {
             return res.json(JSON.parse(cacheRes.rows[0].content));
         }
+
+        // Load profile stats
+        const profileRes = await db.query('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
+        const profile = profileRes.rows[0] || { weight: 70, target_weight: 65, height: 175, age: 25, gender: 'Male', fitness_goal: 'Fat Loss' };
+
+        // Fetch user totals
+        const workoutsCountRes = await db.query('SELECT COUNT(*) as count FROM workout_logs WHERE user_id = ?', [userId]);
+        const totalWorkouts = workoutsCountRes.rows[0]?.count || 0;
+
+        const mealsCountRes = await db.query(
+            `SELECT SUM(total_calories) as total FROM meals WHERE user_id = ?`,
+            [userId]
+        );
+        const totalCals = mealsCountRes.rows[0]?.total || 0;
 
         const profileData = `
           Height: ${profile.height} cm, Age: ${profile.age} years, Gender: ${profile.gender}, Current Weight: ${profile.weight} kg, Target Weight: ${profile.target_weight} kg, Goal: ${profile.fitness_goal}.

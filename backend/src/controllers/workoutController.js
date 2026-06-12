@@ -62,3 +62,20 @@ exports.getExercises = async (req, res) => {
   }
 };
 
+exports.deleteWorkout = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user_id = req.user.id;
+    
+    await db.query(
+      'DELETE FROM workout_logs WHERE id = $1 AND user_id = $2',
+      [id, user_id]
+    );
+    
+    res.json({ message: 'Workout log deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+

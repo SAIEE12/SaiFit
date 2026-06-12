@@ -8,6 +8,7 @@ router.use(authenticateToken);
 router.post('/log', workoutController.logWorkout);
 router.get('/', workoutController.getWorkouts);
 router.get('/exercises', workoutController.getExercises);
+router.delete('/:id', workoutController.deleteWorkout);
 
 module.exports = router;
 

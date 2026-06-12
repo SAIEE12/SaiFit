@@ -147,4 +147,13 @@ export const theme = {
       elevation: 4,
     },
   },
+
+  // ── ANIMATION TOKENS ──────────────────────────────────────
+  animations: {
+    durationShort: 150,
+    durationDefault: 250,
+    durationLong: 400,
+    springShort: { tension: 40, friction: 7 },
+    springBouncy: { tension: 50, friction: 4 },
+  }
 };

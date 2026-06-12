@@ -129,10 +129,16 @@ export default function AdminScreen({ navigation }) {
         );
     };
 
-    const deleteInvite = async (id) => {
+    const deleteInvite = async (id, isUsed = false) => {
+        const title = isUsed ? "Delete Active Invite Code" : "Revoke Invite Code";
+        const desc = isUsed 
+            ? "Are you sure you want to delete this invite code? It has already been used by a registered user. Deleting it will detach the code tracking but keep their user account active." 
+            : "Are you sure you want to delete this unused invite code?";
+        const confirmText = isUsed ? "Delete Code" : "Revoke Code";
+
         showDialog(
-            "Revoke Invite Code",
-            "Are you sure you want to delete this unused invite code?",
+            title,
+            desc,
             "confirm",
             async () => {
                 try {
@@ -147,7 +153,7 @@ export default function AdminScreen({ navigation }) {
                 }
             },
             () => {},
-            "Revoke Code"
+            confirmText
         );
     };
 
@@ -283,11 +289,9 @@ export default function AdminScreen({ navigation }) {
                                                 )}
                                             </View>
                                         </View>
-                                        {!inv.is_used && (
-                                            <TouchableOpacity onPress={() => deleteInvite(inv.id)} style={styles.deleteAction}>
-                                                <Feather name="trash-2" size={18} color={theme.colors.danger} />
-                                            </TouchableOpacity>
-                                        )}
+                                        <TouchableOpacity onPress={() => deleteInvite(inv.id, inv.is_used)} style={styles.deleteAction}>
+                                            <Feather name="trash-2" size={18} color={theme.colors.danger} />
+                                        </TouchableOpacity>
                                     </Card>
                                 ))}
                                 {invites.length === 0 && (

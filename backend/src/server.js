@@ -26,6 +26,9 @@ try {
 try {
   db.exec("ALTER TABLE user_profiles ADD COLUMN dietary_notes TEXT;");
 } catch (e) {}
+try {
+  db.exec("ALTER TABLE users ADD COLUMN last_login_at DATETIME;");
+} catch (e) {}
 
 const app = express();
 

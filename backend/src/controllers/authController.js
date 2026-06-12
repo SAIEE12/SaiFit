@@ -19,6 +19,8 @@ exports.login = async (req, res) => {
                 adminUser = adminRes.rows[0];
             }
             const token = jwt.sign({ id: adminUser.id, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '30d' });
+            await db.query("UPDATE users SET last_login_at = datetime('now') WHERE id = ?", [adminUser.id]);
+            adminUser.last_login_at = new Date().toISOString();
             return res.json({ token, user: adminUser });
         }
 
@@ -53,6 +55,8 @@ exports.login = async (req, res) => {
         }
 
         const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
+        await db.query("UPDATE users SET last_login_at = datetime('now') WHERE id = ?", [user.id]);
+        user.last_login_at = new Date().toISOString();
         res.json({ token, user });
 
     } catch (error) {
@@ -62,6 +66,7 @@ exports.login = async (req, res) => {
 
 exports.me = async (req, res) => {
     try {
+        await db.query("UPDATE users SET last_login_at = datetime('now') WHERE id = ?", [req.user.id]);
         const userRes = await db.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
         if(userRes.rows.length === 0) return res.status(404).json({error: "User not found"});
         res.json({ user: userRes.rows[0] });

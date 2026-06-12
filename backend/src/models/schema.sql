@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     invite_code_id INTEGER REFERENCES invite_codes(id),
     daily_usage_count INTEGER DEFAULT 0,
     last_usage_reset DATE DEFAULT CURRENT_DATE,
+    last_login_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

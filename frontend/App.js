@@ -13,6 +13,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
+import ChoosePathScreen from './src/screens/ChoosePathScreen';
 import apiClient, { loadAuthToken, setAuthToken } from './src/api/client';
 import { theme } from './src/theme';
 
@@ -26,6 +27,9 @@ function ProfileStack({ onLogout }) {
         {(props) => <ProfileScreen {...props} onLogout={onLogout} />}
       </Stack.Screen>
       <Stack.Screen name="Admin" component={AdminScreen} />
+      <Stack.Screen name="ChoosePathEdit">
+        {(props) => <ChoosePathScreen {...props} isEdit={true} onComplete={() => props.navigation.goBack()} />}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }
@@ -80,6 +84,7 @@ function MainTabs({ onLogout, userRole }) {
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -92,6 +97,13 @@ export default function App() {
         try {
             const res = await apiClient.get('/auth/me');
             setUserRole(res.data.user.role);
+            
+            // Check onboarding requirement
+            const tracksRes = await apiClient.get('/lifestyle/my-tracks');
+            if (!tracksRes.data || tracksRes.data.length === 0) {
+                setNeedsOnboarding(true);
+            }
+            
             setIsAuthenticated(true);
         } catch (e) {
             await setAuthToken(null);
@@ -100,14 +112,23 @@ export default function App() {
     setLoading(false);
   };
 
-  const handleLoginSuccess = (user) => {
+  const handleLoginSuccess = async (user) => {
       setUserRole(user.role);
+      try {
+          const tracksRes = await apiClient.get('/lifestyle/my-tracks');
+          if (!tracksRes.data || tracksRes.data.length === 0) {
+              setNeedsOnboarding(true);
+          }
+      } catch (e) {
+          console.error('Error fetching tracks:', e);
+      }
       setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
       setIsAuthenticated(false);
       setUserRole(null);
+      setNeedsOnboarding(false);
   };
 
   if (loading) {
@@ -121,7 +142,11 @@ export default function App() {
   return (
     <NavigationContainer>
       {isAuthenticated ? (
-         <MainTabs onLogout={handleLogout} userRole={userRole} />
+         needsOnboarding ? (
+           <ChoosePathScreen onComplete={() => setNeedsOnboarding(false)} />
+         ) : (
+           <MainTabs onLogout={handleLogout} userRole={userRole} />
+         )
       ) : (
          <LoginScreen onLoginSuccess={handleLoginSuccess} />
       )}

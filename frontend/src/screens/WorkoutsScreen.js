@@ -202,7 +202,7 @@ export default function WorkoutsScreen({ route, navigation }) {
   const fetchRecommendation = async () => {
     try {
       setLoadingRecommendation(true);
-      const res = await apiClient.get(`/recommendations/workout-coach?date=${selectedDate}`);
+      const res = await apiClient.get(`/recommendations/workout-coach?date=${selectedDate}&today=${getLocalDateString()}`);
       setRecommendation(res.data);
     } catch (e) {
       console.error('Failed to fetch recommendation:', e);

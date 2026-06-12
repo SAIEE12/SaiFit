@@ -44,7 +44,7 @@ const getUserLifestyleContext = async (userId) => {
 exports.getRecommendations = async (req, res) => {
   try {
     const user_id = req.user.id;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = req.query.today || new Date().toISOString().split('T')[0];
     const selectedDate = req.query.date || todayStr;
 
     const existingRec = await db.query(
@@ -76,6 +76,7 @@ exports.getRecommendations = async (req, res) => {
         .replace('{{COUNT}}', recentWorkouts.rows.length);
 
     let recommendation;
+    let isSuccess = true;
     try {
         const responseText = await safeGenerateContent(finalPrompt);
         
@@ -86,21 +87,25 @@ exports.getRecommendations = async (req, res) => {
         recommendation = JSON.parse(jsonMatch[0]);
         await logAiUsage(user_id, 'workout');
     } catch (aiError) {
-        console.error('Gemini API Error, using fallback:', aiError.message);
+        console.error('Gemini API Error, using error fallback:', aiError.message);
         recommendation = {
-            workout_plan: "Active Recovery Day",
-            exercises: ["30 min light walking", "15 min full body stretching"],
-            recovery_advice: "Your AI coach is taking a short break. Focus on mobility and recovery!"
+            isError: true,
+            workout_plan: "AI Coach Offline",
+            exercises: [],
+            recovery_advice: "Failed to connect to AI Coach. Please verify your GEMINI_API_KEY is configured in your backend environment."
         };
+        isSuccess = false;
     }
 
-    try {
-        await db.query(
-          'INSERT INTO recommendations (user_id, type, content, date) VALUES (?, ?, ?, ?)',
-          [user_id, 'workout', JSON.stringify(recommendation), selectedDate]
-        );
-    } catch (dbError) {
-        console.error('Failed to save recommendation to DB:', dbError.message);
+    if (isSuccess) {
+        try {
+            await db.query(
+              'INSERT INTO recommendations (user_id, type, content, date) VALUES (?, ?, ?, ?)',
+              [user_id, 'workout', JSON.stringify(recommendation), selectedDate]
+            );
+        } catch (dbError) {
+            console.error('Failed to save recommendation to DB:', dbError.message);
+        }
     }
 
     res.json(recommendation);
@@ -114,7 +119,7 @@ exports.getRecommendations = async (req, res) => {
 exports.getInsight = async (req, res) => {
     try {
         const userId = req.user.id;
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = req.query.today || new Date().toISOString().split('T')[0];
         const selectedDate = req.query.date || todayStr;
 
         // Check cache first
@@ -232,7 +237,7 @@ exports.getInsight = async (req, res) => {
 exports.getWorkoutCoach = async (req, res) => {
     try {
         const userId = req.user.id;
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = req.query.today || new Date().toISOString().split('T')[0];
         const selectedDate = req.query.date || todayStr;
 
         // Check cache first

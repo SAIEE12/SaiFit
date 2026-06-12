@@ -120,5 +120,39 @@ router.delete('/invites/:id', async (req, res) => {
     }
 });
 
+router.get('/settings', async (req, res) => {
+    try {
+        const apiKeyRes = await db.query("SELECT value FROM system_settings WHERE key = 'gemini_api_key' LIMIT 1");
+        const apiKey = apiKeyRes.rows.length > 0 ? apiKeyRes.rows[0].value : '';
+        const maskedKey = apiKey ? '••••••••' + apiKey.slice(-4) : '';
+        
+        res.json({
+            gemini_api_key: maskedKey
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/settings', async (req, res) => {
+    try {
+        const { gemini_api_key } = req.body;
+        
+        if (gemini_api_key !== undefined) {
+            if (gemini_api_key === '') {
+                await db.query("DELETE FROM system_settings WHERE key = 'gemini_api_key'");
+            } else if (!gemini_api_key.startsWith('••••••••')) {
+                await db.query(
+                    "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('gemini_api_key', ?)",
+                    [gemini_api_key]
+                );
+            }
+        }
+        
+        res.json({ message: 'Settings updated successfully' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 module.exports = router;

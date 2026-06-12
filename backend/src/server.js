@@ -29,6 +29,9 @@ try {
 try {
   db.exec("ALTER TABLE users ADD COLUMN last_login_at DATETIME;");
 } catch (e) {}
+try {
+  db.exec("CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);");
+} catch (e) {}
 
 const app = express();
 

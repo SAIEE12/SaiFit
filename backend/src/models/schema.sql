@@ -184,4 +184,10 @@ INSERT OR IGNORE INTO lifestyle_tracks (id, key, display_name, description, icon
 (3, 'yoga_meditation', 'Yoga & Meditation', 'Yoga asanas, breathing practices, and meditation for holistic wellbeing', 'spa'),
 (4, 'dance', 'Dance', 'Dance-based cardio and movement practice', 'music');
 
+CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 

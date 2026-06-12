@@ -1,13 +1,23 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const db = require('./db');
 require('dotenv').config();
 
 /**
- * Gets the AI instance using the GEMINI_API_KEY from environment variables
+ * Gets the AI instance using the GEMINI_API_KEY from system_settings database table or environment variables
  */
 const getAIInstance = async () => {
-    const apiKey = process.env.GEMINI_API_KEY;
+    let apiKey = process.env.GEMINI_API_KEY;
+    try {
+        const res = await db.query("SELECT value FROM system_settings WHERE key = 'gemini_api_key' LIMIT 1");
+        if (res.rows && res.rows.length > 0 && res.rows[0].value) {
+            apiKey = res.rows[0].value;
+        }
+    } catch (err) {
+        console.error('Failed to fetch GEMINI_API_KEY from database settings, using env fallback:', err.message);
+    }
+    
     if (!apiKey) {
-        console.warn('GEMINI_API_KEY not found in environment variables.');
+        console.warn('GEMINI_API_KEY not found in environment variables or database settings.');
     }
     return new GoogleGenerativeAI(apiKey || '');
 };

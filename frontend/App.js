@@ -3,7 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -36,6 +36,10 @@ function ProfileStack({ onLogout }) {
 }
 
 function MainTabs({ onLogout, userRole }) {
+  const insets = useSafeAreaInsets();
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : 12;
+  const tabHeight = 52 + bottomPadding;
+
   return (
     <Tab.Navigator
         screenOptions={({ route }) => ({
@@ -60,8 +64,8 @@ function MainTabs({ onLogout, userRole }) {
             shadowRadius: 15,
             shadowOffset: { width: 0, height: -5 },
             backgroundColor: theme.colors.card,
-            height: 80,
-            paddingBottom: 25,
+            height: tabHeight,
+            paddingBottom: bottomPadding,
             paddingTop: 10,
           },
           tabBarLabelStyle: {

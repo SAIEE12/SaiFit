@@ -24,15 +24,24 @@ export default function AICoachCard({
   const sparkleOpacity = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
-    const sparkleLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(sparkleOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(sparkleOpacity, { toValue: 0.6, duration: 800, useNativeDriver: true })
-      ])
-    );
-    sparkleLoop.start();
-    return () => sparkleLoop.stop();
-  }, []);
+    let sparkleLoop;
+    if (expanded || loading) {
+      sparkleLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(sparkleOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(sparkleOpacity, { toValue: 0.6, duration: 800, useNativeDriver: true })
+        ])
+      );
+      sparkleLoop.start();
+    } else {
+      sparkleOpacity.setValue(1.0);
+    }
+    return () => {
+      if (sparkleLoop) {
+        sparkleLoop.stop();
+      }
+    };
+  }, [expanded, loading]);
 
   if (loading) {
     return (

@@ -747,13 +747,19 @@ export default function DashboardScreen({ navigation }) {
                 <View style={styles.hydrationActionRow}>
                   {/* Decrement (-) Button */}
                   <TouchableWithoutFeedback
-                    onPress={() => adjustHydration(-250)}
-                    onPressIn={handlePressInMinus}
-                    onPressOut={handlePressOutMinus}
+                    onPress={() => hydration > 0 && adjustHydration(-250)}
+                    onPressIn={() => hydration > 0 && handlePressInMinus()}
+                    onPressOut={() => hydration > 0 && handlePressOutMinus()}
+                    disabled={hydration <= 0}
                     accessibilityLabel="Log 250 milliliters water less"
                     accessibilityRole="button"
                   >
-                    <Animated.View style={[styles.actionButton, styles.minusBtn, { transform: [{ scale: minusScale }] }]}>
+                    <Animated.View style={[
+                      styles.actionButton,
+                      styles.minusBtn,
+                      { transform: [{ scale: minusScale }] },
+                      hydration <= 0 && { opacity: 0.4 }
+                    ]}>
                       <Feather name="minus" size={16} color={theme.colors.info} />
                     </Animated.View>
                   </TouchableWithoutFeedback>

@@ -67,8 +67,9 @@ router.delete('/invites/:id', async (req, res) => {
         
         const inviteRes = await db.query('SELECT * FROM invite_codes WHERE id = ?', [inviteId]);
         if (inviteRes.rows.length === 0) return res.status(404).json({ error: 'Invite not found' });
-        if (inviteRes.rows[0].is_used) return res.status(400).json({ error: 'Cannot delete an invite code that has already been used' });
 
+        // Set referencing users' invite_code_id to NULL to satisfy foreign key constraint
+        await db.query('UPDATE users SET invite_code_id = NULL WHERE invite_code_id = ?', [inviteId]);
         await db.query('DELETE FROM invite_codes WHERE id = ?', [inviteId]);
         res.json({ message: 'Invite code deleted successfully' });
     } catch(e) {

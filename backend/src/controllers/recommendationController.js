@@ -131,7 +131,6 @@ exports.getInsight = async (req, res) => {
         }
 
         // Load Context Variables
-        const todayStr = new Date().toISOString().split('T')[0];
         const yesterdayDate = new Date();
         yesterdayDate.setDate(yesterdayDate.getDate() - 1);
         const yesterdayStr = yesterdayDate.toISOString().split('T')[0];

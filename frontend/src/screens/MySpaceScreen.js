@@ -344,12 +344,12 @@ export default function MySpaceScreen({ navigation }) {
           {/* Macro Balance */}
           <SectionHeader title="MACRO TRACKER" />
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll} contentContainerStyle={styles.horizontalScrollContent}>
+          <View style={styles.macrosRow}>
             {/* Protein Card */}
-            <Card style={[styles.macroCard, { borderLeftColor: theme.colors.primary, borderLeftWidth: 4 }]}>
+            <Card style={[styles.macroCard, { borderLeftColor: theme.colors.primary, borderLeftWidth: 3 }]}>
               <Text style={styles.macroTitle}>Protein</Text>
-              <Text style={styles.macroValue}>
-                {nutritionSummary.protein}g <Text style={styles.macroTarget}>/ 140g</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit style={styles.macroValue}>
+                {nutritionSummary.protein}g<Text style={styles.macroTarget}>/140g</Text>
               </Text>
               <View style={styles.progressBarBg}>
                 <View style={[styles.progressBarFill, { width: `${Math.min(100, (nutritionSummary.protein / 140) * 100)}%`, backgroundColor: theme.colors.primary }]} />
@@ -357,10 +357,10 @@ export default function MySpaceScreen({ navigation }) {
             </Card>
             
             {/* Carbs Card */}
-            <Card style={[styles.macroCard, { borderLeftColor: theme.colors.success, borderLeftWidth: 4 }]}>
+            <Card style={[styles.macroCard, { borderLeftColor: theme.colors.success, borderLeftWidth: 3 }]}>
               <Text style={styles.macroTitle}>Carbs</Text>
-              <Text style={styles.macroValue}>
-                {nutritionSummary.carbs}g <Text style={styles.macroTarget}>/ 200g</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit style={styles.macroValue}>
+                {nutritionSummary.carbs}g<Text style={styles.macroTarget}>/200g</Text>
               </Text>
               <View style={styles.progressBarBg}>
                 <View style={[styles.progressBarFill, { width: `${Math.min(100, (nutritionSummary.carbs / 200) * 100)}%`, backgroundColor: theme.colors.success }]} />
@@ -368,16 +368,16 @@ export default function MySpaceScreen({ navigation }) {
             </Card>
 
             {/* Fats Card */}
-            <Card style={[styles.macroCard, { borderLeftColor: theme.colors.warning, borderLeftWidth: 4 }]}>
+            <Card style={[styles.macroCard, { borderLeftColor: theme.colors.warning, borderLeftWidth: 3 }]}>
               <Text style={styles.macroTitle}>Fats</Text>
-              <Text style={styles.macroValue}>
-                {nutritionSummary.fats}g <Text style={styles.macroTarget}>/ 65g</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit style={styles.macroValue}>
+                {nutritionSummary.fats}g<Text style={styles.macroTarget}>/65g</Text>
               </Text>
               <View style={styles.progressBarBg}>
                 <View style={[styles.progressBarFill, { width: `${Math.min(100, (nutritionSummary.fats / 65) * 100)}%`, backgroundColor: theme.colors.warning }]} />
               </View>
             </Card>
-          </ScrollView>
+          </View>
 
           {/* AI Insight */}
           {recommendation && !recommendation.disabled && (
@@ -741,30 +741,31 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     borderRadius: 4,
   },
-  horizontalScroll: {
+  macrosRow: {
+    flexDirection: 'row',
+    marginHorizontal: theme.spacing.xxl,
     marginBottom: theme.spacing.xl,
-  },
-  horizontalScrollContent: {
-    paddingLeft: theme.spacing.xxl,
-    paddingRight: theme.spacing.sm,
+    gap: 8,
   },
   macroCard: {
-    width: 140,
-    marginRight: theme.spacing.lg,
+    flex: 1,
+    padding: theme.spacing.md,
   },
   macroTitle: {
-    ...theme.typography.h5,
-    color: theme.colors.textPrimary,
-    marginBottom: 6,
+    ...theme.typography.captionStrong,
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
   },
   macroValue: {
-    ...theme.typography.h4,
+    ...theme.typography.bodySmall,
+    fontWeight: '800',
     color: theme.colors.textPrimary,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   macroTarget: {
     ...theme.typography.caption,
     color: theme.colors.textSecondary,
+    fontWeight: '500',
   },
   progressBarBg: {
     height: 5,

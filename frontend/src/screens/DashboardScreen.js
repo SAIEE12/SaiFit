@@ -18,7 +18,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../api/client';
-import CalendarStrip from '../components/CalendarStrip';
 import { theme } from '../theme';
 import ScreenContainer from '../components/ui/ScreenContainer';
 import { SectionHeader } from '../components/ui/Header';
@@ -557,10 +556,7 @@ export default function DashboardScreen({ navigation }) {
         </TouchableWithoutFeedback>
       </Animated.View>
 
-      {/* Calendar Strip Container */}
-      <Animated.View style={getEntranceStyle(0)}>
-        <CalendarStrip selectedDate={selectedDate} onDateSelected={setSelectedDate} />
-      </Animated.View>
+
 
       {/* Main Content Area */}
       <ScrollView

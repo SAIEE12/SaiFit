@@ -24,6 +24,9 @@ export default function AdminScreen({ navigation }) {
     const [showUsers, setShowUsers] = useState(true);
     const [showAiUsage, setShowAiUsage] = useState(true);
     const [showUserActivity, setShowUserActivity] = useState(true);
+    const [showSettings, setShowSettings] = useState(true);
+    const [geminiKey, setGeminiKey] = useState('');
+    const [secureKeyEntry, setSecureKeyEntry] = useState(true);
 
     // Inline Quota Edit state
     const [editingUserId, setEditingUserId] = useState(null);
@@ -77,13 +80,36 @@ export default function AdminScreen({ navigation }) {
         }
     };
 
+    const fetchSettings = async () => {
+        try {
+            const res = await apiClient.get('/admin/settings');
+            setGeminiKey(res.data.gemini_api_key || '');
+        } catch (e) {
+            console.error("Failed to load system settings:", e);
+        }
+    };
+
+    const saveSettings = async () => {
+        try {
+            setLoading(true);
+            await apiClient.post('/admin/settings', { gemini_api_key: geminiKey });
+            showDialog("Success", "System settings updated successfully.", "success");
+            fetchSettings();
+        } catch (e) {
+            showDialog("Error", e.response?.data?.error || "Could not update system settings.", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fetchData = async () => {
         try {
             setLoading(true);
             const [usersRes, invitesRes, activityRes] = await Promise.all([
                 apiClient.get('/admin/users'),
                 apiClient.get('/admin/invites'),
-                apiClient.get('/admin/user-activity')
+                apiClient.get('/admin/user-activity'),
+                fetchSettings()
             ]);
             setUsers(usersRes.data);
             setInvites(invitesRes.data);
@@ -263,9 +289,57 @@ export default function AdminScreen({ navigation }) {
             <ScreenContainer scrollable keyboardAvoiding={false} edges={['bottom']}>
                 <View style={styles.contentContainer}>
                     
-                    {/* Invite Codes Section */}
+                    {/* System Settings Section */}
                     <TouchableOpacity 
                         style={styles.sectionHeaderRow} 
+                        onPress={() => setShowSettings(!showSettings)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.sectionTitleRow}>
+                            <Text style={styles.sectionTitle}>System Settings</Text>
+                        </View>
+                        <Feather name={showSettings ? "chevron-up" : "chevron-down"} size={20} color={theme.colors.textSecondary} />
+                    </TouchableOpacity>
+
+                    {showSettings && (
+                        <Card style={styles.createCard}>
+                            <Text style={styles.cardLabel}>Gemini API Key</Text>
+                            <Text style={styles.cardDesc}>
+                                Enter a new Gemini API Key to update the application-wide configuration. Clear the input and save to remove the key.
+                            </Text>
+                            <View style={styles.settingsInputRow}>
+                                <View style={styles.passwordContainer}>
+                                    <TextInput 
+                                        style={styles.settingsInput}
+                                        value={geminiKey}
+                                        onChangeText={setGeminiKey}
+                                        secureTextEntry={secureKeyEntry}
+                                        placeholder="Enter Gemini API Key"
+                                        placeholderTextColor={theme.colors.textTertiary}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                    />
+                                    <TouchableOpacity 
+                                        style={styles.eyeBtn} 
+                                        onPress={() => setSecureKeyEntry(!secureKeyEntry)}
+                                    >
+                                        <Feather 
+                                            name={secureKeyEntry ? "eye-off" : "eye"} 
+                                            size={18} 
+                                            color={theme.colors.textSecondary} 
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                                <Button variant="primary" size="md" onPress={saveSettings} style={styles.saveSettingsBtn}>
+                                    Save
+                                </Button>
+                            </View>
+                        </Card>
+                    )}
+
+                    {/* Invite Codes Section */}
+                    <TouchableOpacity 
+                        style={[styles.sectionHeaderRow, { marginTop: theme.spacing.lg }]} 
                         onPress={() => setShowInvites(!showInvites)}
                         activeOpacity={0.7}
                     >
@@ -823,5 +897,38 @@ const styles = StyleSheet.create({
         marginLeft: 6,
         paddingVertical: 2,
         paddingHorizontal: 4,
-    }
+    },
+    settingsInputRow: {
+        flexDirection: 'row',
+        marginTop: 12,
+        gap: 8,
+        alignItems: 'center',
+    },
+    passwordContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.colors.background,
+        borderRadius: theme.radii.lg,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        height: 46,
+        paddingRight: 10,
+    },
+    settingsInput: {
+        flex: 1,
+        paddingHorizontal: 12,
+        height: '100%',
+        fontSize: 13,
+        color: theme.colors.textPrimary,
+        fontWeight: '500',
+    },
+    eyeBtn: {
+        padding: 4,
+    },
+    saveSettingsBtn: {
+        borderRadius: theme.radii.lg,
+        height: 46,
+        justifyContent: 'center',
+    },
 });

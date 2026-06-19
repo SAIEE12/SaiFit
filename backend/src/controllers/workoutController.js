@@ -92,14 +92,21 @@ exports.getWorkouts = async (req, res) => {
     const user_id = req.user.id;
     const { date } = req.query;
     
-    let query = 'SELECT * FROM workout_logs WHERE user_id = $1';
+    let query = `
+      SELECT wl.*, 
+             COALESCE(COUNT(DISTINCT ws.exercise_id), 0) as exercise_count,
+             COALESCE(SUM(ws.sets), 0) as total_sets
+      FROM workout_logs wl
+      LEFT JOIN workout_sets ws ON wl.id = ws.workout_log_id
+      WHERE wl.user_id = $1
+    `;
     let params = [user_id];
 
     if (date) {
-        query += ' AND date = $2';
+        query += ' AND wl.date = $2 GROUP BY wl.id';
         params.push(date);
     } else {
-        query += ' ORDER BY date DESC';
+        query += ' GROUP BY wl.id ORDER BY wl.date DESC';
     }
 
     const workouts = await db.query(query, params);

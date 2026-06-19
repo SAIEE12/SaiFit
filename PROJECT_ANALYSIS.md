@@ -332,5 +332,6 @@ EXPO_PUBLIC_API_URL=http://<YOUR_IP>:5000/api
 6. ~~Guard hydration floor — prevent negative values~~ — **RESOLVED** (Guard added)
 7. ~~Standardize dialogs — replace Alert.alert() with CustomDialog in ProfileScreen~~ — **RESOLVED** (Standardized dialogs using CustomDialog)
 8. ~~Remove firebase-admin dependency if unused~~ — **RESOLVED** (Removed)
-9. Add dark mode theme variant
+9. Add dark mode theme variant (Pillar 2 / Task 2.8)
 10. ~~Implement real push notifications — backend + frontend integration~~ — **RESOLVED** (Real-time notification engine & frontend sync fully integrated)
+11. ~~Frontend clean architecture refactoring: extract custom hooks (useDialog, useAnimations), remove redundant wrappers, implement AuthContext and ProfileContext state managers~~ — **RESOLVED** (Phase 1 Foundation completed)

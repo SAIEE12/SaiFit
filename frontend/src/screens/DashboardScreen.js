@@ -111,6 +111,17 @@ export default function DashboardScreen({ navigation }) {
 
   const [notifications, setNotifications] = useState([]);
 
+  const getRingBorderStyles = (value, goal, activeColor) => {
+    const progress = goal > 0 ? Math.min(value / goal, 1) : 0;
+    const inactiveColor = theme.colors.border;
+    return {
+      borderTopColor: progress > 0 ? activeColor : inactiveColor,
+      borderRightColor: progress > 0.25 ? activeColor : inactiveColor,
+      borderBottomColor: progress > 0.5 ? activeColor : inactiveColor,
+      borderLeftColor: progress > 0.75 ? activeColor : inactiveColor,
+    };
+  };
+
   // Trigger loading data on focus or selectedDate change
   useFocusEffect(
     useCallback(() => {
@@ -592,6 +603,8 @@ export default function DashboardScreen({ navigation }) {
 
   const caloriesLeft = calorieGoal - nutritionSummary.calories;
   const isCalorieLimitExceeded = caloriesLeft < 0;
+  const totalExercisesLogged = dailyWorkouts.reduce((sum, w) => sum + (w.exercise_count || 0), 0);
+  const totalSetsLogged = dailyWorkouts.reduce((sum, w) => sum + (w.total_sets || 0), 0);
 
   // Render skeletons helper
   const renderSkeleton = () => (
@@ -702,68 +715,47 @@ export default function DashboardScreen({ navigation }) {
               <SectionHeader title="MACRO TRACKER" />
               <View style={styles.macrosRow}>
                 {/* Protein Card */}
-                <Card style={[styles.macroCard, { borderLeftColor: theme.colors.primary, borderLeftWidth: 3.5 }]}>
-                  <Text style={styles.macroTitle} numberOfLines={1} adjustsFontSizeToFit>Protein</Text>
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.macroValue}>
-                    {nutritionSummary.protein}g<Text style={styles.macroTarget}>/{proteinGoal}g</Text>
-                  </Text>
-                  <View style={styles.progressBarBg}>
-                    <Animated.View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: proteinAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ['0%', '100%'],
-                          }),
-                          backgroundColor: theme.colors.primary
-                        }
-                      ]}
-                    />
+                <Card style={styles.macroCard}>
+                  <View style={styles.macroCenteredContainer}>
+                    <View style={[styles.macroRing, getRingBorderStyles(nutritionSummary.protein, proteinGoal, theme.colors.primary)]}>
+                      <Text style={styles.macroPercentageText}>
+                        {proteinGoal > 0 ? Math.round((nutritionSummary.protein / proteinGoal) * 100) : 0}%
+                      </Text>
+                    </View>
+                    <Text style={styles.macroTitle} numberOfLines={1}>Protein</Text>
+                    <Text numberOfLines={1} style={styles.macroValue}>
+                      {nutritionSummary.protein}g<Text style={styles.macroTarget}>/{proteinGoal}g</Text>
+                    </Text>
                   </View>
                 </Card>
 
                 {/* Carbs Card */}
-                <Card style={[styles.macroCard, { borderLeftColor: theme.colors.success, borderLeftWidth: 3.5 }]}>
-                  <Text style={styles.macroTitle} numberOfLines={1} adjustsFontSizeToFit>Carbs</Text>
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.macroValue}>
-                    {nutritionSummary.carbs}g<Text style={styles.macroTarget}>/{carbsGoal}g</Text>
-                  </Text>
-                  <View style={styles.progressBarBg}>
-                    <Animated.View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: carbsAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ['0%', '100%'],
-                          }),
-                          backgroundColor: theme.colors.success
-                        }
-                      ]}
-                    />
+                <Card style={styles.macroCard}>
+                  <View style={styles.macroCenteredContainer}>
+                    <View style={[styles.macroRing, getRingBorderStyles(nutritionSummary.carbs, carbsGoal, theme.colors.success)]}>
+                      <Text style={styles.macroPercentageText}>
+                        {carbsGoal > 0 ? Math.round((nutritionSummary.carbs / carbsGoal) * 100) : 0}%
+                      </Text>
+                    </View>
+                    <Text style={styles.macroTitle} numberOfLines={1}>Carbs</Text>
+                    <Text numberOfLines={1} style={styles.macroValue}>
+                      {nutritionSummary.carbs}g<Text style={styles.macroTarget}>/{carbsGoal}g</Text>
+                    </Text>
                   </View>
                 </Card>
 
                 {/* Fats Card */}
-                <Card style={[styles.macroCard, { borderLeftColor: theme.colors.warning, borderLeftWidth: 3.5 }]}>
-                  <Text style={styles.macroTitle} numberOfLines={1} adjustsFontSizeToFit>Fats</Text>
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.macroValue}>
-                    {nutritionSummary.fats}g<Text style={styles.macroTarget}>/{fatsGoal}g</Text>
-                  </Text>
-                  <View style={styles.progressBarBg}>
-                    <Animated.View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: fatsAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ['0%', '100%'],
-                          }),
-                          backgroundColor: theme.colors.warning
-                        }
-                      ]}
-                    />
+                <Card style={styles.macroCard}>
+                  <View style={styles.macroCenteredContainer}>
+                    <View style={[styles.macroRing, getRingBorderStyles(nutritionSummary.fats, fatsGoal, theme.colors.warning)]}>
+                      <Text style={styles.macroPercentageText}>
+                        {fatsGoal > 0 ? Math.round((nutritionSummary.fats / fatsGoal) * 100) : 0}%
+                      </Text>
+                    </View>
+                    <Text style={styles.macroTitle} numberOfLines={1}>Fats</Text>
+                    <Text numberOfLines={1} style={styles.macroValue}>
+                      {nutritionSummary.fats}g<Text style={styles.macroTarget}>/{fatsGoal}g</Text>
+                    </Text>
                   </View>
                 </Card>
               </View>
@@ -827,9 +819,9 @@ export default function DashboardScreen({ navigation }) {
               <SectionHeader title="HEALTH METRICS" />
 
               {/* Hydration Card */}
-              <Card style={styles.metricCard}>
+              <Card style={[styles.metricCard, styles.hydrationCard]}>
                 <View style={styles.metricRow}>
-                  <View style={[styles.metricIconWrap, { backgroundColor: theme.colors.infoLight }]}>
+                  <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(0, 122, 255, 0.12)' }]}>
                     <MaterialCommunityIcons name="water" size={22} color={theme.colors.info} />
                   </View>
                   <View>
@@ -881,6 +873,14 @@ export default function DashboardScreen({ navigation }) {
                   <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
                     <Text style={styles.metricLabel}>Daily Workouts</Text>
                     <Text style={styles.metricValue}>{dailyWorkouts.length} logged today</Text>
+                    
+                    {totalExercisesLogged > 0 && (
+                      <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, marginBottom: 8 }}>
+                        <Badge variant="primary" label={`${totalExercisesLogged} Exercises`} />
+                        <Badge variant="success" label={`${totalSetsLogged} Sets`} />
+                      </View>
+                    )}
+
                     {dailyWorkouts.length > 0 && (
                       <View style={styles.workoutPillsWrapper}>
                         {dailyWorkouts.map((workout, index) => (
@@ -1213,6 +1213,11 @@ const styles = StyleSheet.create({
   calorieCard: {
     marginHorizontal: theme.spacing.xxl,
     marginVertical: theme.spacing.md,
+    borderColor: theme.colors.primaryBorder,
+    borderWidth: 1.5,
+    borderTopWidth: 4,
+    borderTopColor: theme.colors.primary,
+    ...theme.shadows.premium,
   },
   calorieHeader: {
     flexDirection: 'row',
@@ -1226,7 +1231,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   calorieValue: {
-    ...theme.typography.metricSmall,
+    ...theme.typography.metric,
     color: theme.colors.textPrimary,
   },
   calorieTarget: {
@@ -1254,10 +1259,31 @@ const styles = StyleSheet.create({
   },
   macroCard: {
     flex: 1,
-    padding: theme.spacing.md,
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.sm,
     ...theme.shadows.soft,
     borderColor: theme.colors.border,
     borderWidth: 1,
+    borderRadius: theme.radii.lg,
+  },
+  macroCenteredContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  macroRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.sm,
+    backgroundColor: 'transparent',
+  },
+  macroPercentageText: {
+    color: theme.colors.textPrimary,
+    fontSize: 10,
+    fontWeight: '900',
   },
   macroTitle: {
     ...theme.typography.captionStrong,
@@ -1268,22 +1294,17 @@ const styles = StyleSheet.create({
     ...theme.typography.bodySmall,
     fontWeight: '800',
     color: theme.colors.textPrimary,
-    marginBottom: 8,
+    fontSize: 11,
   },
   macroTarget: {
-    ...theme.typography.caption,
+    fontSize: 9,
     color: theme.colors.textSecondary,
     fontWeight: '500',
   },
-  progressBarBg: {
-    height: 5,
-    backgroundColor: theme.colors.border,
-    borderRadius: 2.5,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 2.5,
+  hydrationCard: {
+    backgroundColor: theme.colors.infoLight,
+    borderColor: 'rgba(0, 122, 255, 0.15)',
+    borderWidth: 1.5,
   },
   metricCard: {
     marginHorizontal: theme.spacing.xxl,

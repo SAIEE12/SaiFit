@@ -12,6 +12,8 @@ SaiFit is a premium, context-aware mobile fitness and nutrition tracking applica
 * **Concept Search Recipe Finder**: AI Nutrition Chef suggests high-density recipes and ingredient alternatives based on user searches, dynamically balanced against remaining daily macro targets.
 * **Workout Suggestion Engine**: Personalized personal trainer that compiles streaks, consistency metrics, and missed session fatigue data to suggest tomorrow's training split.
 * **Calendar Journey Analyst**: Evaluates a 14-day trailing log to compute consistency scores, workout predictions, chronotype timing optimization, and milestones.
+* **Conversational AI Coaching & SSE Response Streaming**: Real-time interactive coaching module supporting distinct coach personas (Workout Coach, Hydration Coach, Sleep Advisor, and Progression Coach) with persistent SQL-based conversation history, custom suggestion chips, context-aware user lifestyle injection, and progressive UI updates using Server-Sent Events (SSE).
+* **Smart Cache Invalidation**: Automatic, event-driven cache-clearing hooks triggered upon logging nutrition, workouts, hydration, or editing lifestyle tracks to ensure AI-generated plans stay in perfect sync with real-time activities.
 * **System Governance Portal**: Administrative dashboard to monitor registrations, audit token codes, configure AI models/keys, adjust prompt templates, and toggle individual feature suites dynamically.
 * **Token Quota Middleware**: Integrated usage limits checking and database logging middleware to prevent AI api abuse.
 

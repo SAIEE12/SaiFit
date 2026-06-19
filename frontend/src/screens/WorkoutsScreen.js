@@ -32,6 +32,8 @@ import { EmptyState } from '../components/ui/StateViews';
 import ModalView from '../components/ui/ModalView';
 import Toast from '../components/ui/Toast';
 import useDialog from '../hooks/useDialog';
+import GymLoggerModal from '../components/workouts/GymLoggerModal';
+import ActivityLoggerModal from '../components/workouts/ActivityLoggerModal';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -56,7 +58,6 @@ export default function WorkoutsScreen({ route, navigation }) {
   const [exercisesList, setExercisesList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   // Category selection filter state
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -73,7 +74,6 @@ export default function WorkoutsScreen({ route, navigation }) {
   const [showAiPlanModal, setShowAiPlanModal] = useState(false);
 
   // Custom picker and delete/toast states
-  const [activePickerRowIndex, setActivePickerRowIndex] = useState(null);
   const [deletingItems, setDeletingItems] = useState({});
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
 
@@ -83,18 +83,7 @@ export default function WorkoutsScreen({ route, navigation }) {
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [duration, setDuration] = useState('');
-  const [addedExercises, setAddedExercises] = useState([]);
-
-  // Log Activity Form State
   const [showActivityModal, setShowActivityModal] = useState(false);
-  const [activityName, setActivityName] = useState('');
-  const [activityCategory, setActivityCategory] = useState('yoga');
-  const [activityDuration, setActivityDuration] = useState('');
-  const [activityIntensity, setActivityIntensity] = useState('medium');
-  const [activityNotes, setActivityNotes] = useState('');
-  const [activityTrackId, setActivityTrackId] = useState('');
 
   // Reusable Dialog Hook
   const { dialog, showDialog } = useDialog();
@@ -315,45 +304,7 @@ export default function WorkoutsScreen({ route, navigation }) {
     );
   };
 
-  const handleSaveActivity = async () => {
-    if (!activityName.trim()) {
-      showDialog('Required Field', 'Please enter an activity name.', 'warning');
-      return;
-    }
-    if (!activityDuration || isNaN(activityDuration)) {
-      showDialog('Invalid Input', 'Please enter a valid duration in minutes.', 'warning');
-      return;
-    }
 
-    try {
-      setSaving(true);
-      const payload = {
-        track_id: activityTrackId ? parseInt(activityTrackId) : null,
-        activity_name: activityName.trim(),
-        category: activityCategory,
-        date: selectedDate,
-        duration_minutes: parseInt(activityDuration),
-        intensity: activityIntensity,
-        notes: activityNotes.trim()
-      };
-
-      await apiClient.post('/activities/log', payload);
-      showDialog('Logged! 🎉', 'Your activity has been recorded successfully.', 'success', () => {
-        setActivityName('');
-        setActivityDuration('');
-        setActivityNotes('');
-        setActivityTrackId('');
-        setActivityCategory('yoga');
-        setActivityIntensity('medium');
-        setShowActivityModal(false);
-        fetchWorkouts();
-      });
-    } catch (e) {
-      showDialog('Logging Failed', e.response?.data?.error || e.message, 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const fetchExercisesList = async () => {
     try {
@@ -364,93 +315,7 @@ export default function WorkoutsScreen({ route, navigation }) {
     }
   };
 
-  const getFilteredExercises = () => {
-    if (!selectedCategory) return exercisesList;
-    return exercisesList.filter(
-      ex => ex.category && ex.category.toLowerCase() === selectedCategory.toLowerCase()
-    );
-  };
 
-  const handleAddExerciseRow = () => {
-    const list = getFilteredExercises();
-    if (list.length === 0) {
-      showDialog('Warning', 'No exercises available in this category.', 'warning');
-      return;
-    }
-    setAddedExercises([
-      ...addedExercises,
-      {
-        exercise_id: list[0].id.toString(),
-        sets: '3',
-        reps: '10',
-        weight: '60'
-      }
-    ]);
-  };
-
-  const handleRemoveExerciseRow = (index) => {
-    const updated = [...addedExercises];
-    updated.splice(index, 1);
-    setAddedExercises(updated);
-  };
-
-  const handleUpdateExerciseRow = (index, field, value) => {
-    const updated = [...addedExercises];
-    updated[index][field] = value;
-    setAddedExercises(updated);
-  };
-
-  const handleSaveWorkout = async () => {
-    if (!notes.trim()) {
-      showDialog('Required Field', 'Please enter workout name or notes.', 'warning');
-      return;
-    }
-    if (!duration || isNaN(duration)) {
-      showDialog('Invalid Input', 'Please enter a valid duration in minutes.', 'warning');
-      return;
-    }
-    if (addedExercises.length === 0) {
-      showDialog('No Exercises', 'Please add at least one exercise row to this session.', 'warning');
-      return;
-    }
-
-    // Validate exercise fields
-    for (let i = 0; i < addedExercises.length; i++) {
-      const ex = addedExercises[i];
-      if (!ex.sets || isNaN(ex.sets) || !ex.reps || isNaN(ex.reps) || !ex.weight || isNaN(ex.weight)) {
-        showDialog('Invalid Metrics', `Please make sure Sets, Reps, and Weight are numeric in Row #${i + 1}.`, 'warning');
-        return;
-      }
-    }
-
-    try {
-      setSaving(true);
-      const payload = {
-        date: selectedDate,
-        notes: notes.trim(),
-        duration_minutes: parseInt(duration),
-        exercises: addedExercises.map(ex => ({
-          exercise_id: parseInt(ex.exercise_id),
-          sets: parseInt(ex.sets),
-          reps: parseInt(ex.reps),
-          weight: parseFloat(ex.weight)
-        }))
-      };
-
-      await apiClient.post('/workouts/log', payload);
-      showDialog('Logged! 🎉', 'Your workout session has been recorded successfully.', 'success', () => {
-        setNotes('');
-        setDuration('');
-        setAddedExercises([]);
-        setShowModal(false);
-        fetchWorkouts();
-      });
-    } catch (e) {
-      showDialog('Logging Failed', e.response?.data?.error || e.message, 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   // Categories metadata with matching DB values
   const categories = [
@@ -832,212 +697,30 @@ export default function WorkoutsScreen({ route, navigation }) {
       </ScreenContainer>
 
       {/* Log Workout Modal */}
-      <ModalView visible={showModal} title="Log Workout" onClose={() => setShowModal(false)}>
-        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-          <Text style={styles.inputLabel}>Workout Name / Notes</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Upper Body Strength"
-            placeholderTextColor={theme.colors.textTertiary}
-            value={notes}
-            onChangeText={setNotes}
-          />
+      <GymLoggerModal
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        selectedDate={selectedDate}
+        exercisesList={exercisesList}
+        selectedCategory={selectedCategory}
+        onSaveSuccess={() => {
+          setShowModal(false);
+          fetchWorkouts();
+        }}
+        showDialog={showDialog}
+      />
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 15 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Duration (minutes)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 45"
-                placeholderTextColor={theme.colors.textTertiary}
-                value={duration}
-                onChangeText={setDuration}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Selected Date</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.colors.border, color: theme.colors.textSecondary }]}
-                value={selectedDate}
-                editable={false}
-              />
-            </View>
-          </View>
-
-          {/* Dynamic Exercises Sets Builder */}
-          <View style={styles.exerciseSectionHeader}>
-            <Text style={styles.exerciseSectionTitle}>Exercises & Sets</Text>
-            <Button variant="secondary" size="sm" onPress={handleAddExerciseRow} icon={<Feather name="plus" size={14} color="#FFF" />}>
-              Add Row
-            </Button>
-          </View>
-
-          {addedExercises.map((row, idx) => (
-            <Card key={idx} style={styles.exerciseRowCard}>
-              <View style={styles.exerciseRowHeader}>
-                <Text style={styles.exerciseRowTitle}>Exercise #{idx + 1}</Text>
-                <TouchableOpacity onPress={() => handleRemoveExerciseRow(idx)} accessibilityLabel={`Remove exercise row ${idx + 1}`} accessibilityRole="button">
-                  <Feather name="trash-2" size={16} color={theme.colors.danger} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Custom Cross-Platform Exercise Selector */}
-              <TouchableOpacity
-                style={styles.customPickerButton}
-                onPress={() => setActivePickerRowIndex(idx)}
-                accessibilityLabel="Select exercise type"
-                accessibilityRole="button"
-              >
-                <Text style={styles.customPickerButtonText}>
-                  {getFilteredExercises().find(ex => ex.id.toString() === row.exercise_id.toString())?.name || "Select Exercise"}
-                </Text>
-                <Feather name="chevron-down" size={16} color={theme.colors.textSecondary} />
-              </TouchableOpacity>
-
-              {/* Sets, Reps, Weight metrics layout */}
-              <View style={styles.metricsRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.metricLabel}>Sets</Text>
-                  <TextInput
-                    style={styles.metricInput}
-                    value={row.sets}
-                    onChangeText={(val) => handleUpdateExerciseRow(idx, 'sets', val)}
-                    keyboardType="numeric"
-                    placeholder="3"
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.metricLabel}>Reps</Text>
-                  <TextInput
-                    style={styles.metricInput}
-                    value={row.reps}
-                    onChangeText={(val) => handleUpdateExerciseRow(idx, 'reps', val)}
-                    keyboardType="numeric"
-                    placeholder="10"
-                  />
-                </View>
-                <View style={{ flex: 1.2 }}>
-                  <Text style={styles.metricLabel}>Weight (kg)</Text>
-                  <TextInput
-                    style={styles.metricInput}
-                    value={row.weight}
-                    onChangeText={(val) => handleUpdateExerciseRow(idx, 'weight', val)}
-                    keyboardType="numeric"
-                    placeholder="60"
-                  />
-                </View>
-              </View>
-            </Card>
-          ))}
-
-          {addedExercises.length === 0 && (
-            <View style={styles.emptyExerciseBox}>
-              <Text style={styles.emptyExerciseText}>No exercises added. Tap "Add Row" to customize.</Text>
-            </View>
-          )}
-
-          {/* Save Button */}
-          <Button variant="primary" size="lg" onPress={handleSaveWorkout} loading={saving} style={{ marginTop: 20 }}>
-            Save Session
-          </Button>
-
-          <View style={{ height: 60 }} />
-        </ScrollView>
-      </ModalView>
-
-      {/* Log Activity Modal */}
-      <ModalView visible={showActivityModal} title="Log Custom Activity" onClose={() => setShowActivityModal(false)}>
-        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-          <Text style={styles.inputLabel}>Activity Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Morning Hatha Yoga, Evening Dance"
-            placeholderTextColor={theme.colors.textTertiary}
-            value={activityName}
-            onChangeText={setActivityName}
-          />
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 15 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Duration (minutes)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 30"
-                placeholderTextColor={theme.colors.textTertiary}
-                value={activityDuration}
-                onChangeText={setActivityDuration}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Intensity</Text>
-              <View style={styles.pickerWrap}>
-                <Picker
-                  selectedValue={activityIntensity}
-                  onValueChange={(val) => setActivityIntensity(val)}
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
-                >
-                  <Picker.Item label="Low" value="low" />
-                  <Picker.Item label="Medium" value="medium" />
-                  <Picker.Item label="High" value="high" />
-                </Picker>
-              </View>
-            </View>
-          </View>
-
-          <Text style={styles.inputLabel}>Category</Text>
-          <View style={styles.pickerWrap}>
-            <Picker
-              selectedValue={activityCategory}
-              onValueChange={(val) => setActivityCategory(val)}
-              style={styles.picker}
-              itemStyle={styles.pickerItem}
-            >
-              <Picker.Item label="Yoga" value="yoga" />
-              <Picker.Item label="Meditation" value="meditation" />
-              <Picker.Item label="Dance" value="dance" />
-              <Picker.Item label="Cardio" value="cardio" />
-              <Picker.Item label="Strength" value="strength" />
-              <Picker.Item label="Other" value="other" />
-            </Picker>
-          </View>
-
-          <Text style={styles.inputLabel}>Associate with lifestyle track (Optional)</Text>
-          <View style={styles.pickerWrap}>
-            <Picker
-              selectedValue={activityTrackId}
-              onValueChange={(val) => setActivityTrackId(val)}
-              style={styles.picker}
-              itemStyle={styles.pickerItem}
-            >
-              <Picker.Item label="None" value="" />
-              {tracks.map((t) => (
-                <Picker.Item key={t.id} label={t.display_name} value={t.id.toString()} />
-              ))}
-            </Picker>
-          </View>
-
-          <Text style={styles.inputLabel}>Notes</Text>
-          <TextInput
-            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-            placeholder="e.g. Felt highly energetic, practiced deep breathing"
-            placeholderTextColor={theme.colors.textTertiary}
-            multiline
-            numberOfLines={3}
-            value={activityNotes}
-            onChangeText={setActivityNotes}
-          />
-
-          {/* Save Button */}
-          <Button variant="primary" size="lg" onPress={handleSaveActivity} loading={saving} style={{ marginTop: 20 }}>
-            Log Activity
-          </Button>
-
-          <View style={{ height: 60 }} />
-        </ScrollView>
-      </ModalView>
+      <ActivityLoggerModal
+        visible={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        selectedDate={selectedDate}
+        tracks={tracks}
+        onSaveSuccess={() => {
+          setShowActivityModal(false);
+          fetchWorkouts();
+        }}
+        showDialog={showDialog}
+      />
 
       {/* AI Plan Modal */}
       <ModalView visible={showAiPlanModal} title="AI Workout Plan" onClose={() => setShowAiPlanModal(false)}>
@@ -1113,42 +796,6 @@ export default function WorkoutsScreen({ route, navigation }) {
         onConfirm={dialog.onConfirm}
         onCancel={dialog.onCancel}
       />
-
-      {/* Exercise Picker Modal */}
-      <ModalView
-        visible={activePickerRowIndex !== null}
-        title="Select Exercise"
-        onClose={() => setActivePickerRowIndex(null)}
-      >
-        <ScrollView style={{ padding: theme.spacing.lg }} showsVerticalScrollIndicator={false}>
-          {activePickerRowIndex !== null && getFilteredExercises().map((item) => {
-            const isSelected = addedExercises[activePickerRowIndex]?.exercise_id?.toString() === item.id.toString();
-            return (
-              <TouchableOpacity
-                key={item.id}
-                style={[
-                  styles.pickerItemRow,
-                  isSelected && styles.pickerItemRowSelected
-                ]}
-                onPress={() => {
-                  handleUpdateExerciseRow(activePickerRowIndex, 'exercise_id', item.id.toString());
-                  setActivePickerRowIndex(null);
-                }}
-              >
-                <Text style={[
-                  styles.pickerItemRowText,
-                  isSelected && styles.pickerItemRowTextSelected
-                ]}>
-                  {item.name}
-                </Text>
-                {isSelected && (
-                  <Feather name="check" size={16} color={theme.colors.primary} />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </ModalView>
 
       {/* Toast Notification */}
       <Toast

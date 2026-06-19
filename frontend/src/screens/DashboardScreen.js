@@ -28,6 +28,8 @@ import AICoachCard from '../components/ui/AICoachCard';
 import Badge from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/StateViews';
 import CalendarStrip from '../components/CalendarStrip';
+import NotificationModal from '../components/notifications/NotificationModal';
+import ContextMenuSheet from '../components/notifications/ContextMenuSheet';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -924,232 +926,34 @@ export default function DashboardScreen({ navigation }) {
       </ScrollView>
 
       {/* Notifications Modal */}
-      <Modal
+      <NotificationModal
         visible={showNotifications}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowNotifications(false)}
-      >
-        <View style={styles.modalContainer}>
-          {/* Modal Header */}
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Notifications</Text>
-            <TouchableOpacity onPress={() => setShowNotifications(false)} style={styles.closeHeaderBtn}>
-              <Feather name="chevron-down" size={20} color={theme.colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Modal Body */}
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-            {/* Notifications Toolbar */}
-            <View style={styles.notificationToolsBar}>
-              <Text style={styles.notificationCountText}>
-                {notifications.filter(n => !n.isRead).length} unread
-              </Text>
-              <View style={styles.toolsActions}>
-                {hasUnread && (
-                  <TouchableOpacity onPress={markAllAsRead} style={styles.toolActionBtn}>
-                    <Feather name="check-square" size={13} color={theme.colors.primary} style={{ marginRight: 4 }} />
-                    <Text style={styles.toolActionText}>Mark Read</Text>
-                  </TouchableOpacity>
-                )}
-                {notifications.length > 0 && (
-                  <>
-                    {hasUnread && <View style={styles.toolSeparator} />}
-                    <TouchableOpacity onPress={clearAllNotifications} style={styles.toolActionBtn}>
-                      <Feather name="trash-2" size={13} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />
-                      <Text style={[styles.toolActionText, { color: theme.colors.textSecondary }]}>Clear All</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            </View>
-
-            {/* Empathy Tone Selector */}
-            <View style={styles.toneSelectorContainer}>
-              <TouchableOpacity onPress={() => setCoachTone('Supportive')} style={[styles.toneBtn, coachTone === 'Supportive' && styles.toneBtnActive]}>
-                <Text style={[styles.toneBtnText, coachTone === 'Supportive' && styles.toneBtnTextActive]}>Supportive</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setCoachTone('Direct')} style={[styles.toneBtn, coachTone === 'Direct' && styles.toneBtnActive]}>
-                <Text style={[styles.toneBtnText, coachTone === 'Direct' && styles.toneBtnTextActive]}>Direct</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setCoachTone('Challenger')} style={[styles.toneBtn, coachTone === 'Challenger' && styles.toneBtnActive]}>
-                <Text style={[styles.toneBtnText, coachTone === 'Challenger' && styles.toneBtnTextActive]}>Challenger 🔥</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Notification List Stream */}
-            {sortedNotifications.map((item) => {
-              const content = getNotificationContent(item);
-              const itemBgColor = item.bgColor || (item.color ? item.color + '20' : theme.colors.primaryLight);
-              const isItemMuted = mutedCategories.includes(item.category);
-              
-              // Parse Action Payload
-              let actionPayload = {};
-              try {
-                if (item.action_payload) {
-                  actionPayload = typeof item.action_payload === 'string' 
-                    ? JSON.parse(item.action_payload) 
-                    : item.action_payload;
-                }
-              } catch (_) {}
-
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  activeOpacity={0.9}
-                  onPress={() => markAsRead(item.id)}
-                  onLongPress={() => openContextMenu(item)}
-                  delayLongPress={400}
-                  style={[
-                    styles.notificationCard,
-                    !item.isRead && styles.notificationCardUnread,
-                    item.isPinned && styles.notificationCardPinned
-                  ]}
-                >
-                  <View style={[styles.notificationIconWrap, { backgroundColor: itemBgColor }]}>
-                    {renderNotificationIcon(item)}
-                  </View>
-
-                  <View style={styles.notificationContent}>
-                    <View style={styles.notificationHeaderRow}>
-                      <View style={styles.categoryBadgeRow}>
-                        {item.isPinned && <MaterialCommunityIcons name="pin" size={10} color={theme.colors.warning} style={{ marginRight: 4 }} />}
-                        {isItemMuted && <Feather name="bell-off" size={10} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />}
-                        <Text style={[styles.notificationCategory, { color: item.color || theme.colors.primary }]}>{item.category}</Text>
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        {!item.isRead && <View style={styles.unreadIndicatorDot} />}
-                        <Text style={styles.notificationTime}>{formatRelativeTime(item.created_at)}</Text>
-                      </View>
-                    </View>
-
-                    <Text style={[styles.notificationTextTitle, !item.isRead && styles.notificationTextTitleUnread]}>
-                      {content.title}
-                    </Text>
-                    <Text style={styles.notificationDesc}>{content.desc}</Text>
-
-                    {/* Quick Actions */}
-                    {!item.isRead && item.action_type === 'hydrate' && (
-                      <TouchableOpacity
-                        style={styles.quickActionBtn}
-                        onPress={() => {
-                          const amount = actionPayload.amount || 250;
-                          adjustHydration(amount);
-                          markAsRead(item.id);
-                        }}
-                      >
-                        <MaterialCommunityIcons name="water-plus" size={14} color={theme.colors.info} style={{ marginRight: 4 }} />
-                        <Text style={[styles.quickActionText, { color: theme.colors.info }]}>
-                          + {actionPayload.amount || 250}ml
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {!item.isRead && item.action_type === 'navigate' && (
-                      <TouchableOpacity
-                        style={[styles.quickActionBtn, { backgroundColor: theme.colors.border }]}
-                        onPress={() => {
-                          const screen = actionPayload.screen || 'Workouts';
-                          markAsRead(item.id);
-                          setShowNotifications(false);
-                          navigation.navigate(screen);
-                        }}
-                      >
-                        <Feather name="play" size={12} color={theme.colors.textPrimary} style={{ marginRight: 4 }} />
-                        <Text style={[styles.quickActionText, { color: theme.colors.textPrimary }]}>
-                          {item.category === 'AI COACH ALERT' ? 'Start Workout' : 'View Details'}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-
-            {notifications.length === 0 && (
-              <EmptyState
-                icon="bell"
-                title="All Clean!"
-                description="Your custom coach feed is fully up to date."
-              />
-            )}
-
-            <View style={{ height: 60 }} />
-          </ScrollView>
-
-          {/* Undo Float Snackbar */}
-          {showUndo && (
-            <View style={styles.undoSnackbar}>
-              <Text style={styles.undoText}>Cleared successfully</Text>
-              <TouchableOpacity onPress={undoAction} style={styles.undoBtn}>
-                <Text style={styles.undoBtnText}>UNDO</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Modal>
+        onClose={() => setShowNotifications(false)}
+        notifications={notifications}
+        mutedCategories={mutedCategories}
+        coachTone={coachTone}
+        onToneChange={handleUpdateTone}
+        onMarkAllRead={markAllAsRead}
+        onClearAll={clearAllNotifications}
+        onMarkRead={markAsRead}
+        onLongPressNotification={openContextMenu}
+        adjustHydration={adjustHydration}
+        navigation={navigation}
+        showUndo={showUndo}
+        undoAction={undoAction}
+      />
 
       {/* Context Menu Actions Sheet */}
-      <Modal
+      <ContextMenuSheet
         visible={showContextMenu}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowContextMenu(false)}
-      >
-        <TouchableOpacity activeOpacity={1} onPress={() => setShowContextMenu(false)} style={styles.sheetOverlay}>
-          <View style={styles.sheetContent}>
-            <View style={styles.sheetHandle} />
-
-            {selectedNotification && (
-              <View style={styles.sheetHeader}>
-                <Text style={[styles.sheetCategory, { color: selectedNotification.color }]}>{selectedNotification.category}</Text>
-                <Text style={styles.sheetTitle} numberOfLines={1}>{selectedNotification.title}</Text>
-              </View>
-            )}
-
-            {selectedNotification && (
-              <View style={styles.sheetActionsList}>
-                <TouchableOpacity style={styles.sheetActionRow} onPress={() => toggleReadStatus(selectedNotification.id)}>
-                  <View style={styles.actionIconWrap}>
-                    <Feather name={selectedNotification.isRead ? "mail" : "eye"} size={18} color={theme.colors.textPrimary} />
-                  </View>
-                  <Text style={styles.actionRowText}>
-                    {selectedNotification.isRead ? 'Mark as Unread' : 'Mark as Read'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.sheetActionRow} onPress={() => togglePinStatus(selectedNotification.id)}>
-                  <View style={styles.actionIconWrap}>
-                    <MaterialCommunityIcons name="pin" size={18} color={selectedNotification.isPinned ? theme.colors.primary : theme.colors.textPrimary} />
-                  </View>
-                  <Text style={styles.actionRowText}>
-                    {selectedNotification.isPinned ? 'Unpin from Top' : 'Pin to Top'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.sheetActionRow} onPress={() => toggleMuteStatus(selectedNotification)}>
-                  <View style={styles.actionIconWrap}>
-                    <Feather name={mutedCategories.includes(selectedNotification.category) ? "bell" : "bell-off"} size={18} color={theme.colors.textPrimary} />
-                  </View>
-                  <Text style={styles.actionRowText}>
-                    {mutedCategories.includes(selectedNotification.category) ? 'Unmute Category Alerts' : 'Mute Category Alerts'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.sheetActionRow, styles.deleteActionRow]} onPress={() => handleDeleteFromMenu(selectedNotification.id)}>
-                  <View style={[styles.actionIconWrap, { backgroundColor: theme.colors.dangerLight }]}>
-                    <Feather name="trash-2" size={18} color={theme.colors.danger} />
-                  </View>
-                  <Text style={[styles.actionRowText, { color: theme.colors.danger, fontWeight: '700' }]}>
-                    Delete Notification
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        selectedNotification={selectedNotification}
+        mutedCategories={mutedCategories}
+        onClose={() => setShowContextMenu(false)}
+        onToggleRead={toggleReadStatus}
+        onTogglePin={togglePinStatus}
+        onToggleMute={toggleMuteStatus}
+        onDelete={handleDeleteFromMenu}
+      />
 
       <Toast
         visible={toastVisible}

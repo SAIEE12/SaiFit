@@ -243,7 +243,7 @@ h1 (32px) → h2 (28px) → h3 (22px) → h4 (18px) → h5 (16px) → body (15px
 |---|---|---|---|---|
 | B1 | FoodScannerScreen is orphaned — exists but not in navigation; uses old theme.borderRadius key | FoodScannerScreen.js | Dead code, style crashes possible | **RESOLVED** (Deleted file) |
 | B2 | "Log Meal" button has no onPress handler in FoodScannerScreen | FoodScannerScreen.js:69 | Tapping does nothing | **RESOLVED** (Deleted file) |
-| B3 | Notification data is hardcoded/static — not fetched from backend | DashboardScreen.js | Notifications are not real | Pending |
+| B3 | Notification data is hardcoded/static — not fetched from backend | DashboardScreen.js | Notifications are not real | **RESOLVED** (Wired to dynamic backend endpoints with focus-based polling and real-time Toast alerts) |
 | B4 | getUserLifestyleContext duplicated across nutritionController and recommendationController | Backend controllers | Code duplication | **RESOLVED** (Extracted to utility) |
 | B5 | firebase-admin is a dependency but unused in any controller or route | backend/package.json | Unnecessary bloat | **RESOLVED** (Pruned dependency) |
 | B6 | Hydration +/- can go below 0 — no floor guard on decrement | DashboardScreen.js | Negative water values possible | **RESOLVED** (Guard & disable added) |
@@ -271,7 +271,7 @@ h1 (32px) → h2 (28px) → h3 (22px) → h4 (18px) → h5 (16px) → body (15px
 |---|---|---|---|
 | P1 | No haptic feedback on any press interactions | All screens | Pending |
 | P2 | No pull-to-refresh on CalendarScreen or ProfileScreen | Both screens | **RESOLVED** (Pull-to-refresh added on CalendarScreen and ProfileScreen) |
-| P3 | Notification quick-actions hardcoded to specific IDs (1, 2) | DashboardScreen.js:921,934 | Pending |
+| P3 | Notification quick-actions hardcoded to specific IDs (1, 2) | DashboardScreen.js:921,934 | **RESOLVED** (Refactored to decode action_type and action_payload generic properties dynamically) |
 | P4 | secondaryLight color token referenced but not defined in theme | ProfileScreen.js:246 | **RESOLVED** (Added to theme.js) |
 | P5 | Smart Search status checked on CalendarScreen but feature lives in MealsScreen | CalendarScreen.js:91-98 | **RESOLVED** (Removed from CalendarScreen, MealsScreen handles it directly) |
 | P6 | No password field in login — username + invite code only | LoginScreen.js | Pending |
@@ -333,4 +333,4 @@ EXPO_PUBLIC_API_URL=http://<YOUR_IP>:5000/api
 7. ~~Standardize dialogs — replace Alert.alert() with CustomDialog in ProfileScreen~~ — **RESOLVED** (Standardized dialogs using CustomDialog)
 8. ~~Remove firebase-admin dependency if unused~~ — **RESOLVED** (Removed)
 9. Add dark mode theme variant
-10. Implement real push notifications — backend + frontend integration
+10. ~~Implement real push notifications — backend + frontend integration~~ — **RESOLVED** (Real-time notification engine & frontend sync fully integrated)

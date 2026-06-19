@@ -20,6 +20,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../api/client';
 import { theme } from '../theme';
 import ScreenContainer from '../components/ui/ScreenContainer';
+import Toast from '../components/ui/Toast';
 import { SectionHeader } from '../components/ui/Header';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -95,69 +96,19 @@ export default function DashboardScreen({ navigation }) {
   // Notification stream states
   const [showNotifications, setShowNotifications] = useState(false);
   const [coachTone, setCoachTone] = useState('Supportive'); // Supportive | Direct | Challenger
+  const [mutedCategories, setMutedCategories] = useState([]);
   const [backupNotifications, setBackupNotifications] = useState(null);
   const [showUndo, setShowUndo] = useState(false);
   const [undoTimeoutId, setUndoTimeoutId] = useState(null);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      category: 'AI COACH ALERT',
-      time: 'Just now',
-      title: 'New Recovery Plan Generated',
-      desc: 'Based on your active streaks, your custom workouts for tomorrow are ready to view!',
-      isRead: false,
-      isPinned: false,
-      isMuted: false,
-      icon: 'sparkles',
-      iconType: 'ionicons',
-      color: theme.colors.primary,
-      bgColor: theme.colors.primaryLight
-    },
-    {
-      id: 2,
-      category: 'HYDRATION TARGET',
-      time: '2h ago',
-      title: 'Hydration Milestone Reached',
-      desc: 'Awesome job! You have logged more than 50% of your daily water intake target.',
-      isRead: false,
-      isPinned: false,
-      isMuted: false,
-      icon: 'water',
-      iconType: 'material',
-      color: theme.colors.info,
-      bgColor: theme.colors.infoLight
-    },
-    {
-      id: 3,
-      category: 'NUTRITION TARGET',
-      time: '4h ago',
-      title: 'Excellent Macro Balance',
-      desc: 'Your latest logged lunch meal has met today\'s lean protein target goal.',
-      isRead: true,
-      isPinned: false,
-      isMuted: false,
-      icon: 'food-apple',
-      iconType: 'material',
-      color: theme.colors.success,
-      bgColor: theme.colors.successLight
-    },
-    {
-      id: 4,
-      category: 'STREAK MILESTONE',
-      time: 'Yesterday',
-      title: '3 Days Active Streak',
-      desc: 'Keep pushing forward! You have logged your active targets three days in a row.',
-      isRead: true,
-      isPinned: false,
-      isMuted: false,
-      icon: 'award',
-      iconType: 'feather',
-      color: theme.colors.warning,
-      bgColor: theme.colors.warningLight
-    }
-  ]);
+
+  // Toast State for live in-app push alerts
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('info');
+
+  const [notifications, setNotifications] = useState([]);
 
   // Trigger loading data on focus or selectedDate change
   useFocusEffect(
@@ -253,21 +204,62 @@ export default function DashboardScreen({ navigation }) {
     ]).start();
   }, [nutritionSummary, calorieGoal, proteinGoal, carbsGoal, fatsGoal]);
 
+  // Relative time utility helper
+  const formatRelativeTime = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const cleaned = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T') + 'Z';
+      const date = new Date(cleaned);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'Yesterday';
+      return `${diffDays}d ago`;
+    } catch (_) {
+      return 'Just now';
+    }
+  };
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [recRes, mealsRes, workoutsRes, hydrationRes, profileRes] = await Promise.all([
+      const [recRes, mealsRes, workoutsRes, hydrationRes, profileRes, notifRes, prefRes] = await Promise.all([
         apiClient.get(`/recommendations?date=${selectedDate}&today=${getLocalDateString()}`),
         apiClient.get(`/nutrition/meals?date=${selectedDate}`),
         apiClient.get(`/workouts?date=${selectedDate}`),
         apiClient.get(`/hydration?date=${selectedDate}`),
-        apiClient.get('/profile')
+        apiClient.get('/profile'),
+        apiClient.get('/notifications'),
+        apiClient.get('/notifications/preferences').catch(() => ({ data: { coach_tone: 'Supportive', muted_categories: [] } }))
       ]);
 
       setRecommendation(recRes.data);
       setDailyWorkouts(workoutsRes.data);
       setDailyMeals(mealsRes.data);
       setHydration(hydrationRes.data.amount_ml || 0);
+
+      if (notifRes.data && notifRes.data.notifications) {
+        const mapped = notifRes.data.notifications.map(n => ({
+          ...n,
+          isRead: !!n.is_read,
+          isPinned: !!n.is_pinned,
+          isArchived: !!n.is_archived
+        }));
+        setNotifications(mapped);
+      }
+
+      if (prefRes.data) {
+        setCoachTone(prefRes.data.coach_tone || 'Supportive');
+        setMutedCategories(prefRes.data.muted_categories || []);
+      }
 
       // Parse goals and profile settings
       if (profileRes.data) {
@@ -311,10 +303,87 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
+  // Background polling for real-time notification alerts
+  useFocusEffect(
+    useCallback(() => {
+      const fetchUnread = async () => {
+        try {
+          const res = await apiClient.get('/notifications/unread-count');
+          if (res.data && res.data.unread_count !== undefined) {
+            const count = res.data.unread_count;
+            const currentUnread = notifications.filter(n => !n.isRead).length;
+            
+            if (count > currentUnread) {
+              const notifRes = await apiClient.get('/notifications');
+              if (notifRes.data && notifRes.data.notifications) {
+                const mapped = notifRes.data.notifications.map(n => ({
+                  ...n,
+                  isRead: !!n.is_read,
+                  isPinned: !!n.is_pinned,
+                  isArchived: !!n.is_archived
+                }));
+
+                const previousIds = new Set(notifications.map(n => n.id));
+                const newNotifications = mapped.filter(n => !previousIds.has(n.id) && !n.isRead);
+
+                if (newNotifications.length > 0) {
+                  const newest = newNotifications[0];
+                  setToastMessage(newest.title);
+                  
+                  if (newest.category === 'NUTRITION TARGET') setToastType('success');
+                  else if (newest.category === 'SYSTEM') setToastType('info');
+                  else setToastType('info');
+                  
+                  setToastVisible(true);
+                }
+                setNotifications(mapped);
+              }
+            } else if (count < currentUnread) {
+              const notifRes = await apiClient.get('/notifications');
+              if (notifRes.data && notifRes.data.notifications) {
+                const mapped = notifRes.data.notifications.map(n => ({
+                  ...n,
+                  isRead: !!n.is_read,
+                  isPinned: !!n.is_pinned,
+                  isArchived: !!n.is_archived
+                }));
+                setNotifications(mapped);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Failed to poll unread count:', e);
+        }
+      };
+
+      fetchUnread();
+      const interval = setInterval(fetchUnread, 30000); // 30s polling
+      return () => clearInterval(interval);
+    }, [notifications])
+  );
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchDashboardData();
     setRefreshing(false);
+  };
+
+  const handleOpenNotifications = async () => {
+    setShowNotifications(true);
+    try {
+      const notifRes = await apiClient.get('/notifications');
+      if (notifRes.data && notifRes.data.notifications) {
+        const mapped = notifRes.data.notifications.map(n => ({
+          ...n,
+          isRead: !!n.is_read,
+          isPinned: !!n.is_pinned,
+          isArchived: !!n.is_archived
+        }));
+        setNotifications(mapped);
+      }
+    } catch (e) {
+      console.error("Failed to load notifications:", e);
+    }
   };
 
   // Tactile Button interaction helpers
@@ -342,38 +411,58 @@ export default function DashboardScreen({ navigation }) {
   };
 
   // Notifications flow logic
-  const markAsRead = (id) => {
+  const markAsRead = async (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    try {
+      await apiClient.patch(`/notifications/${id}/read`);
+    } catch (e) {
+      console.error("Failed to mark read:", e);
+    }
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    try {
+      await apiClient.patch('/notifications/read-all');
+    } catch (e) {
+      console.error("Failed to mark all read:", e);
+    }
   };
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async () => {
     setBackupNotifications(notifications);
     setNotifications([]);
     setShowUndo(true);
 
     if (undoTimeoutId) clearTimeout(undoTimeoutId);
 
-    const timeout = setTimeout(() => {
+    const timeout = setTimeout(async () => {
       setShowUndo(false);
       setBackupNotifications(null);
+      try {
+        await apiClient.delete('/notifications/clear-all');
+      } catch (e) {
+        console.error("Failed to clear all notifications:", e);
+      }
     }, 5000);
     setUndoTimeoutId(timeout);
   };
 
-  const dismissNotification = (id) => {
+  const dismissNotification = async (id) => {
     setBackupNotifications(notifications);
     setNotifications(prev => prev.filter(n => n.id !== id));
     setShowUndo(true);
 
     if (undoTimeoutId) clearTimeout(undoTimeoutId);
 
-    const timeout = setTimeout(() => {
+    const timeout = setTimeout(async () => {
       setShowUndo(false);
       setBackupNotifications(null);
+      try {
+        await apiClient.delete(`/notifications/${id}`);
+      } catch (e) {
+        console.error("Failed to delete notification:", e);
+      }
     }, 5000);
     setUndoTimeoutId(timeout);
   };
@@ -392,19 +481,67 @@ export default function DashboardScreen({ navigation }) {
     setShowContextMenu(true);
   };
 
-  const toggleReadStatus = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: !n.isRead } : n));
+  const toggleReadStatus = async (id) => {
+    const notif = notifications.find(n => n.id === id);
+    if (!notif) return;
+    const nextReadState = !notif.isRead;
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: nextReadState } : n));
     setShowContextMenu(false);
+    try {
+      await apiClient.patch(`/notifications/${id}/read`);
+    } catch (e) {
+      console.error("Failed to toggle read state:", e);
+    }
   };
 
-  const togglePinStatus = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isPinned: !n.isPinned } : n));
+  const togglePinStatus = async (id) => {
+    const notif = notifications.find(n => n.id === id);
+    if (!notif) return;
+    const nextPinState = !notif.isPinned;
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isPinned: nextPinState } : n));
     setShowContextMenu(false);
+    try {
+      await apiClient.patch(`/notifications/${id}/pin`);
+    } catch (e) {
+      console.error("Failed to toggle pin state:", e);
+    }
   };
 
-  const toggleMuteStatus = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isMuted: !n.isMuted } : n));
+  const toggleMuteStatus = async (notif) => {
+    if (!notif) return;
+    const category = notif.category;
+    const nextMutedList = mutedCategories.includes(category)
+      ? mutedCategories.filter(c => c !== category)
+      : [...mutedCategories, category];
+
+    setMutedCategories(nextMutedList);
     setShowContextMenu(false);
+
+    try {
+      await apiClient.put('/notifications/preferences', { muted_categories: nextMutedList });
+      await fetchDashboardData();
+    } catch (e) {
+      console.error("Failed to update muted categories:", e);
+    }
+  };
+
+  const handleUpdateTone = async (tone) => {
+    setCoachTone(tone);
+    try {
+      await apiClient.put('/notifications/preferences', { coach_tone: tone });
+      const notifRes = await apiClient.get('/notifications');
+      if (notifRes.data && notifRes.data.notifications) {
+        const mapped = notifRes.data.notifications.map(n => ({
+          ...n,
+          isRead: !!n.is_read,
+          isPinned: !!n.is_pinned,
+          isArchived: !!n.is_archived
+        }));
+        setNotifications(mapped);
+      }
+    } catch (e) {
+      console.error("Failed to update tone preference:", e);
+    }
   };
 
   const handleDeleteFromMenu = (id) => {
@@ -414,75 +551,22 @@ export default function DashboardScreen({ navigation }) {
 
   // Notifications contents mapping per tone settings
   const getNotificationContent = (item) => {
-    if (item.id === 1) {
-      if (coachTone === 'Challenger') {
-        return {
-          title: 'Tomorrow is War! Plan Ready ⚡',
-          desc: 'Your active streak is on fire. Your tomorrow workout setup is loaded and waiting. Tap Start Workout to accept!'
-        };
-      } else if (coachTone === 'Direct') {
-        return {
-          title: 'AI Recommendation Formulated',
-          desc: 'Tomorrow recovery workouts routine is calculated. Click Start Workout to load settings.'
-        };
-      } else {
-        return {
-          title: 'New Recovery Plan Generated',
-          desc: 'Based on your active streaks, your custom workouts for tomorrow are ready to view! Let\'s keep it up.'
-        };
-      }
-    } else if (item.id === 2) {
-      if (coachTone === 'Challenger') {
-        return {
-          title: 'HYDRATE OR DEFEAT! 💧',
-          desc: 'Logged 50% of your water target. Don\'t slow down now—refuel your active muscles with +250ml below!'
-        };
-      } else if (coachTone === 'Direct') {
-        return {
-          title: 'Hydration Target: 50% Logged',
-          desc: 'Logged: 1500ml / 3000ml. Click +250ml below to log additional volume.'
-        };
-      } else {
-        return {
-          title: 'Hydration Milestone Reached',
-          desc: 'Awesome job! You have logged more than 50% of your daily water intake. Let\'s drink a bit more.'
-        };
-      }
-    } else if (item.id === 3) {
-      if (coachTone === 'Challenger') {
-        return {
-          title: 'FUEL LOADED: Protein Goal Locked 🍖',
-          desc: 'Sensational lunch tracking. You fed your muscle tissue exactly the amino acids required for growth!'
-        };
-      } else if (coachTone === 'Direct') {
-        return {
-          title: 'Lunch Protein Met Goals',
-          desc: 'Logged lunch contains optimal protein counts aligned with current macro targets.'
-        };
-      }
-    } else if (item.id === 4) {
-      if (coachTone === 'Challenger') {
-        return {
-          title: '3-DAY STREAK: UNSTOPPABLE! 🔥',
-          desc: 'Consistency is power. Three consecutive days of logging. Do not let this record drop!'
-        };
-      } else if (coachTone === 'Direct') {
-        return {
-          title: 'Logged: 3 Days Consecutive',
-          desc: 'All targets captured consecutively for three days.'
-        };
-      }
-    }
-    return { title: item.title, desc: item.desc };
+    return {
+      title: item.title || 'Notification',
+      desc: item.body || item.desc || ''
+    };
   };
 
   const renderNotificationIcon = (notif) => {
-    if (notif.iconType === 'ionicons') {
-      return <Ionicons name={notif.icon} size={18} color={notif.color} />;
-    } else if (notif.iconType === 'material') {
-      return <MaterialCommunityIcons name={notif.icon} size={18} color={notif.color} />;
+    const iconType = notif.icon_type || notif.iconType;
+    const icon = notif.icon || 'bell';
+    const color = notif.color || theme.colors.primary;
+    if (iconType === 'ionicons') {
+      return <Ionicons name={icon} size={18} color={color} />;
+    } else if (iconType === 'material') {
+      return <MaterialCommunityIcons name={icon} size={18} color={color} />;
     } else {
-      return <Feather name={notif.icon} size={18} color={notif.color} />;
+      return <Feather name={icon} size={18} color={color} />;
     }
   };
 
@@ -541,7 +625,7 @@ export default function DashboardScreen({ navigation }) {
           </Text>
         </View>
         <TouchableWithoutFeedback
-          onPress={() => setShowNotifications(true)}
+          onPress={handleOpenNotifications}
           onPressIn={handlePressInBell}
           onPressOut={handlePressOutBell}
           accessibilityLabel="Open notification alerts"
@@ -888,6 +972,19 @@ export default function DashboardScreen({ navigation }) {
             {/* Notification List Stream */}
             {sortedNotifications.map((item) => {
               const content = getNotificationContent(item);
+              const itemBgColor = item.bgColor || (item.color ? item.color + '20' : theme.colors.primaryLight);
+              const isItemMuted = mutedCategories.includes(item.category);
+              
+              // Parse Action Payload
+              let actionPayload = {};
+              try {
+                if (item.action_payload) {
+                  actionPayload = typeof item.action_payload === 'string' 
+                    ? JSON.parse(item.action_payload) 
+                    : item.action_payload;
+                }
+              } catch (_) {}
+
               return (
                 <TouchableOpacity
                   key={item.id}
@@ -901,7 +998,7 @@ export default function DashboardScreen({ navigation }) {
                     item.isPinned && styles.notificationCardPinned
                   ]}
                 >
-                  <View style={[styles.notificationIconWrap, { backgroundColor: item.bgColor }]}>
+                  <View style={[styles.notificationIconWrap, { backgroundColor: itemBgColor }]}>
                     {renderNotificationIcon(item)}
                   </View>
 
@@ -909,12 +1006,12 @@ export default function DashboardScreen({ navigation }) {
                     <View style={styles.notificationHeaderRow}>
                       <View style={styles.categoryBadgeRow}>
                         {item.isPinned && <MaterialCommunityIcons name="pin" size={10} color={theme.colors.warning} style={{ marginRight: 4 }} />}
-                        {item.isMuted && <Feather name="bell-off" size={10} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />}
-                        <Text style={[styles.notificationCategory, { color: item.color }]}>{item.category}</Text>
+                        {isItemMuted && <Feather name="bell-off" size={10} color={theme.colors.textSecondary} style={{ marginRight: 4 }} />}
+                        <Text style={[styles.notificationCategory, { color: item.color || theme.colors.primary }]}>{item.category}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         {!item.isRead && <View style={styles.unreadIndicatorDot} />}
-                        <Text style={styles.notificationTime}>{item.time}</Text>
+                        <Text style={styles.notificationTime}>{formatRelativeTime(item.created_at)}</Text>
                       </View>
                     </View>
 
@@ -924,30 +1021,36 @@ export default function DashboardScreen({ navigation }) {
                     <Text style={styles.notificationDesc}>{content.desc}</Text>
 
                     {/* Quick Actions */}
-                    {!item.isRead && item.id === 2 && (
+                    {!item.isRead && item.action_type === 'hydrate' && (
                       <TouchableOpacity
                         style={styles.quickActionBtn}
                         onPress={() => {
-                          adjustHydration(250);
+                          const amount = actionPayload.amount || 250;
+                          adjustHydration(amount);
                           markAsRead(item.id);
                         }}
                       >
                         <MaterialCommunityIcons name="water-plus" size={14} color={theme.colors.info} style={{ marginRight: 4 }} />
-                        <Text style={[styles.quickActionText, { color: theme.colors.info }]}>+ 250ml</Text>
+                        <Text style={[styles.quickActionText, { color: theme.colors.info }]}>
+                          + {actionPayload.amount || 250}ml
+                        </Text>
                       </TouchableOpacity>
                     )}
 
-                    {!item.isRead && item.id === 1 && (
+                    {!item.isRead && item.action_type === 'navigate' && (
                       <TouchableOpacity
                         style={[styles.quickActionBtn, { backgroundColor: theme.colors.border }]}
                         onPress={() => {
+                          const screen = actionPayload.screen || 'Workouts';
                           markAsRead(item.id);
                           setShowNotifications(false);
-                          navigation.navigate('Workouts');
+                          navigation.navigate(screen);
                         }}
                       >
                         <Feather name="play" size={12} color={theme.colors.textPrimary} style={{ marginRight: 4 }} />
-                        <Text style={[styles.quickActionText, { color: theme.colors.textPrimary }]}>Start Workout</Text>
+                        <Text style={[styles.quickActionText, { color: theme.colors.textPrimary }]}>
+                          {item.category === 'AI COACH ALERT' ? 'Start Workout' : 'View Details'}
+                        </Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -1016,12 +1119,12 @@ export default function DashboardScreen({ navigation }) {
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.sheetActionRow} onPress={() => toggleMuteStatus(selectedNotification.id)}>
+                <TouchableOpacity style={styles.sheetActionRow} onPress={() => toggleMuteStatus(selectedNotification)}>
                   <View style={styles.actionIconWrap}>
-                    <Feather name={selectedNotification.isMuted ? "bell" : "bell-off"} size={18} color={theme.colors.textPrimary} />
+                    <Feather name={mutedCategories.includes(selectedNotification.category) ? "bell" : "bell-off"} size={18} color={theme.colors.textPrimary} />
                   </View>
                   <Text style={styles.actionRowText}>
-                    {selectedNotification.isMuted ? 'Unmute Alerts' : 'Mute Category Alerts'}
+                    {mutedCategories.includes(selectedNotification.category) ? 'Unmute Category Alerts' : 'Mute Category Alerts'}
                   </Text>
                 </TouchableOpacity>
 
@@ -1038,6 +1141,13 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onDismiss={() => setToastVisible(false)}
+      />
     </ScreenContainer>
   );
 }

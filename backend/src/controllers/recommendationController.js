@@ -10,6 +10,7 @@ const {
     injectLifestyleContext
 } = require('../config/prompts');
 const { getUserLifestyleContext } = require('../utils/lifestyleContext');
+const notificationService = require('../services/notificationService');
 
 // Main Recommendations endpoint (Legacy / General plan)
 exports.getRecommendations = async (req, res) => {
@@ -197,6 +198,32 @@ exports.getInsight = async (req, res) => {
             'INSERT INTO recommendations (user_id, type, content, date) VALUES (?, ?, ?, ?)',
             [userId, 'insight', JSON.stringify(insight), selectedDate]
         );
+
+        // Generate AI Coach notification
+        await notificationService.createNotification(userId, {
+            category: 'AI COACH ALERT',
+            title: 'New Recovery Plan Generated',
+            body: 'Based on your active streaks, your custom workouts for tomorrow are ready to view!',
+            icon: 'sparkles',
+            icon_type: 'ionicons',
+            color: '#FF2D55', // theme.colors.primary
+            action_type: 'navigate',
+            action_payload: { screen: 'Workouts' },
+            templates: {
+              Supportive: {
+                title: 'New Recovery Plan Generated',
+                body: "Based on your active streaks, your custom workouts for tomorrow are ready to view! Let's keep it up."
+              },
+              Direct: {
+                title: 'AI Recommendation Formulated',
+                body: 'Tomorrow recovery workouts routine is calculated. Click Start Workout to load settings.'
+              },
+              Challenger: {
+                title: 'Tomorrow is War! Plan Ready ⚡',
+                body: 'Your active streak is on fire. Your tomorrow workout setup is loaded and waiting. Tap Start Workout to accept!'
+              }
+            }
+        });
 
         res.json(insight);
     } catch (e) {

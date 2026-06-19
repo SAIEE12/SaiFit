@@ -5,6 +5,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { logAiUsage } = require('../middlewares/usageMiddleware');
 const { getUserLifestyleContext } = require('../utils/lifestyleContext');
+const notificationService = require('../services/notificationService');
 
 
 // Helper to get MD5 hash of a file
@@ -153,6 +154,93 @@ exports.logFood = async (req, res) => {
       'UPDATE meals SET total_calories = total_calories + ?, total_protein = total_protein + ?, total_carbs = total_carbs + ?, total_fats = total_fats + ? WHERE id = ?',
       [calories, protein, carbs, fats, actualMealId]
     );
+
+    // Calculate total daily values after update
+    const todayMeals = await db.query('SELECT total_calories, total_protein FROM meals WHERE user_id = ? AND date = ?', [userId, targetDate]);
+    let totalCals = 0;
+    let totalProtein = 0;
+    todayMeals.rows.forEach(m => {
+      totalCals += m.total_calories || 0;
+      totalProtein += m.total_protein || 0;
+    });
+
+    // Check goals to see if macro limits are crossed
+    const goalsRes = await db.query('SELECT target_calories, target_protein FROM user_goals WHERE user_id = ?', [userId]);
+    const targetCalories = goalsRes.rows[0]?.target_calories || 2200;
+    const targetProtein = goalsRes.rows[0]?.target_protein || 140;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (targetDate === todayStr) {
+      // 1. Protein Target Met Check
+      if (totalProtein >= targetProtein) {
+        const existingNotif = await db.query(
+          "SELECT id FROM notifications WHERE user_id = ? AND category = ? AND date(created_at) = date('now') AND action_payload LIKE '%protein%'",
+          [userId, 'NUTRITION TARGET']
+        );
+
+        if (existingNotif.rows.length === 0) {
+          await notificationService.createNotification(userId, {
+            category: 'NUTRITION TARGET',
+            title: 'Excellent Macro Balance',
+            body: `Your logged meals have met today's lean protein target goal.`,
+            icon: 'food-apple',
+            icon_type: 'material',
+            color: '#10B981', // theme.colors.success
+            action_type: 'navigate',
+            action_payload: { screen: 'Meals', target: 'protein' },
+            templates: {
+              Supportive: {
+                title: 'Excellent Macro Balance',
+                body: `Your logged meals have met today's lean protein target goal of ${targetProtein}g. Keep up the good work!`
+              },
+              Direct: {
+                title: 'Protein Goal Met',
+                body: `Logged: ${Math.round(totalProtein)}g / ${targetProtein}g. Lean protein target has been met.`
+              },
+              Challenger: {
+                title: 'FUEL LOADED: Protein Goal Locked 🍖',
+                body: `Sensational lunch tracking. You fed your muscle tissue exactly the amino acids required for growth!`
+              }
+            }
+          });
+        }
+      }
+
+      // 2. Calorie Limit Warn Check (90% target)
+      if (totalCals >= targetCalories * 0.9) {
+        const existingNotif = await db.query(
+          "SELECT id FROM notifications WHERE user_id = ? AND category = ? AND date(created_at) = date('now') AND action_payload LIKE '%calorie_limit%'",
+          [userId, 'NUTRITION TARGET']
+        );
+
+        if (existingNotif.rows.length === 0) {
+          await notificationService.createNotification(userId, {
+            category: 'NUTRITION TARGET',
+            title: 'Calorie Limit Approaching',
+            body: `You are close to reaching your daily calorie limit (${Math.round(totalCals)} kcal consumed).`,
+            icon: 'alert-triangle',
+            icon_type: 'feather',
+            color: '#F59E0B', // theme.colors.warning
+            action_type: 'navigate',
+            action_payload: { screen: 'Meals', target: 'calorie_limit' },
+            templates: {
+              Supportive: {
+                title: 'Calorie Budget Reminder',
+                body: `You are approaching your daily calorie limit (${Math.round(totalCals)} kcal consumed). Keep an eye on portion sizes!`
+              },
+              Direct: {
+                title: 'Daily Calories at 90%',
+                body: `Logged: ${Math.round(totalCals)} kcal / ${targetCalories} kcal. You have 10% remaining.`
+              },
+              Challenger: {
+                title: 'CALORIE CEILING WARNING ⚡',
+                body: `You are at 90% of your daily calorie allowance. Make sure any remaining fuel is high-volume, low-calorie!`
+              }
+            }
+          });
+        }
+      }
+    }
 
     res.status(201).json(newLog.rows[0]);
   } catch (error) {

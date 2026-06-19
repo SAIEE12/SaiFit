@@ -1,4 +1,6 @@
 const db = require('../config/db');
+const notificationService = require('../services/notificationService');
+const { calculateHabitStreak } = require('../utils/streaks');
 
 exports.logWorkout = async (req, res) => {
   try {
@@ -24,6 +26,60 @@ exports.logWorkout = async (req, res) => {
     }
 
     await db.query('COMMIT');
+
+    // Send Workout confirmation notification
+    await notificationService.createNotification(user_id, {
+      category: 'WORKOUT',
+      title: 'Workout Logged',
+      body: `Great session! You've logged your workout: ${notes || 'Workout session'}.`,
+      icon: 'activity',
+      icon_type: 'feather',
+      color: '#FF2D55', // theme.colors.primary
+      action_type: 'navigate',
+      action_payload: { screen: 'Workouts' }
+    });
+
+    // Check streak milestones
+    try {
+      const streak = await calculateHabitStreak(user_id);
+      const milestones = [3, 5, 7, 14, 30];
+      if (streak > 0 && milestones.includes(streak)) {
+        // Check if we already created a notification for this streak milestone today
+        const existingNotif = await db.query(
+          "SELECT id FROM notifications WHERE user_id = ? AND category = ? AND date(created_at) = date('now') AND action_payload LIKE ?",
+          [user_id, 'STREAK MILESTONE', `%"streak":${streak}%`]
+        );
+
+        if (existingNotif.rows.length === 0) {
+          await notificationService.createNotification(user_id, {
+            category: 'STREAK MILESTONE',
+            title: `${streak} Days Active Streak`,
+            body: `Keep pushing forward! You have logged your active targets ${streak} days in a row.`,
+            icon: 'award',
+            icon_type: 'feather',
+            color: '#F59E0B', // theme.colors.warning
+            action_payload: { streak },
+            templates: {
+              Supportive: {
+                title: `${streak} Days Active Streak`,
+                body: `Keep pushing forward! You have logged your active targets ${streak} days in a row.`
+              },
+              Direct: {
+                title: `Logged: ${streak} Days Consecutive`,
+                body: `All targets captured consecutively for ${streak} days.`
+              },
+              Challenger: {
+                title: `${streak}-DAY STREAK: UNSTOPPABLE! 🔥`,
+                body: `Consistency is power. ${streak} consecutive days of logging. Do not let this record drop!`
+              }
+            }
+          });
+        }
+      }
+    } catch (streakErr) {
+      console.error('Streak notification error:', streakErr);
+    }
+
     res.status(201).json({ message: 'Workout logged successfully', workoutLogId });
   } catch (error) {
     await db.query('ROLLBACK');

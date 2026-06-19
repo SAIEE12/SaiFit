@@ -27,6 +27,7 @@ import Button from '../components/ui/Button';
 import AICoachCard from '../components/ui/AICoachCard';
 import Badge from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/StateViews';
+import CalendarStrip from '../components/CalendarStrip';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -639,6 +640,14 @@ export default function DashboardScreen({ navigation }) {
           </Animated.View>
         </TouchableWithoutFeedback>
       </Animated.View>
+
+      <CalendarStrip 
+        selectedDate={selectedDate} 
+        onDateSelected={(date) => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setSelectedDate(date);
+        }} 
+      />
 
 
 

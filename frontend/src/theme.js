@@ -61,24 +61,24 @@ export const theme = {
   // ── TYPOGRAPHY SCALE ──────────────────────────────────────
   // All font sizes are sp values (same unit in RN).
   typography: {
-    h1: { fontSize: 32, fontWeight: '900', letterSpacing: -0.5, lineHeight: 40, color: '#1C1C1E' },
-    h2: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5, lineHeight: 36, color: '#1C1C1E' },
-    h3: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, lineHeight: 28, color: '#1C1C1E' },
-    h4: { fontSize: 18, fontWeight: '600', letterSpacing: -0.2, lineHeight: 24, color: '#1C1C1E' },
-    h5: { fontSize: 16, fontWeight: '600', letterSpacing: -0.1, lineHeight: 22, color: '#1C1C1E' },
+    h1: { fontFamily: 'Inter_900Black', fontSize: 32, fontWeight: '900', letterSpacing: -0.5, lineHeight: 40, color: '#1C1C1E' },
+    h2: { fontFamily: 'Inter_800ExtraBold', fontSize: 28, fontWeight: '800', letterSpacing: -0.5, lineHeight: 36, color: '#1C1C1E' },
+    h3: { fontFamily: 'Inter_700Bold', fontSize: 22, fontWeight: '700', letterSpacing: -0.3, lineHeight: 28, color: '#1C1C1E' },
+    h4: { fontFamily: 'Inter_600SemiBold', fontSize: 18, fontWeight: '600', letterSpacing: -0.2, lineHeight: 24, color: '#1C1C1E' },
+    h5: { fontFamily: 'Inter_600SemiBold', fontSize: 16, fontWeight: '600', letterSpacing: -0.1, lineHeight: 22, color: '#1C1C1E' },
 
-    body: { fontSize: 15, fontWeight: '500', lineHeight: 22, color: '#1C1C1E' },
-    bodySmall: { fontSize: 13, fontWeight: '500', lineHeight: 18, color: '#1C1C1E' },
+    body: { fontFamily: 'Inter_400Regular', fontSize: 15, fontWeight: '400', lineHeight: 22, color: '#1C1C1E' },
+    bodySmall: { fontFamily: 'Inter_400Regular', fontSize: 13, fontWeight: '400', lineHeight: 18, color: '#1C1C1E' },
 
-    label: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5, lineHeight: 16, color: '#8E8E93' },
-    labelSmall: { fontSize: 9, fontWeight: '800', letterSpacing: 1, lineHeight: 12, color: '#8E8E93' },
+    label: { fontFamily: 'Inter_800ExtraBold', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, lineHeight: 16, color: '#8E8E93' },
+    labelSmall: { fontFamily: 'Inter_800ExtraBold', fontSize: 9, fontWeight: '800', letterSpacing: 1, lineHeight: 12, color: '#8E8E93' },
 
-    caption: { fontSize: 12, fontWeight: '600', lineHeight: 16, color: '#8E8E93' },
-    captionStrong: { fontSize: 12, fontWeight: '700', lineHeight: 16, color: '#8E8E93' },
+    caption: { fontFamily: 'Inter_600SemiBold', fontSize: 12, fontWeight: '600', lineHeight: 16, color: '#8E8E93' },
+    captionStrong: { fontFamily: 'Inter_700Bold', fontSize: 12, fontWeight: '700', lineHeight: 16, color: '#8E8E93' },
 
     // Number / metric displays
-    metric: { fontSize: 30, fontWeight: '900', letterSpacing: -0.5, lineHeight: 36, color: '#1C1C1E' },
-    metricSmall: { fontSize: 18, fontWeight: '800', letterSpacing: -0.2, lineHeight: 22, color: '#1C1C1E' },
+    metric: { fontFamily: 'Inter_900Black', fontSize: 30, fontWeight: '900', letterSpacing: -0.5, lineHeight: 36, color: '#1C1C1E' },
+    metricSmall: { fontFamily: 'Inter_800ExtraBold', fontSize: 18, fontWeight: '800', letterSpacing: -0.2, lineHeight: 22, color: '#1C1C1E' },
   },
 
   // ── SPACING ───────────────────────────────────────────────

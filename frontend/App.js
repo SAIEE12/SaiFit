@@ -17,6 +17,14 @@ import ChoosePathScreen from './src/screens/ChoosePathScreen';
 import { theme } from './src/theme';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ProfileProvider } from './src/context/ProfileContext';
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+  Inter_900Black
+} from '@expo-google-fonts/inter';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -112,6 +120,22 @@ function AppContent() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+    Inter_900Black,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <AuthProvider>

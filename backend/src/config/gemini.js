@@ -82,4 +82,28 @@ const safeGenerateContent = async (prompt, imageBuffer = null, mimeType = null) 
     throw lastError || new Error("All loaded generative fallback models failed to complete content execution.");
 };
 
-module.exports = { getAIInstance, getModelName, safeGenerateContent };
+/**
+ * Generative content streaming helper
+ */
+const safeGenerateContentStream = async (prompt) => {
+    const ai = await getAIInstance();
+    const modelName = await getModelName();
+    
+    const modelsToTry = [modelName, 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    
+    let lastError = null;
+    for (const modelId of modelsToTry) {
+        try {
+            console.log(`[Resilient AI Engine] Attempting streaming execution via: ${modelId}`);
+            const model = ai.getGenerativeModel({ model: modelId });
+            const result = await model.generateContentStream(prompt);
+            return result.stream;
+        } catch (err) {
+            console.warn(`[Resilient AI Engine] Streaming via ${modelId} failed: ${err.message}. Retrying...`);
+            lastError = err;
+        }
+    }
+    throw lastError || new Error("All fallback models failed to start stream.");
+};
+
+module.exports = { getAIInstance, getModelName, safeGenerateContent, safeGenerateContentStream };

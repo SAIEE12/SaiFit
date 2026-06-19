@@ -15,6 +15,7 @@ const hydrationRoutes = require('./routes/hydrationRoutes');
 const lifestyleRoutes = require('./routes/lifestyleRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 // Initialize SQLite database schema automatically for local dev
 const schema = fs.readFileSync(path.join(__dirname, 'models/schema.sql'), 'utf8');
@@ -53,6 +54,7 @@ app.use('/api/hydration', hydrationRoutes);
 app.use('/api/lifestyle', lifestyleRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'SaiFit API is running' });

@@ -11,6 +11,8 @@ router.get('/insight', checkAiUsageLimit, recommendationController.getInsight);
 router.get('/workout-coach', checkAiUsageLimit, recommendationController.getWorkoutCoach);
 router.get('/calendar-coach', checkAiUsageLimit, recommendationController.getCalendarCoach);
 router.get('/profile-coach', checkAiUsageLimit, recommendationController.getProfileCoach);
+router.get('/hydration-coach', checkAiUsageLimit, recommendationController.getHydrationCoach);
+router.get('/sleep-advisor', checkAiUsageLimit, recommendationController.getSleepAdvisor);
 router.get('/achievements', recommendationController.getAchievements);
 
 module.exports = router;

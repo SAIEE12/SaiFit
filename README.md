@@ -36,9 +36,11 @@ Fit_app_m/
 │   │   ├── api/              # Axios instance setup
 │   │   ├── components/       # Custom CalendarStrip and Dialogs
 │   │   │   └── ui/           # Unified Component Library (Card, Button, ScreenContainer, etc.)
+│   │   ├── context/          # Global Contexts (AuthContext, ProfileContext)
+│   │   ├── hooks/            # Reusable React Hooks (useDialog, useAnimations)
 │   │   ├── screens/          # App screens (Auth, Dashboard, Scanner, Profile, Admin, etc.)
 │   │   └── theme.js          # Spacing, colors, typography, and visual tokens
-│   ├── App.js                # App navigation shell and state container
+│   ├── App.js                # App entry point, wraps providers and sets up routing
 │   ├── .env                  # Frontend environment variables configuration
 │   └── package.json
 └── README.md
@@ -113,3 +115,16 @@ To protect external API consumption:
 1. **`checkAiUsageLimit` Middleware**: Checks the user's daily request count. If they exceed their assigned invite quota limit (configurable in the Governance Portal), the backend returns a `429 Too Many Requests` status, stopping execution before querying Gemini.
 2. **`logAiUsage` Middleware**: Logs successful AI requests (e.g., scanning a new food description, requesting a workout plan, or using smart search) in the `ai_usage_logs` table and increments the user's daily count.
 3. **Caching**: Image hashing (MD5) and text query normalizing acts as a first-line cache filter to return previously completed analyses instantly without consuming AI credits.
+
+---
+
+## 🏗️ Clean Architecture Frontend refactor
+
+The application frontend follows modern React Native / React design patterns:
+1. **Global Context Providers**: State management is abstracted using lightweight React Context.
+   - `AuthContext`: Manages auth state, tokens, user roles, and onboarding navigation.
+   - `ProfileContext`: Caches and handles profile data, dietary preferences, and track configuration, eliminating duplicate fetches across Dashboard, Calendar, and Profile screens.
+2. **Reusable Custom Hooks**: Common UI and utility logic is moved out of components to prevent screen code bloat.
+   - `useDialog`: Centralized state management for custom warning, error, and success alert dialogs.
+   - `useAnimations`: Decouples standard skeleton loader loops and visual effects from views.
+3. **Typography Hierarchy**: Font styles and weights are standardized in `theme.js` to ensure visual hierarchy.

@@ -672,19 +672,40 @@ export default function WorkoutsScreen({ route, navigation }) {
                   scoreValue={recommendation.workout_plan || 'Active Recovery'}
                   narrative={recommendation.recovery_advice}
                   actions={
-                    <TouchableWithoutFeedback
-                      onPress={() => setShowAiPlanModal(true)}
-                      onPressIn={handlePressInViewPlan}
-                      onPressOut={handlePressOutViewPlan}
-                      accessibilityLabel="View tomorrow AI workout details"
-                      accessibilityRole="button"
-                    >
-                      <Animated.View style={{ transform: [{ scale: viewPlanScale }] }}>
-                        <Button variant="primary" size="md" pointerEvents="none" icon={<Feather name="arrow-right" size={16} color="#FFF" />}>
-                          View Plan
-                        </Button>
-                      </Animated.View>
-                    </TouchableWithoutFeedback>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TouchableWithoutFeedback
+                        onPress={() => setShowAiPlanModal(true)}
+                        onPressIn={handlePressInViewPlan}
+                        onPressOut={handlePressOutViewPlan}
+                        accessibilityLabel="View tomorrow AI workout details"
+                        accessibilityRole="button"
+                      >
+                        <Animated.View style={{ flex: 1, transform: [{ scale: viewPlanScale }] }}>
+                          <Button variant="primary" size="md" pointerEvents="none" icon={<Feather name="arrow-right" size={16} color="#FFF" />}>
+                            View Plan
+                          </Button>
+                        </Animated.View>
+                      </TouchableWithoutFeedback>
+                      
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: theme.colors.primaryLight,
+                          borderColor: theme.colors.primaryBorder,
+                          borderWidth: 1.5,
+                          borderRadius: theme.radii.lg,
+                          paddingVertical: 10,
+                          paddingHorizontal: 16,
+                          flex: 1
+                        }}
+                        onPress={() => navigation.navigate('AIChat', { coachType: 'workout_coach' })}
+                      >
+                        <Feather name="message-square" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                        <Text style={{ ...theme.typography.labelSmall, color: theme.colors.primary, fontWeight: '700' }}>Chat</Text>
+                      </TouchableOpacity>
+                    </View>
                   }
                 />
               </Animated.View>

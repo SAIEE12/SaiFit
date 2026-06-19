@@ -47,7 +47,8 @@ export default function ProfileScreen({ navigation, onLogout }) {
     try {
       await Promise.all([
         fetchProfile(),
-        fetchProfileCoach()
+        fetchProfileCoach(),
+        fetchSleepAdvisor()
       ]);
     } catch (e) {
       console.error("Failed to refresh ProfileScreen data:", e);
@@ -60,6 +61,11 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const [profileCoach, setProfileCoach] = useState(null);
   const [loadingCoach, setLoadingCoach] = useState(false);
   const [coachExpanded, setCoachExpanded] = useState(false);
+
+  // AI Sleep & Recovery Advisor State
+  const [sleepAdvisor, setSleepAdvisor] = useState(null);
+  const [loadingSleepAdvisor, setLoadingSleepAdvisor] = useState(false);
+  const [sleepAdvisorExpanded, setSleepAdvisorExpanded] = useState(false);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -78,10 +84,12 @@ export default function ProfileScreen({ navigation, onLogout }) {
   useEffect(() => {
       fetchProfile();
       fetchProfileCoach();
+      fetchSleepAdvisor();
 
       const unsubscribe = navigation.addListener('focus', () => {
           fetchProfile();
           fetchProfileCoach();
+          fetchSleepAdvisor();
       });
       return unsubscribe;
   }, [navigation]);
@@ -142,6 +150,23 @@ export default function ProfileScreen({ navigation, onLogout }) {
       setCoachExpanded(!coachExpanded);
   };
 
+  const fetchSleepAdvisor = async () => {
+      try {
+          setLoadingSleepAdvisor(true);
+          const res = await apiClient.get('/recommendations/sleep-advisor');
+          setSleepAdvisor(res.data);
+      } catch (e) {
+          console.error("Failed to load sleep advisor recommendations", e);
+      } finally {
+          setLoadingSleepAdvisor(false);
+      }
+  };
+
+  const toggleSleepAdvisor = () => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setSleepAdvisorExpanded(!sleepAdvisorExpanded);
+  };
+
   const handleSave = async () => {
       try {
           setLoading(true);
@@ -158,7 +183,10 @@ export default function ProfileScreen({ navigation, onLogout }) {
           const res = await apiClient.put('/profile', payload);
           setProfileData(res.data);
           setIsEditing(false);
-          showDialog("Success", "Profile updated successfully!", "success", () => fetchProfileCoach());
+          showDialog("Success", "Profile updated successfully!", "success", () => {
+              fetchProfileCoach();
+              fetchSleepAdvisor();
+          });
       } catch(e) {
           showDialog("Error", "Could not save profile.", "error");
       } finally {
@@ -258,6 +286,79 @@ export default function ProfileScreen({ navigation, onLogout }) {
                               },
                           ]
                           : []
+                  }
+                  actions={
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: theme.colors.primaryLight,
+                          borderColor: theme.colors.primaryBorder,
+                          borderWidth: 1.5,
+                          borderRadius: theme.radii.lg,
+                          paddingVertical: 10,
+                          paddingHorizontal: 16,
+                          marginTop: 10
+                        }}
+                        onPress={() => navigation.navigate('AIChat', { coachType: 'progression_coach' })}
+                      >
+                        <Feather name="message-square" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                        <Text style={{ ...theme.typography.labelSmall, color: theme.colors.primary, fontWeight: '700' }}>Chat with Progression Coach</Text>
+                      </TouchableOpacity>
+                  }
+              />
+          )}
+
+          {/* AI Sleep & Recovery Advisor */}
+          {(sleepAdvisor || loadingSleepAdvisor) && (
+              <AICoachCard
+                  title="AI SLEEP & RECOVERY ADVISOR"
+                  scoreLabel="RECOVERY STATUS"
+                  scoreValue={sleepAdvisor?.recovery_status || "Evaluating"}
+                  narrative={sleepAdvisor ? `Target Sleep: ${sleepAdvisor.target_sleep_hours} hrs tonight.` : "Evaluating recovery stats..."}
+                  loading={loadingSleepAdvisor}
+                  loadingText="Analyzing sleep & recovery patterns..."
+                  expanded={sleepAdvisorExpanded}
+                  onToggle={toggleSleepAdvisor}
+                  style={{ marginTop: 10 }}
+                  segments={
+                      sleepAdvisorExpanded && sleepAdvisor
+                          ? [
+                              {
+                                  icon: 'moon',
+                                  title: 'Sleep Quality Tips',
+                                  text: sleepAdvisor.sleep_quality_tips?.join('\n') || 'None',
+                                  color: '#8E59FF',
+                              },
+                              {
+                                  icon: 'activity',
+                                  title: 'Fatigue Checks',
+                                  text: sleepAdvisor.fatigue_checks?.join('\n') || 'None',
+                                  color: theme.colors.warning,
+                              }
+                            ]
+                          : []
+                  }
+                  actions={
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: theme.colors.primaryLight,
+                          borderColor: theme.colors.primaryBorder,
+                          borderWidth: 1.5,
+                          borderRadius: theme.radii.lg,
+                          paddingVertical: 10,
+                          paddingHorizontal: 16,
+                          marginTop: 10
+                        }}
+                        onPress={() => navigation.navigate('AIChat', { coachType: 'sleep_advisor' })}
+                      >
+                        <Feather name="message-square" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                        <Text style={{ ...theme.typography.labelSmall, color: theme.colors.primary, fontWeight: '700' }}>Chat with Sleep Advisor</Text>
+                      </TouchableOpacity>
                   }
               />
           )}

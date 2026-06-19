@@ -15,6 +15,7 @@ export default function AICoachCard({
   expanded = false,
   onToggle,
   loading = false,
+  loadingText = "Analyzing fitness progression...",
   isError = false,
   style,
 }) {
@@ -46,7 +47,7 @@ export default function AICoachCard({
     return (
       <Card variant="ai" style={[styles.loadingCard, style]}>
         <ActivityIndicator size="small" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Analyzing fitness progression...</Text>
+        <Text style={styles.loadingText}>{loadingText}</Text>
       </Card>
     );
   }

@@ -72,6 +72,9 @@ export default function DashboardScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [recommendation, setRecommendation] = useState(null);
   const [insightExpanded, setInsightExpanded] = useState(false);
+  const [hydrationCoachData, setHydrationCoachData] = useState(null);
+  const [hydrationExpanded, setHydrationExpanded] = useState(false);
+  const [loadingHydrationCoach, setLoadingHydrationCoach] = useState(false);
   const [username, setUsername] = useState('Fitness Fan');
   
   // Dynamic Goals State
@@ -432,8 +435,41 @@ export default function DashboardScreen({ navigation }) {
     try {
       await apiClient.post('/hydration/log', { amount_ml: amount, date: selectedDate });
       setHydration(prev => Math.max(0, prev + amount));
+      
+      // Force refetch recommendation and hydration coach to keep UI updated
+      try {
+        const [recRes, hydCoachRes] = await Promise.all([
+          apiClient.get(`/recommendations?date=${selectedDate}&today=${getLocalDateString()}`),
+          apiClient.get(`/recommendations/hydration-coach?date=${selectedDate}&today=${getLocalDateString()}`).catch(() => null)
+        ]);
+        setRecommendation(recRes.data);
+        if (hydCoachRes) {
+          setHydrationCoachData(hydCoachRes.data);
+        }
+      } catch (err) {
+        console.error("Failed to update insights after hydration log:", err);
+      }
     } catch (e) {
       console.error('Failed to update hydration:', e);
+    }
+  };
+
+  const toggleHydrationCoach = async () => {
+    if (!hydrationExpanded) {
+      setHydrationExpanded(true);
+      if (!hydrationCoachData) {
+        try {
+          setLoadingHydrationCoach(true);
+          const res = await apiClient.get(`/recommendations/hydration-coach?date=${selectedDate}&today=${getLocalDateString()}`);
+          setHydrationCoachData(res.data);
+        } catch (err) {
+          console.error("Failed to load hydration coach schedule:", err);
+        } finally {
+          setLoadingHydrationCoach(false);
+        }
+      }
+    } else {
+      setHydrationExpanded(false);
     }
   };
 
@@ -822,7 +858,26 @@ export default function DashboardScreen({ navigation }) {
                           variant="primary"
                           onPress={fetchDashboardData}
                         />
-                      ) : null
+                      ) : (
+                        <TouchableOpacity
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: theme.colors.primaryLight,
+                            borderColor: theme.colors.primaryBorder,
+                            borderWidth: 1.5,
+                            borderRadius: theme.radii.lg,
+                            paddingVertical: 10,
+                            paddingHorizontal: 16,
+                            marginTop: 10
+                          }}
+                          onPress={() => navigation.navigate('AIChat', { coachType: 'progression_coach' })}
+                        >
+                          <Feather name="message-square" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                          <Text style={{ ...theme.typography.labelSmall, color: theme.colors.primary, fontWeight: '700' }}>Chat with Coach</Text>
+                        </TouchableOpacity>
+                      )
                     }
                   />
                 )
@@ -834,49 +889,113 @@ export default function DashboardScreen({ navigation }) {
               <SectionHeader title="HEALTH METRICS" />
 
               {/* Hydration Card */}
-              <Card style={[styles.metricCard, styles.hydrationCard]}>
-                <View style={styles.metricRow}>
-                  <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(0, 122, 255, 0.12)' }]}>
-                    <MaterialCommunityIcons name="water" size={22} color={theme.colors.info} />
+              <Card style={[styles.metricCard, styles.hydrationCard, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <View style={styles.metricRow}>
+                    <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(0, 122, 255, 0.12)' }]}>
+                      <MaterialCommunityIcons name="water" size={22} color={theme.colors.info} />
+                    </View>
+                    <View>
+                      <Text style={styles.metricLabel}>Water Intake</Text>
+                      <Text style={styles.metricValue}>{hydration} / {hydrationGoal} ml</Text>
+                    </View>
                   </View>
-                  <View>
-                    <Text style={styles.metricLabel}>Water Intake</Text>
-                    <Text style={styles.metricValue}>{hydration} / {hydrationGoal} ml</Text>
-                  </View>
-                </View>
-                <View style={styles.hydrationActionRow}>
-                  {/* Decrement (-) Button */}
-                  <TouchableWithoutFeedback
-                    onPress={() => hydration > 0 && adjustHydration(-250)}
-                    onPressIn={() => hydration > 0 && handlePressInMinus()}
-                    onPressOut={() => hydration > 0 && handlePressOutMinus()}
-                    disabled={hydration <= 0}
-                    accessibilityLabel="Log 250 milliliters water less"
-                    accessibilityRole="button"
-                  >
-                    <Animated.View style={[
-                      styles.actionButton,
-                      styles.minusBtn,
-                      { transform: [{ scale: minusScale }] },
-                      hydration <= 0 && { opacity: 0.4 }
-                    ]}>
-                      <Feather name="minus" size={16} color={theme.colors.info} />
-                    </Animated.View>
-                  </TouchableWithoutFeedback>
+                  <View style={styles.hydrationActionRow}>
+                    {/* Decrement (-) Button */}
+                    <TouchableWithoutFeedback
+                      onPress={() => hydration > 0 && adjustHydration(-250)}
+                      onPressIn={() => hydration > 0 && handlePressInMinus()}
+                      onPressOut={() => hydration > 0 && handlePressOutMinus()}
+                      disabled={hydration <= 0}
+                      accessibilityLabel="Log 250 milliliters water less"
+                      accessibilityRole="button"
+                    >
+                      <Animated.View style={[
+                        styles.actionButton,
+                        styles.minusBtn,
+                        { transform: [{ scale: minusScale }] },
+                        hydration <= 0 && { opacity: 0.4 }
+                      ]}>
+                        <Feather name="minus" size={16} color={theme.colors.info} />
+                      </Animated.View>
+                    </TouchableWithoutFeedback>
 
-                  {/* Increment (+) Button */}
-                  <TouchableWithoutFeedback
-                    onPress={() => adjustHydration(250)}
-                    onPressIn={handlePressInPlus}
-                    onPressOut={handlePressOutPlus}
-                    accessibilityLabel="Log 250 milliliters water more"
-                    accessibilityRole="button"
-                  >
-                    <Animated.View style={[styles.actionButton, styles.plusBtn, { transform: [{ scale: plusScale }] }]}>
-                      <Feather name="plus" size={16} color="#FFF" />
-                    </Animated.View>
-                  </TouchableWithoutFeedback>
+                    {/* Increment (+) Button */}
+                    <TouchableWithoutFeedback
+                      onPress={() => adjustHydration(250)}
+                      onPressIn={handlePressInPlus}
+                      onPressOut={handlePressOutPlus}
+                      accessibilityLabel="Log 250 milliliters water more"
+                      accessibilityRole="button"
+                    >
+                      <Animated.View style={[styles.actionButton, styles.plusBtn, { transform: [{ scale: plusScale }] }]}>
+                        <Feather name="plus" size={16} color="#FFF" />
+                      </Animated.View>
+                    </TouchableWithoutFeedback>
+                  </View>
                 </View>
+
+                {/* AI Hydration Coach Section */}
+                <TouchableOpacity
+                  onPress={toggleHydrationCoach}
+                  style={styles.coachToggleBtn}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="sparkles" size={14} color={theme.colors.info} />
+                  <Text style={styles.coachToggleText}>
+                    {hydrationExpanded ? 'Hide Hydration Schedule' : 'View AI Hydration Schedule'}
+                  </Text>
+                  <Feather
+                    name={hydrationExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={14}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+
+                {hydrationExpanded && (
+                  <View style={styles.coachScheduleContainer}>
+                    {loadingHydrationCoach ? (
+                      <ActivityIndicator size="small" color={theme.colors.info} style={{ marginVertical: 10 }} />
+                    ) : hydrationCoachData && hydrationCoachData.schedule ? (
+                      <View>
+                        {hydrationCoachData.schedule.map((item, idx) => (
+                          <View key={idx} style={styles.scheduleItem}>
+                            <Text style={styles.scheduleTime}>{item.time}</Text>
+                            <View style={styles.scheduleDetails}>
+                              <Text style={styles.scheduleAmount}>{item.amount_ml} ml</Text>
+                              <Text style={styles.scheduleReason}>{item.reason}</Text>
+                            </View>
+                          </View>
+                        ))}
+                        {hydrationCoachData.advice && (
+                          <Text style={styles.scheduleAdvice}>💡 {hydrationCoachData.advice}</Text>
+                        )}
+                        
+                        <TouchableOpacity
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: 'rgba(0, 122, 255, 0.08)',
+                            borderColor: 'rgba(0, 122, 255, 0.2)',
+                            borderWidth: 1,
+                            borderRadius: theme.radii.md,
+                            paddingVertical: 8,
+                            paddingHorizontal: 12,
+                            marginTop: 12,
+                            alignSelf: 'stretch'
+                          }}
+                          onPress={() => navigation.navigate('AIChat', { coachType: 'hydration_coach' })}
+                        >
+                          <Feather name="message-square" size={14} color={theme.colors.info} style={{ marginRight: 6 }} />
+                          <Text style={{ ...theme.typography.labelSmall, color: theme.colors.info, fontWeight: '700' }}>Chat with Hydration Coach</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <Text style={styles.scheduleError}>No schedule generated. Try logging water above.</Text>
+                    )}
+                  </View>
+                )}
               </Card>
 
               {/* Workouts Card */}
@@ -1186,6 +1305,63 @@ const stylesFactory = (theme) => StyleSheet.create({
   },
   plusBtn: {
     backgroundColor: theme.colors.info,
+  },
+  coachToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 122, 255, 0.1)',
+  },
+  coachToggleText: {
+    ...theme.typography.captionStrong,
+    color: theme.colors.info,
+    flex: 1,
+  },
+  coachScheduleContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 122, 255, 0.08)',
+  },
+  scheduleItem: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    alignItems: 'flex-start',
+  },
+  scheduleTime: {
+    ...theme.typography.captionStrong,
+    color: theme.colors.textPrimary,
+    width: 70,
+    fontWeight: 'bold',
+  },
+  scheduleDetails: {
+    flex: 1,
+  },
+  scheduleAmount: {
+    ...theme.typography.captionStrong,
+    color: theme.colors.info,
+    fontWeight: 'bold',
+  },
+  scheduleReason: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  scheduleAdvice: {
+    ...theme.typography.captionStrong,
+    color: theme.colors.textPrimary,
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+  scheduleError: {
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    textAlign: 'center',
+    marginVertical: 8,
   },
   workoutPillsWrapper: {
     flexDirection: 'row',

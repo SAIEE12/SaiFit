@@ -128,3 +128,4 @@ The application frontend follows modern React Native / React design patterns:
    - `useDialog`: Centralized state management for custom warning, error, and success alert dialogs.
    - `useAnimations`: Decouples standard skeleton loader loops and visual effects from views.
 3. **Typography Hierarchy**: Font styles and weights are standardized in `theme.js` to ensure visual hierarchy.
+4. **System-Wide Dark/Light Mode**: Fully reactive theming is implemented globally using `ThemeContext`, a customized toggle ("Day Workout" vs. "Night Run" modes), and a styles factory pattern (`useThemedStyles(stylesFactory)`) that recalculates component and screen styles dynamically upon theme changes.

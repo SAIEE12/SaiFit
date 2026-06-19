@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { theme } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import Button from './Button';
 
 /**
@@ -9,6 +9,9 @@ import Button from './Button';
  * Props: message, style
  */
 export function LoadingState({ message = 'Loading...', style }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
+
   return (
     <View style={[styles.center, style]}>
       <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -22,6 +25,9 @@ export function LoadingState({ message = 'Loading...', style }) {
  * Props: message, onRetry, style
  */
 export function ErrorState({ message = 'Something went wrong', onRetry, style }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
+
   return (
     <View style={[styles.center, styles.padded, style]}>
       <View style={[styles.iconCircle, styles.dangerCircle]}>
@@ -51,6 +57,9 @@ export function EmptyState({
   actionElement,
   style,
 }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
+
   return (
     <View style={[styles.center, styles.padded, style]}>
       <View style={styles.iconCircle}>
@@ -68,7 +77,7 @@ export function EmptyState({
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   center: {
     alignItems: 'center',
     justifyContent: 'center',

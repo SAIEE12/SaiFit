@@ -1,12 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { theme } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
-/**
- * Header
- * Props: title, subtitle, rightElement, style
- */
 export function Header({ title, subtitle, rightElement, style }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
+
   return (
     <View style={[styles.headerContainer, style]}>
       <View style={styles.textContainer}>
@@ -18,11 +17,10 @@ export function Header({ title, subtitle, rightElement, style }) {
   );
 }
 
-/**
- * SectionHeader
- * Props: title, rightElement, style
- */
 export function SectionHeader({ title, rightElement, style }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
+
   return (
     <View style={[styles.sectionContainer, style]}>
       <Text style={styles.sectionTitle}>{title.toUpperCase()}</Text>
@@ -31,7 +29,7 @@ export function SectionHeader({ title, rightElement, style }) {
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

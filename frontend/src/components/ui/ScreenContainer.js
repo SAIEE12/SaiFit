@@ -1,12 +1,8 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
-/**
- * ScreenContainer
- * Props: children, scrollable, style, contentContainerStyle, edges, keyboardAvoiding
- */
 export default function ScreenContainer({
   children,
   scrollable = true,
@@ -15,6 +11,9 @@ export default function ScreenContainer({
   edges = ['top', 'bottom'],
   keyboardAvoiding = true,
 }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
+
   const innerContent = scrollable ? (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -47,7 +46,7 @@ export default function ScreenContainer({
   return container;
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

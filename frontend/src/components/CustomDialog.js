@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Dimensions } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { theme } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -15,6 +15,9 @@ export default function CustomDialog({
   onConfirm, 
   onCancel 
 }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
+
   if (!visible) return null;
 
   const getIcon = () => {
@@ -91,7 +94,7 @@ export default function CustomDialog({
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: theme.colors.darkSheetOverlay,

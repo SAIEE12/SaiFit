@@ -1,12 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { theme } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import Card from './Card';
 
-/**
- * AICoachCard — Reusable, context-aware AI Coach Card
- */
 export default function AICoachCard({
   title = "AI COACH INSIGHT",
   scoreLabel,
@@ -21,6 +18,8 @@ export default function AICoachCard({
   isError = false,
   style,
 }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
   const sparkleOpacity = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
@@ -161,7 +160,7 @@ export default function AICoachCard({
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   loadingCard: {
     paddingVertical: theme.spacing.xl,
     alignItems: 'center',
@@ -254,7 +253,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   scoreBadge: {
-    backgroundColor: theme.colors.textPrimary, // WCAG AA compliant: dark base
+    backgroundColor: theme.colors.textPrimary,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
     borderRadius: theme.radii.full,
@@ -262,22 +261,22 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 11,
     fontWeight: '900',
-    color: '#FFF',
+    color: theme.colors.background, // Adapts nicely in dark/light mode
   },
   narrativeWrap: {
-    backgroundColor: theme.colors.surface, // WCAG AA compliant: white background
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
     borderWidth: 1.5,
-    borderColor: theme.colors.primaryBorder, // crimson border
+    borderColor: theme.colors.primaryBorder,
     borderLeftWidth: 4,
-    borderLeftColor: theme.colors.primary, // elegant crimson left bar
+    borderLeftColor: theme.colors.primary,
     ...theme.shadows.soft,
   },
   narrativeText: {
     ...theme.typography.bodySmall,
-    color: theme.colors.textPrimary, // WCAG AA compliant: dark charcoal text
+    color: theme.colors.textPrimary,
     fontWeight: '600',
     lineHeight: 20,
   },
@@ -335,19 +334,19 @@ const styles = StyleSheet.create({
   milestonePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface, // WCAG AA compliant: white background
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radii.full,
     borderWidth: 1,
-    borderColor: theme.colors.borderStrong, // neutral border
+    borderColor: theme.colors.borderStrong,
   },
   trophyIcon: {
     marginRight: 6,
   },
   milestoneText: {
     ...theme.typography.labelSmall,
-    color: theme.colors.textPrimary, // WCAG AA compliant: dark charcoal text
+    color: theme.colors.textPrimary,
     letterSpacing: 0,
     fontWeight: '700',
   },

@@ -1,17 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { theme } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
-/**
- * Badge / Tag
- * Props: label, variant ('primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info'), style, textStyle
- */
 export default function Badge({
   label,
   variant = 'primary',
   style,
   textStyle,
 }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
+
   return (
     <View style={[styles.badge, styles[`variant_${variant}`], style]}>
       <Text style={[styles.text, styles[`text_${variant}`], textStyle]}>
@@ -21,7 +20,7 @@ export default function Badge({
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 4,

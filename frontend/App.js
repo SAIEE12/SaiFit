@@ -17,6 +17,7 @@ import ChoosePathScreen from './src/screens/ChoosePathScreen';
 import { theme } from './src/theme';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ProfileProvider } from './src/context/ProfileContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import {
   useFonts,
   Inter_400Regular,
@@ -48,6 +49,7 @@ function MainTabs() {
   const insets = useSafeAreaInsets();
   const bottomPadding = insets.bottom > 0 ? insets.bottom : 12;
   const tabHeight = 52 + bottomPadding;
+  const { theme } = useTheme();
 
   return (
     <Tab.Navigator
@@ -95,6 +97,7 @@ function MainTabs() {
 
 function AppContent() {
   const { isAuthenticated, needsOnboarding, loading, login, completeOnboarding } = useAuth();
+  const { theme } = useTheme();
 
   if (loading) {
       return (
@@ -138,11 +141,13 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <ProfileProvider>
-          <AppContent />
-        </ProfileProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ProfileProvider>
+            <AppContent />
+          </ProfileProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

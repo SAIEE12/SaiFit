@@ -1,12 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { theme } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
-/**
- * Card — base surface container
- * Props: children, style, variant ('default' | 'elevated' | 'ai')
- *        padding (override inner padding), noPadding, onPress
- */
 export default function Card({
   children,
   style,
@@ -15,6 +10,8 @@ export default function Card({
   onPress,
   ...props
 }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
   const Container = onPress ? TouchableOpacity : View;
 
   return (
@@ -34,7 +31,7 @@ export default function Card({
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   base: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radii.xxl,

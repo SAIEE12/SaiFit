@@ -1,12 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal as RNModal, TouchableOpacity, ScrollView } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { theme } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
-/**
- * ModalView — A standard page sheet or centered dialog modal container
- * Props: visible, title, onClose, children, presentationStyle ('pageSheet' | 'overFullScreen' | 'formSheet'), animationType
- */
 export default function ModalView({
   visible,
   title,
@@ -15,6 +11,9 @@ export default function ModalView({
   presentationStyle = 'pageSheet',
   animationType = 'slide',
 }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
+
   return (
     <RNModal
       visible={visible}
@@ -48,7 +47,7 @@ export default function ModalView({
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface,

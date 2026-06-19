@@ -5,13 +5,8 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { theme } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
-/**
- * Button — primary | secondary | outline | ghost | danger
- * Props: variant, size ('md' | 'lg'), loading, disabled,
- *        icon (left element), onPress, children, style
- */
 export default function Button({
   variant = 'primary',
   size = 'md',
@@ -23,6 +18,9 @@ export default function Button({
   style,
   textStyle,
 }) {
+  const { theme } = useTheme();
+  const styles = stylesFactory(theme);
+
   const containerStyle = [
     styles.base,
     styles[`size_${size}`],
@@ -60,7 +58,7 @@ export default function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   base: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -106,7 +104,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   label_primary: { color: '#FFF' },
-  label_secondary: { color: '#FFF' },
+  label_secondary: { color: theme.colors.background }, // In dark mode, darkBase is white, so text should be dark!
   label_outline: { color: theme.colors.primary },
   label_ghost: { color: theme.colors.primary },
   label_danger: { color: '#FFF' },

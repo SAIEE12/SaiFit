@@ -61,11 +61,11 @@ export const theme = {
   // ── TYPOGRAPHY SCALE ──────────────────────────────────────
   // All font sizes are sp values (same unit in RN).
   typography: {
-    h1: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5, lineHeight: 40, color: '#1C1C1E' },
+    h1: { fontSize: 32, fontWeight: '900', letterSpacing: -0.5, lineHeight: 40, color: '#1C1C1E' },
     h2: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5, lineHeight: 36, color: '#1C1C1E' },
-    h3: { fontSize: 22, fontWeight: '800', letterSpacing: -0.3, lineHeight: 28, color: '#1C1C1E' },
-    h4: { fontSize: 18, fontWeight: '800', letterSpacing: -0.2, lineHeight: 24, color: '#1C1C1E' },
-    h5: { fontSize: 16, fontWeight: '800', letterSpacing: -0.1, lineHeight: 22, color: '#1C1C1E' },
+    h3: { fontSize: 22, fontWeight: '700', letterSpacing: -0.3, lineHeight: 28, color: '#1C1C1E' },
+    h4: { fontSize: 18, fontWeight: '600', letterSpacing: -0.2, lineHeight: 24, color: '#1C1C1E' },
+    h5: { fontSize: 16, fontWeight: '600', letterSpacing: -0.1, lineHeight: 22, color: '#1C1C1E' },
 
     body: { fontSize: 15, fontWeight: '500', lineHeight: 22, color: '#1C1C1E' },
     bodySmall: { fontSize: 13, fontWeight: '500', lineHeight: 18, color: '#1C1C1E' },
@@ -77,7 +77,7 @@ export const theme = {
     captionStrong: { fontSize: 12, fontWeight: '700', lineHeight: 16, color: '#8E8E93' },
 
     // Number / metric displays
-    metric: { fontSize: 30, fontWeight: '800', letterSpacing: -0.5, lineHeight: 36, color: '#1C1C1E' },
+    metric: { fontSize: 30, fontWeight: '900', letterSpacing: -0.5, lineHeight: 36, color: '#1C1C1E' },
     metricSmall: { fontSize: 18, fontWeight: '800', letterSpacing: -0.2, lineHeight: 22, color: '#1C1C1E' },
   },
 
@@ -101,16 +101,6 @@ export const theme = {
     xl: 20,
     xxl: 24,
     full: 9999,
-  },
-
-  // Keep old key for any code that still uses borderRadius.xxx
-  borderRadius: {
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-    xxl: 24,
-    circle: 9999,
   },
 
   // ── SHADOWS / ELEVATION ───────────────────────────────────

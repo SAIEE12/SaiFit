@@ -48,6 +48,17 @@ const DEFAULT_HYDRATION_GOAL = 3000;
 
 export default function DashboardScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+
+  const getTimeAwareMessage = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      return "Good morning! Log your breakfast or morning workout to start tracking.";
+    } else if (hour < 17) {
+      return "Good afternoon! Log your lunch or midday stretch to keep the momentum going.";
+    } else {
+      return "Good evening! Log your dinner or wrap up your day with a workout log.";
+    }
+  };
   
   // Dashboard Date & Logs State
   const [selectedDate, setSelectedDate] = useState(getLocalDateString());
@@ -915,7 +926,9 @@ export default function DashboardScreen({ navigation }) {
                 <EmptyState
                   icon="activity"
                   title="No logged activity yet"
-                  description="Use the tabs below to log your meals and workouts for the day!"
+                  description={getTimeAwareMessage()}
+                  ctaText="Log a Workout"
+                  onCtaPress={() => navigation.navigate('Workouts')}
                 />
               </Animated.View>
             )}

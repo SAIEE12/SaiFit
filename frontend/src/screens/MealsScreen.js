@@ -467,7 +467,17 @@ export default function MealsScreen() {
             <EmptyState
               icon="coffee"
               title="No food logs"
-              description="No food logs recorded today."
+              description="No food logs recorded today. Log your meals to track your nutrition!"
+              ctaText="Scan a Meal"
+              onCtaPress={() => {
+                if (!permission || !permission.granted) {
+                  requestPermission().then(res => {
+                    if (res.granted) setShowCamera(true);
+                  });
+                } else {
+                  setShowCamera(true);
+                }
+              }}
             />
           )}
         </View>

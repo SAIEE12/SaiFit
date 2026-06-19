@@ -311,6 +311,8 @@ export default function CalendarScreen({ navigation }) {
                                         icon="activity"
                                         title="No activities"
                                         description="No activities logged on this date."
+                                        ctaText="Go to My Space"
+                                        onCtaPress={() => navigation.navigate('My Space')}
                                     />
                                 )}
                             </View>

@@ -40,12 +40,14 @@ export function ErrorState({ message = 'Something went wrong', onRetry, style })
 
 /**
  * EmptyState
- * Props: icon, title, description, actionElement, style
+ * Props: icon, title, description, ctaText, onCtaPress, actionElement, style
  */
 export function EmptyState({
   icon = 'coffee',
   title = 'No Data',
   description = 'There is nothing here yet.',
+  ctaText,
+  onCtaPress,
   actionElement,
   style,
 }) {
@@ -56,6 +58,11 @@ export function EmptyState({
       </View>
       <Text style={styles.titleText}>{title}</Text>
       <Text style={styles.descText}>{description}</Text>
+      {ctaText && onCtaPress && (
+        <Button variant="primary" size="sm" onPress={onCtaPress} style={{ paddingHorizontal: 20 }}>
+          {ctaText}
+        </Button>
+      )}
       {actionElement && <View style={styles.actionWrap}>{actionElement}</View>}
     </View>
   );

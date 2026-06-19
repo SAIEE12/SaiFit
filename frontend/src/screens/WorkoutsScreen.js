@@ -558,6 +558,8 @@ export default function WorkoutsScreen({ route, navigation }) {
                     ? `You haven't logged any ${selectedCategory} workouts for this date.`
                     : "You haven't recorded any workouts or activities for this date."
                 }
+                ctaText="Log a Workout"
+                onCtaPress={() => setShowModal(true)}
               />
             </Animated.View>
           ) : (

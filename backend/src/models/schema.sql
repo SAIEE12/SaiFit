@@ -190,4 +190,35 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    icon TEXT DEFAULT 'bell',
+    icon_type TEXT DEFAULT 'feather',
+    color TEXT,
+    priority TEXT DEFAULT 'normal',
+    action_type TEXT,
+    action_payload TEXT,
+    is_read INTEGER DEFAULT 0,
+    is_pinned INTEGER DEFAULT 0,
+    is_archived INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    read_at DATETIME,
+    expires_at DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    muted_categories TEXT DEFAULT '[]',
+    coach_tone TEXT DEFAULT 'Supportive',
+    quiet_hours_start TEXT,
+    quiet_hours_end TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+
 

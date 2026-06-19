@@ -14,6 +14,7 @@ import AICoachCard from '../components/ui/AICoachCard';
 import Badge from '../components/ui/Badge';
 import { LoadingState } from '../components/ui/StateViews';
 import ModalView from '../components/ui/ModalView';
+import useDialog from '../hooks/useDialog';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -26,21 +27,8 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const [isEditing, setIsEditing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Dialog State
-  const [dialog, setDialog] = useState({
-    visible: false,
-    title: '',
-    description: '',
-    type: 'info',
-    onConfirm: () => {},
-    onCancel: () => {},
-    confirmText: 'OK',
-    cancelText: 'Cancel'
-  });
-
-  const showDialog = (title, description, type = 'info', onConfirm = () => {}, onCancel = () => {}, confirmText = 'OK', cancelText = 'Cancel') => {
-    setDialog({ visible: true, title, description, type, onConfirm, onCancel, confirmText, cancelText });
-  };
+  // Reusable Dialog Hook
+  const { dialog, showDialog } = useDialog();
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

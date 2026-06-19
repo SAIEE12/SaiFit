@@ -15,6 +15,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import { LoadingState, EmptyState } from '../components/ui/StateViews';
+import useDialog from '../hooks/useDialog';
 
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear();
@@ -50,36 +51,8 @@ export default function MealsScreen() {
     setToast({ visible: true, message, type });
   };
 
-  // Reusable Dialog State
-  const [dialog, setDialog] = useState({
-      visible: false,
-      title: '',
-      description: '',
-      type: 'info',
-      confirmText: 'OK',
-      cancelText: 'Cancel',
-      onConfirm: () => {},
-      onCancel: null
-  });
-
-  const showDialog = (title, description, type = 'info', onConfirm = null, onCancel = null, confirmText = 'OK') => {
-      setDialog({
-          visible: true,
-          title,
-          description,
-          type,
-          confirmText,
-          cancelText: 'Cancel',
-          onConfirm: () => {
-              setDialog(prev => ({ ...prev, visible: false }));
-              if (onConfirm) onConfirm();
-          },
-          onCancel: onCancel ? () => {
-              setDialog(prev => ({ ...prev, visible: false }));
-              onCancel();
-          } : null
-      });
-  };
+  // Reusable Dialog Hook
+  const { dialog, showDialog } = useDialog();
 
   useFocusEffect(
     useCallback(() => {

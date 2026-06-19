@@ -31,6 +31,7 @@ import Badge from '../components/ui/Badge';
 import { EmptyState } from '../components/ui/StateViews';
 import ModalView from '../components/ui/ModalView';
 import Toast from '../components/ui/Toast';
+import useDialog from '../hooks/useDialog';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -95,17 +96,8 @@ export default function WorkoutsScreen({ route, navigation }) {
   const [activityNotes, setActivityNotes] = useState('');
   const [activityTrackId, setActivityTrackId] = useState('');
 
-  // Reusable Dialog State
-  const [dialog, setDialog] = useState({
-    visible: false,
-    title: '',
-    description: '',
-    type: 'info',
-    confirmText: 'OK',
-    cancelText: 'Cancel',
-    onConfirm: () => {},
-    onCancel: null
-  });
+  // Reusable Dialog Hook
+  const { dialog, showDialog } = useDialog();
 
   const isFocused = useIsFocused();
 
@@ -193,25 +185,6 @@ export default function WorkoutsScreen({ route, navigation }) {
     }
     return () => loop && loop.stop();
   }, [loading]);
-
-  const showDialog = (title, description, type = 'info', onConfirm = null, onCancel = null, confirmText = 'OK') => {
-    setDialog({
-      visible: true,
-      title,
-      description,
-      type,
-      confirmText,
-      cancelText: 'Cancel',
-      onConfirm: () => {
-        setDialog(prev => ({ ...prev, visible: false }));
-        if (onConfirm) onConfirm();
-      },
-      onCancel: onCancel ? () => {
-        setDialog(prev => ({ ...prev, visible: false }));
-        onCancel();
-      } : null
-    });
-  };
 
   const fetchRecommendation = async () => {
     try {

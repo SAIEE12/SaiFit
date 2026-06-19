@@ -4,12 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import apiClient from '../api/client';
 import CustomDialog from '../components/CustomDialog';
-import { theme } from '../theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import ScreenContainer from '../components/ui/ScreenContainer';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 
 export default function AdminScreen({ navigation }) {
+    const { theme, isDark } = useTheme();
+    const styles = useThemedStyles(stylesFactory);
     const [users, setUsers] = useState([]);
     const [invites, setInvites] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -653,7 +655,7 @@ export default function AdminScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
     safeHeader: { backgroundColor: theme.colors.background },
     headerContainer: {

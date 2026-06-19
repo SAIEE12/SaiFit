@@ -21,7 +21,7 @@ import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/v
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import CustomDialog from '../components/CustomDialog';
 import apiClient from '../api/client';
-import { theme } from '../theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import ScreenContainer from '../components/ui/ScreenContainer';
 import { Header, SectionHeader } from '../components/ui/Header';
 import Card from '../components/ui/Card';
@@ -47,6 +47,8 @@ const getLocalDateString = (date = new Date()) => {
 };
 
 export default function WorkoutsScreen({ route, navigation }) {
+  const { theme, isDark } = useTheme();
+  const styles = useThemedStyles(stylesFactory);
   const insets = useSafeAreaInsets();
   const routeDate = route?.params?.date;
 
@@ -810,7 +812,7 @@ export default function WorkoutsScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

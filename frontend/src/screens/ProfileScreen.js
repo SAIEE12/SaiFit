@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager, RefreshControl, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import apiClient, { setAuthToken } from '../api/client';
-import { theme } from '../theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import ScreenContainer from '../components/ui/ScreenContainer';
 import CustomDialog from '../components/CustomDialog';
 import { Header, SectionHeader } from '../components/ui/Header';
@@ -21,6 +21,18 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 export default function ProfileScreen({ navigation, onLogout }) {
+  const { isDark, theme, toggleTheme } = useTheme();
+  const styles = useThemedStyles(stylesFactory);
+  const themeToggleAnim = useRef(new Animated.Value(isDark ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(themeToggleAnim, {
+      toValue: isDark ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true
+    }).start();
+  }, [isDark]);
+
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
   const [userData, setUserData] = useState(null);
@@ -313,7 +325,57 @@ export default function ProfileScreen({ navigation, onLogout }) {
             </Card>
 
             <SectionHeader title="PREFERENCES & CONTROLS" style={{marginTop: 20}} />
-            
+
+            {/* Themed Active Mode Card */}
+            <Card 
+              style={[
+                styles.themeToggleCard, 
+                isDark ? styles.themeToggleCardDark : styles.themeToggleCardLight
+              ]} 
+              onPress={toggleTheme}
+            >
+              <View style={styles.themeToggleHeader}>
+                <View style={styles.themeToggleLeft}>
+                  <View style={[
+                    styles.themeIconCircle, 
+                    { backgroundColor: isDark ? 'rgba(255, 45, 85, 0.2)' : 'rgba(245, 158, 11, 0.15)' }
+                  ]}>
+                    <Feather 
+                      name={isDark ? "moon" : "sun"} 
+                      size={18} 
+                      color={isDark ? theme.colors.primary : '#F59E0B'} 
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.themeToggleTitle}>{isDark ? 'Night Run Mode' : 'Day Workout Mode'}</Text>
+                    <Text style={styles.themeToggleSubtitle}>
+                      {isDark ? 'Sleek dark theme for late workouts' : 'Bright high-energy layout for daytime training'}
+                    </Text>
+                  </View>
+                </View>
+                
+                {/* Switch indicator */}
+                <View style={[
+                  styles.themeSwitchTrack, 
+                  isDark ? styles.themeSwitchTrackActive : styles.themeSwitchTrackInactive
+                ]}>
+                  <Animated.View style={[
+                    styles.themeSwitchThumb,
+                    {
+                      transform: [
+                        {
+                          translateX: themeToggleAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [2, 22]
+                          })
+                        }
+                      ]
+                    }
+                  ]} />
+                </View>
+              </View>
+            </Card>
+
             {userData?.role === 'admin' && (
               <Card style={styles.menuItem} onPress={() => navigation.navigate('Admin')}>
                   <View style={styles.menuItemLeft}>
@@ -527,7 +589,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   safeHeader: { backgroundColor: theme.colors.background },
   iconBtn: { 
@@ -595,7 +657,7 @@ const styles = StyleSheet.create({
   },
   modalBody: { padding: 24 },
   premiumInputBlock: {
-    backgroundColor: '#FAFBFC',
+    backgroundColor: theme.colors.background,
     borderRadius: theme.radii.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -636,7 +698,7 @@ const styles = StyleSheet.create({
   },
   genderPill: {
     flex: 1,
-    backgroundColor: '#FAFBFC',
+    backgroundColor: theme.colors.background,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -660,7 +722,7 @@ const styles = StyleSheet.create({
   },
   activityPill: {
     flex: 1,
-    backgroundColor: '#FAFBFC',
+    backgroundColor: theme.colors.background,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -684,7 +746,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   goalPillItem: {
-    backgroundColor: '#FAFBFC',
+    backgroundColor: theme.colors.background,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
@@ -701,5 +763,74 @@ const styles = StyleSheet.create({
   },
   goalPillTextActive: {
     color: theme.colors.primary,
+  },
+
+  // Creative Theme Toggle Card Styles
+  themeToggleCard: {
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1.5,
+  },
+  themeToggleCardLight: {
+    borderColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: 'rgba(245, 158, 11, 0.03)',
+  },
+  themeToggleCardDark: {
+    borderColor: 'rgba(255, 45, 85, 0.2)',
+    backgroundColor: 'rgba(255, 45, 85, 0.03)',
+  },
+  themeToggleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  themeToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  themeIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  themeToggleTitle: {
+    ...theme.typography.bodySmall,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  themeToggleSubtitle: {
+    ...theme.typography.labelSmall,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+    letterSpacing: 0,
+    textTransform: 'none',
+  },
+  themeSwitchTrack: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  themeSwitchTrackInactive: {
+    backgroundColor: theme.colors.borderStrong,
+  },
+  themeSwitchTrackActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  themeSwitchThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFF',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
   },
 });

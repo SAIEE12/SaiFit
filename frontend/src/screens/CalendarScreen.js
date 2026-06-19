@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/client';
-import { theme } from '../theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import ScreenContainer from '../components/ui/ScreenContainer';
 import { Header, SectionHeader } from '../components/ui/Header';
 import Card from '../components/ui/Card';
@@ -27,6 +27,8 @@ const getLocalDateString = (date = new Date()) => {
 };
 
 export default function CalendarScreen({ navigation }) {
+    const { theme, isDark } = useTheme();
+    const styles = useThemedStyles(stylesFactory);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [loading, setLoading] = useState(false);
@@ -325,7 +327,7 @@ export default function CalendarScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
     safeHeader: { backgroundColor: theme.colors.background },
     backBtn: { padding: 5, marginRight: 10 },

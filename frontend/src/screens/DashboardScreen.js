@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import apiClient from '../api/client';
-import { theme } from '../theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import ScreenContainer from '../components/ui/ScreenContainer';
 import Toast from '../components/ui/Toast';
 import { SectionHeader } from '../components/ui/Header';
@@ -47,6 +47,8 @@ const getLocalDateString = (date = new Date()) => {
 const DEFAULT_HYDRATION_GOAL = 3000;
 
 export default function DashboardScreen({ navigation }) {
+  const { theme, isDark } = useTheme();
+  const styles = useThemedStyles(stylesFactory);
   const insets = useSafeAreaInsets();
 
   const getTimeAwareMessage = () => {
@@ -978,7 +980,7 @@ export default function DashboardScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   scroll: {
     flex: 1,
   },

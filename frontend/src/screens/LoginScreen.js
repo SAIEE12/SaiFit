@@ -14,10 +14,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import apiClient, { setAuthToken } from '../api/client';
-import { theme } from '../theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import AnimatedTextField from '../components/ui/AnimatedTextField';
 
 export default function LoginScreen({ onLoginSuccess }) {
+    const { theme, isDark } = useTheme();
+    const styles = useThemedStyles(stylesFactory);
     const [username, setUsername] = useState('');
     const [inviteCode, setInviteCode] = useState('');
     const [loading, setLoading] = useState(false);
@@ -302,7 +304,7 @@ export default function LoginScreen({ onLoginSuccess }) {
     );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
     outer: {
         flex: 1,
         backgroundColor: theme.colors.background,

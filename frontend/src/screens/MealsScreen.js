@@ -8,7 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import CustomDialog from '../components/CustomDialog';
 import Toast from '../components/ui/Toast';
 import apiClient from '../api/client';
-import { theme } from '../theme';
+import { useTheme, useThemedStyles } from '../context/ThemeContext';
 import ScreenContainer from '../components/ui/ScreenContainer';
 import { Header, SectionHeader } from '../components/ui/Header';
 import Card from '../components/ui/Card';
@@ -25,6 +25,8 @@ const getLocalDateString = (date = new Date()) => {
 };
 
 export default function MealsScreen() {
+  const { theme, isDark } = useTheme();
+  const styles = useThemedStyles(stylesFactory);
   const [loading, setLoading] = useState(false);
   const [scannedResult, setScannedResult] = useState(null);
   const [textInput, setTextInput] = useState('');
@@ -508,7 +510,7 @@ export default function MealsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const stylesFactory = (theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   safeHeader: { backgroundColor: theme.colors.background },
   dashboard: {

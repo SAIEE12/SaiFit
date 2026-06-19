@@ -14,6 +14,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import ChoosePathScreen from './src/screens/ChoosePathScreen';
+import AIChatScreen from './src/screens/AIChatScreen';
 import { theme } from './src/theme';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ProfileProvider } from './src/context/ProfileContext';
@@ -95,6 +96,8 @@ function MainTabs() {
   );
 }
 
+const RootStack = createNativeStackNavigator();
+
 function AppContent() {
   const { isAuthenticated, needsOnboarding, loading, login, completeOnboarding } = useAuth();
   const { theme } = useTheme();
@@ -113,7 +116,10 @@ function AppContent() {
          needsOnboarding ? (
            <ChoosePathScreen onComplete={completeOnboarding} />
          ) : (
-           <MainTabs />
+           <RootStack.Navigator screenOptions={{ headerShown: false }}>
+             <RootStack.Screen name="Main" component={MainTabs} />
+             <RootStack.Screen name="AIChat" component={AIChatScreen} />
+           </RootStack.Navigator>
          )
       ) : (
          <LoginScreen onLoginSuccess={(user) => login(user, user.token)} />

@@ -7,7 +7,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import MySpaceScreen from './src/screens/MySpaceScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
 import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import MealsScreen from './src/screens/MealsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -75,7 +75,7 @@ function MainTabs({ onLogout, userRole }) {
           }
         })}
       >
-        <Tab.Screen name="My Space" component={MySpaceScreen} />
+        <Tab.Screen name="My Space" component={DashboardScreen} />
         <Tab.Screen name="Workouts" component={WorkoutsScreen} />
         <Tab.Screen name="Meals" component={MealsScreen} />
         <Tab.Screen name="Calendar" component={CalendarScreen} />

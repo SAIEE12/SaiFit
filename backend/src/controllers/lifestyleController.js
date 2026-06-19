@@ -46,6 +46,9 @@ exports.updateMyTracks = async (req, res) => {
             }
         }
 
+        // Invalidate recommendation cache
+        await db.query('DELETE FROM recommendations WHERE user_id = ?', [userId]);
+
         res.json({ message: 'Lifestyle tracks updated successfully' });
     } catch (e) {
         res.status(500).json({ error: e.message });

@@ -242,6 +242,12 @@ exports.logFood = async (req, res) => {
       }
     }
 
+    // Invalidate recommendation cache
+    await db.query(
+      "DELETE FROM recommendations WHERE user_id = ? AND type IN ('insight', 'calendar_coach') AND date = ?",
+      [userId, targetDate]
+    );
+
     res.status(201).json(newLog.rows[0]);
   } catch (error) {
 
@@ -357,7 +363,7 @@ exports.deleteMealLog = async (req, res) => {
 
     // Fetch the log first to know what values to subtract and ensure ownership
     const logRes = await db.query(
-      `SELECT fl.*, m.user_id 
+      `SELECT fl.*, m.user_id, m.date 
        FROM food_logs fl
        JOIN meals m ON fl.meal_id = m.id
        WHERE fl.id = ? AND m.user_id = ?`,
@@ -389,6 +395,14 @@ exports.deleteMealLog = async (req, res) => {
     if (parseInt(remainingLogs.rows[0].count) === 0) {
         // Clean up empty meal container
         await db.query('DELETE FROM meals WHERE id = ?', [log.meal_id]);
+    }
+
+    // Invalidate recommendation cache
+    if (log.date) {
+      await db.query(
+        "DELETE FROM recommendations WHERE user_id = ? AND type IN ('insight', 'calendar_coach') AND date = ?",
+        [userId, log.date]
+      );
     }
 
     res.json({ message: 'Meal log removed successfully' });

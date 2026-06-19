@@ -80,6 +80,12 @@ exports.logWorkout = async (req, res) => {
       console.error('Streak notification error:', streakErr);
     }
 
+    // Invalidate recommendation cache
+    await db.query(
+      "DELETE FROM recommendations WHERE user_id = ? AND type IN ('insight', 'workout_coach', 'calendar_coach', 'sleep_advisor') AND date = ?",
+      [user_id, date]
+    );
+
     res.status(201).json({ message: 'Workout logged successfully', workoutLogId });
   } catch (error) {
     await db.query('ROLLBACK');
@@ -129,11 +135,21 @@ exports.deleteWorkout = async (req, res) => {
   try {
     const { id } = req.params;
     const user_id = req.user.id;
+
+    const workoutRow = await db.query('SELECT date FROM workout_logs WHERE id = $1', [id]);
+    const wDate = workoutRow.rows[0]?.date;
     
     await db.query(
       'DELETE FROM workout_logs WHERE id = $1 AND user_id = $2',
       [id, user_id]
     );
+
+    if (wDate) {
+      await db.query(
+        "DELETE FROM recommendations WHERE user_id = ? AND type IN ('insight', 'workout_coach', 'calendar_coach', 'sleep_advisor') AND date = ?",
+        [user_id, wDate]
+      );
+    }
     
     res.json({ message: 'Workout log deleted successfully' });
   } catch (error) {

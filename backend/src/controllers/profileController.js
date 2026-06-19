@@ -43,6 +43,9 @@ exports.updateProfile = async (req, res) => {
             return res.status(404).json({ error: 'Profile not found' });
         }
 
+        // Invalidate recommendation cache
+        await db.query('DELETE FROM recommendations WHERE user_id = ?', [userId]);
+
         res.json(updated.rows[0]);
     } catch(e) {
         res.status(500).json({ error: e.message });

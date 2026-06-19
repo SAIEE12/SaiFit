@@ -71,6 +71,9 @@ exports.logHydration = async (req, res) => {
             }
         }
 
+        // Invalidate recommendation cache
+        await db.query("DELETE FROM recommendations WHERE user_id = ? AND type IN ('hydration_coach', 'insight') AND date = ?", [userId, targetDate]);
+
         res.json({ message: 'Hydration updated' });
     } catch (e) {
         res.status(500).json({ error: e.message });

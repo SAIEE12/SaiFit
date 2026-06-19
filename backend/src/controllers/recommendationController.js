@@ -7,6 +7,8 @@ const {
     PROMPT_WORKOUT_SUGGESTION,
     PROMPT_CALENDAR_COACH,
     PROMPT_PROFILE_COACH,
+    PROMPT_HYDRATION_COACH,
+    PROMPT_SLEEP_ADVISOR,
     injectLifestyleContext
 } = require('../config/prompts');
 const { getUserLifestyleContext } = require('../utils/lifestyleContext');
@@ -437,6 +439,12 @@ exports.getProfileCoach = async (req, res) => {
             };
         }
 
+        // Map compatibility keys for ProfileScreen.js
+        if (profileAnalysis) {
+            profileAnalysis.adaptive_goal_suggestions = profileAnalysis.adaptive_goal_suggestions || profileAnalysis.adaptive_suggestions || profileAnalysis.summary;
+            profileAnalysis.target_weight_timeline = profileAnalysis.target_weight_timeline || profileAnalysis.body_predictions || "4-6 weeks";
+        }
+
         // Cache results
         await db.query(
             'INSERT INTO recommendations (user_id, type, content) VALUES (?, ?, ?)',
@@ -494,6 +502,183 @@ exports.getAchievements = async (req, res) => {
         });
 
         res.json(achievementsMap);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+exports.getHydrationCoach = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const todayStr = req.query.today || new Date().toISOString().split('T')[0];
+        const selectedDate = req.query.date || todayStr;
+
+        // Check cache first
+        const cacheRes = await db.query(
+            'SELECT content FROM recommendations WHERE user_id = ? AND type = ? AND date = ? ORDER BY created_at DESC LIMIT 1',
+            [userId, 'hydration_coach', selectedDate]
+        );
+        if (cacheRes.rows.length > 0) {
+            return res.json(JSON.parse(cacheRes.rows[0].content));
+        }
+
+        if (selectedDate !== todayStr) {
+            return res.json({ viewingPast: true });
+        }
+
+        // Get today's hydration sum
+        const hydrationRes = await db.query(
+            'SELECT SUM(amount_ml) as total FROM hydration_logs WHERE user_id = ? AND date = ?',
+            [userId, selectedDate]
+        );
+        const loggedToday = hydrationRes.rows[0]?.total || 0;
+
+        // Get today's workouts
+        const workoutsRes = await db.query(
+            'SELECT notes, duration_minutes FROM workout_logs WHERE user_id = ? AND date = ?',
+            [userId, selectedDate]
+        );
+        let workoutsSummary = "No workouts logged today yet.";
+        if (workoutsRes.rows.length > 0) {
+            const list = workoutsRes.rows.map(w => `${w.notes || 'Workout'} (${w.duration_minutes} mins)`);
+            workoutsSummary = list.join(', ');
+        }
+
+        // Load profile stats
+        const profileRes = await db.query('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
+        const profile = profileRes.rows[0] || { weight: 70, target_weight: 65, height: 175, age: 25, gender: 'Male', fitness_goal: 'Fat Loss' };
+
+        const hydrationData = `
+          Today's Date: ${selectedDate}.
+          Profile: Weight: ${profile.weight} kg, Fitness Goal: ${profile.fitness_goal}.
+          Today's Logged Hydration: ${loggedToday} ml.
+          Today's Logged Workouts: ${workoutsSummary}.
+        `;
+
+        const lifestyleContext = await getUserLifestyleContext(userId);
+        const contextualPrompt = injectLifestyleContext(PROMPT_HYDRATION_COACH, lifestyleContext);
+        const finalPrompt = contextualPrompt.replace('{{HYDRATION_DATA}}', hydrationData);
+
+        let hydrationSchedule;
+        try {
+            const responseText = await safeGenerateContent(finalPrompt);
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) throw new Error('Invalid JSON');
+            hydrationSchedule = JSON.parse(jsonMatch[0]);
+            await logAiUsage(userId, 'hydration_coach');
+        } catch (err) {
+            console.error("getHydrationCoach failed, using fallback:", err.message);
+            hydrationSchedule = {
+                schedule: [
+                    { time: "08:00 AM", amount_ml: 250, reason: "Morning rehydration upon waking." },
+                    { time: "11:00 AM", amount_ml: 250, reason: "Mid-morning baseline hydration." },
+                    { time: "02:00 PM", amount_ml: 500, reason: "Pre-workout baseline." },
+                    { time: "05:00 PM", amount_ml: 500, reason: "Post-workout recovery hydration." },
+                    { time: "08:00 PM", amount_ml: 250, reason: "Evening baseline wind-down." }
+                ],
+                advice: "Drink consistently in small amounts. Always adjust intake based on perspiration and temperature."
+            };
+        }
+
+        // Cache results
+        await db.query(
+            'INSERT INTO recommendations (user_id, type, content, date) VALUES (?, ?, ?, ?)',
+            [userId, 'hydration_coach', JSON.stringify(hydrationSchedule), selectedDate]
+        );
+
+        res.json(hydrationSchedule);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+exports.getSleepAdvisor = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const todayStr = req.query.today || new Date().toISOString().split('T')[0];
+        const selectedDate = req.query.date || todayStr;
+
+        // Check cache first
+        const cacheRes = await db.query(
+            'SELECT content FROM recommendations WHERE user_id = ? AND type = ? AND date = ? ORDER BY created_at DESC LIMIT 1',
+            [userId, 'sleep_advisor', selectedDate]
+        );
+        if (cacheRes.rows.length > 0) {
+            return res.json(JSON.parse(cacheRes.rows[0].content));
+        }
+
+        if (selectedDate !== todayStr) {
+            return res.json({ viewingPast: true });
+        }
+
+        // Fetch yesterday's data
+        const yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+        // Fetch yesterday's workouts
+        const workoutsRes = await db.query(
+            'SELECT notes, duration_minutes FROM workout_logs WHERE user_id = ? AND date = ?',
+            [userId, yesterdayStr]
+        );
+        let workoutsSummary = "No workouts logged yesterday.";
+        if (workoutsRes.rows.length > 0) {
+            const list = workoutsRes.rows.map(w => `${w.notes || 'Workout'} (${w.duration_minutes} mins)`);
+            workoutsSummary = list.join(', ');
+        }
+
+        // Fetch yesterday's hydration
+        const hydrationRes = await db.query(
+            'SELECT SUM(amount_ml) as total FROM hydration_logs WHERE user_id = ? AND date = ?',
+            [userId, yesterdayStr]
+        );
+        const loggedYesterdayHydration = hydrationRes.rows[0]?.total || 0;
+
+        // Load profile stats
+        const profileRes = await db.query('SELECT * FROM user_profiles WHERE user_id = ?', [userId]);
+        const profile = profileRes.rows[0] || { weight: 70, target_weight: 65, height: 175, age: 25, gender: 'Male', fitness_goal: 'Fat Loss', activity_level: 'Intermediate' };
+
+        const recoveryData = `
+          Today's Date: ${selectedDate}.
+          Profile: Age: ${profile.age}, Weight: ${profile.weight} kg, Fitness Goal: ${profile.fitness_goal}, Activity Level: ${profile.activity_level}.
+          Yesterday's Activity Summary: Workouts: ${workoutsSummary}, Hydration: ${loggedYesterdayHydration} ml.
+        `;
+
+        const lifestyleContext = await getUserLifestyleContext(userId);
+        const contextualPrompt = injectLifestyleContext(PROMPT_SLEEP_ADVISOR, lifestyleContext);
+        const finalPrompt = contextualPrompt.replace('{{RECOVERY_DATA}}', recoveryData);
+
+        let sleepPlan;
+        try {
+            const responseText = await safeGenerateContent(finalPrompt);
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) throw new Error('Invalid JSON');
+            sleepPlan = JSON.parse(jsonMatch[0]);
+            await logAiUsage(userId, 'sleep_advisor');
+        } catch (err) {
+            console.error("getSleepAdvisor failed, using fallback:", err.message);
+            sleepPlan = {
+                target_sleep_hours: 8.0,
+                sleep_quality_tips: [
+                    "Keep your room cool (18-20°C) and completely dark.",
+                    "Limit caffeine intake after 02:00 PM.",
+                    "Engage in a 10-minute deep breathing session before sleep."
+                ],
+                recovery_status: "Rested",
+                fatigue_checks: [
+                    "Evaluate your resting heart rate if you wear a tracker.",
+                    "Check for muscle soreness or stiffness when waking up."
+                ]
+            };
+        }
+
+        // Cache results
+        await db.query(
+            'INSERT INTO recommendations (user_id, type, content, date) VALUES (?, ?, ?, ?)',
+            [userId, 'sleep_advisor', JSON.stringify(sleepPlan), selectedDate]
+        );
+
+        res.json(sleepPlan);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
